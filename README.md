@@ -118,3 +118,36 @@ Include a short `DECISIONS.md`:
 - The judgment calls you made and the alternatives you rejected.
 - What you'd do next with more time.
 - Honest limitations score better than hidden ones.
+
+## Running the Backend
+
+The initial backend foundation requires Docker Compose and exposes the API on
+`http://localhost:8000`.
+
+```bash
+docker compose up --build
+curl http://localhost:8000/health
+```
+
+The health endpoint returns a successful response only when the API can reach
+Postgres. Stop the services with `docker compose down`; add `-v` if the local
+development database volume should also be removed.
+
+To run the backend checks locally:
+
+```bash
+cd backend
+cp .env.example .env
+python -m venv .venv
+source .venv/bin/activate
+pip install -e '.[dev]'
+pytest
+ruff check .
+```
+
+The health route is intentionally synchronous. FastAPI runs synchronous routes
+and their database dependencies in a worker thread, keeping this SQLAlchemy
+check off the async event loop without introducing async database machinery
+before the application needs it. Docker automatically applies
+`backend/.dockerignore` to the backend build context, so local environments,
+tests, and caches are excluded from the image.
