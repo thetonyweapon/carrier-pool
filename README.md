@@ -151,3 +151,27 @@ check off the async event loop without introducing async database machinery
 before the application needs it. Docker automatically applies
 `backend/.dockerignore` to the backend build context, so local environments,
 tests, and caches are excluded from the image.
+
+## Database Migrations
+
+The backend uses Alembic to maintain the canonical multi-tenant schema. The
+backend container runs `alembic upgrade head` before starting Uvicorn, which is
+appropriate for this single-instance MVP. A production deployment would run
+migrations as a separate, one-off job before rolling out API instances.
+
+For local migration commands, run these from `backend/` with `.env` configured:
+
+```bash
+alembic current
+alembic upgrade head
+alembic downgrade base
+```
+
+The initial migration creates broker-scoped canonical records, audit versions,
+append-only rate line items, and idempotent ingestion-file tracking. It
+enforces cross-tenant relationships with composite foreign keys; shared carrier
+identity is intentionally deferred to the opt-in pool design.
+
+Rate line items are a financial journal: they cannot be updated or deleted, and
+loads or sources with rate history cannot be deleted through a cascade. Corrections
+are represented as additional positive or negative adjustment rows.
