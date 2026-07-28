@@ -1,5 +1,5 @@
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from enum import Enum
 from typing import Optional
 from uuid import uuid4
@@ -20,6 +20,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, validates
 
 CENT = Decimal("0.01")
+MAX_CURRENCY = Decimal("9999999999.99")
 
 
 def new_id() -> str:
@@ -35,7 +36,13 @@ def validate_currency(value: Optional[Decimal]) -> Optional[Decimal]:
         return None
     if not isinstance(value, Decimal):
         raise TypeError("Currency values must be Decimal instances")
-    if value != value.quantize(CENT):
+    if not value.is_finite() or value.copy_abs() > MAX_CURRENCY:
+        raise ValueError("Currency value is outside the supported range")
+    try:
+        quantized_value = value.quantize(CENT)
+    except InvalidOperation as exc:
+        raise ValueError("Currency value cannot be represented to cents") from exc
+    if value != quantized_value:
         raise ValueError("Currency values cannot contain fractions of a cent")
     return value
 
@@ -314,7 +321,9 @@ class LoadVersion(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     broker_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    broker_source_id: Mapped[str] = mapped_column(String(36), nullable=False)
     load_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    ingestion_file_id: Mapped[str] = mapped_column(String(36), nullable=False)
     version_number: Mapped[int] = mapped_column(nullable=False)
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     raw_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
@@ -322,10 +331,19 @@ class LoadVersion(Base):
 
     __table_args__ = (
         ForeignKeyConstraint(
-            ["broker_id", "load_id"],
-            ["loads.broker_id", "loads.id"],
+            ["broker_id", "broker_source_id", "load_id"],
+            ["loads.broker_id", "loads.broker_source_id", "loads.id"],
             name="fk_load_versions_load",
             ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["broker_id", "broker_source_id", "ingestion_file_id"],
+            [
+                "ingestion_files.broker_id",
+                "ingestion_files.broker_source_id",
+                "ingestion_files.id",
+            ],
+            name="fk_load_versions_ingestion_file",
         ),
         UniqueConstraint("broker_id", "id", name="uq_load_versions_broker_id_id"),
         UniqueConstraint("load_id", "version_number", name="uq_load_versions_load_version"),
@@ -390,5 +408,8 @@ class IngestionFile(Base):
             ondelete="CASCADE",
         ),
         UniqueConstraint("broker_id", "id", name="uq_ingestion_files_broker_id_id"),
+        UniqueConstraint(
+            "broker_id", "broker_source_id", "id", name="uq_ingestion_files_broker_source_id_id"
+        ),
         UniqueConstraint("broker_source_id", "filename", name="uq_ingestion_files_source_filename"),
     )

@@ -22,6 +22,9 @@ services:
       DATABASE_URL: postgresql+psycopg://carrier_pool:carrier_pool@db:5432/carrier_pool
     ports:
       - "8000:8000"
+    volumes:
+      # Keep source sync files on the host; the adapter must never modify them.
+      - ./data:/data:ro
     depends_on:
       db:
         condition: service_healthy
