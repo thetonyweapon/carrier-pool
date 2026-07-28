@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Backend services for the Carrier Pool take-home project"
 requires-python = ">=3.9"
 dependencies = [
+    "alembic>=1.14,<2",
     "fastapi>=0.115,<1",
     "psycopg[binary]>=3.2,<4",
     "pydantic-settings>=2.6,<3",
