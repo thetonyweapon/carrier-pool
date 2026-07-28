@@ -129,6 +129,11 @@ docker compose up --build
 curl http://localhost:8000/health
 ```
 
+The Compose backend expects the repository's `data/` directory to exist because
+it mounts that directory read-only at `/data`. Keep the provided TMS directories
+and plain sync files under `data/`; without them, database health still works,
+but ingestion commands cannot find their input files.
+
 The health endpoint returns a successful response only when the API can reach
 Postgres. Stop the services with `docker compose down`; add `-v` if the local
 development database volume should also be removed.
@@ -175,3 +180,21 @@ identity is intentionally deferred to the opt-in pool design.
 Rate line items are a financial journal: they cannot be updated or deleted, and
 loads or sources with rate history cannot be deleted through a cascade. Corrections
 are represented as additional positive or negative adjustment rows.
+
+## FreightFlow Ingestion
+
+FreightFlow sync files are ingested one at a time and in chronological order.
+The canonical broker source must already exist and must be configured as
+`freightflow`. From the backend directory, ingest one plain JSON sync file with:
+
+```bash
+python -m app.ingestion.freightflow \
+  --broker-source-id <freightflow-source-id> \
+  ../data/tms_a_freightflow/2026-07-06T06-00_sync.json
+```
+
+Docker Compose mounts `data/` read-only at `/data`; use the same command through
+the running backend container with a `/data/...` path. The adapter records a
+checksum and synchronization time for idempotency, rejects altered content under
+an existing filename, and rejects files that are not later than the last
+successful sync for that broker source.

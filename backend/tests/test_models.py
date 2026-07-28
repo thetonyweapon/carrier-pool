@@ -2,10 +2,11 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Optional
+from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 from alembic.config import Config
-from sqlalchemy import create_engine, event, insert, inspect, select
+from sqlalchemy import create_engine, event, insert, inspect, select, text
 from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.orm import Session
 
@@ -351,17 +352,6 @@ def test_load_versions_and_ingestion_files_are_auditable_and_idempotent(
     add_customer(db_session, "broker-a", "source-a", "customer-a")
     db_session.add(make_load("broker-a", "source-a", "customer-a"))
     db_session.flush()
-    db_session.add(
-        LoadVersion(
-            id="version-1",
-            broker_id="broker-a",
-            load_id="load-1",
-            version_number=1,
-            observed_at=NOW,
-            raw_payload={"shipmentId": 42},
-            normalized_snapshot={"status": "active"},
-        )
-    )
     ingestion_file = IngestionFile(
         id="file-1",
         broker_id="broker-a",
@@ -373,6 +363,20 @@ def test_load_versions_and_ingestion_files_are_auditable_and_idempotent(
         processed_at=NOW,
     )
     db_session.add(ingestion_file)
+    db_session.flush()
+    db_session.add(
+        LoadVersion(
+            id="version-1",
+            broker_id="broker-a",
+            broker_source_id="source-a",
+            load_id="load-1",
+            ingestion_file_id=ingestion_file.id,
+            version_number=1,
+            observed_at=NOW,
+            raw_payload={"shipmentId": 42},
+            normalized_snapshot={"status": "active"},
+        )
+    )
     db_session.commit()
 
     assert db_session.get(LoadVersion, "version-1").raw_payload == {"shipmentId": 42}
@@ -494,3 +498,155 @@ def test_initial_migration_upgrades_and_downgrades(tmp_path: Path, monkeypatch) 
 
     command.downgrade(alembic_config, "base")
     assert not inspect(create_engine(database_url)).has_table("loads")
+
+
+def test_provenance_migration_backfills_legacy_load_versions(tmp_path: Path, monkeypatch) -> None:
+    database_url = f"sqlite+pysqlite:///{tmp_path / 'legacy.db'}"
+    monkeypatch.setattr(settings, "database_url", database_url)
+    alembic_config = Config(str(Path(__file__).parents[1] / "alembic.ini"))
+    legacy_file_id = str(uuid5(NAMESPACE_URL, "carrier-pool:legacy:version-a:1"))
+    command.upgrade(alembic_config, "3cd64c705778")
+    engine = create_engine(database_url)
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO brokers (id, name, created_at) VALUES ('broker-a', 'Broker A', :now)"
+            ),
+            {"now": NOW},
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO broker_sources (id, broker_id, tms_type, source_name, created_at)
+                VALUES ('source-a', 'broker-a', 'freightflow', 'FreightFlow A', :now)
+                """
+            ),
+            {"now": NOW},
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO customers (
+                    id, broker_id, broker_source_id, source_customer_id,
+                    name, created_at, updated_at
+                ) VALUES (
+                    'customer-a', 'broker-a', 'source-a', 'customer-a',
+                    'Customer A', :now, :now
+                )
+                """
+            ),
+            {"now": NOW},
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO loads (
+                    id, broker_id, broker_source_id, source_load_id, display_number, status,
+                    customer_id, equipment_type, first_seen_at, last_synced_at
+                ) VALUES (
+                    'load-a', 'broker-a', 'source-a', 'source-load-a', 'source-load-a', 'active',
+                    'customer-a', 'dry_van', :now, :now
+                )
+                """
+            ),
+            {"now": NOW},
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO ingestion_files (
+                    id, broker_id, broker_source_id, filename, checksum,
+                    synced_at, status, processed_at
+                ) VALUES (
+                    'existing-file', 'broker-a', 'source-a',
+                    '__carrier_pool_legacy_load_version__version-a.json',
+                    :checksum, :now, 'succeeded', :now
+                )
+                """
+            ),
+            {"checksum": "a" * 64, "now": NOW},
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO ingestion_files (
+                    id, broker_id, broker_source_id, filename, checksum,
+                    synced_at, status, processed_at
+                ) VALUES (
+                    :id, 'broker-a', 'source-a', 'unrelated.json',
+                    :checksum, :now, 'succeeded', :now
+                )
+                """
+            ),
+            {"id": legacy_file_id, "checksum": "b" * 64, "now": NOW},
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO load_versions (
+                    id, broker_id, load_id, version_number,
+                    observed_at, raw_payload, normalized_snapshot
+                ) VALUES ('version-a', 'broker-a', 'load-a', 1, :now, '{}', '{}')
+                """
+            ),
+            {"now": NOW},
+        )
+    engine.dispose()
+
+    command.upgrade(alembic_config, "head")
+    upgraded_engine = create_engine(database_url)
+    with upgraded_engine.connect() as connection:
+        version = (
+            connection.execute(
+                text(
+                    """
+                    SELECT broker_source_id, ingestion_file_id
+                    FROM load_versions
+                    WHERE id = 'version-a'
+                    """
+                )
+            )
+            .mappings()
+            .one()
+        )
+        ingestion_file = (
+            connection.execute(
+                text("SELECT filename, status, error_message FROM ingestion_files WHERE id = :id"),
+                {"id": version["ingestion_file_id"]},
+            )
+            .mappings()
+            .one()
+        )
+
+    assert version["broker_source_id"] == "source-a"
+    assert ingestion_file == {
+        "filename": "__carrier_pool_legacy_load_version__version-a-2.json",
+        "status": "succeeded",
+        "error_message": "carrier-pool migration 8b3e1e01e7a2 legacy provenance",
+    }
+    upgraded_engine.dispose()
+
+    command.downgrade(alembic_config, "3cd64c705778")
+    downgraded_engine = create_engine(database_url)
+    with downgraded_engine.connect() as connection:
+        filenames = (
+            connection.execute(text("SELECT filename FROM ingestion_files ORDER BY filename"))
+            .scalars()
+            .all()
+        )
+
+    assert filenames == [
+        "__carrier_pool_legacy_load_version__version-a.json",
+        "unrelated.json",
+    ]
+    downgraded_engine.dispose()
+
+    command.upgrade(alembic_config, "head")
+    reupgraded_engine = create_engine(database_url)
+    with reupgraded_engine.connect() as connection:
+        reupgraded_version = connection.execute(
+            text("SELECT ingestion_file_id FROM load_versions WHERE id = 'version-a'")
+        ).scalar_one()
+
+    assert reupgraded_version == version["ingestion_file_id"]
