@@ -17,6 +17,7 @@ from app.models import (
     Broker,
     BrokerSource,
     Carrier,
+    CarrierIdentity,
     Customer,
     EquipmentType,
     IngestionFile,
@@ -151,6 +152,36 @@ def test_load_rejects_cross_tenant_carrier(db_session: Session) -> None:
 
     db_session.add(make_load("broker-a", "source-a", "customer-a", carrier_id="carrier-b"))
 
+    with pytest.raises(IntegrityError):
+        db_session.flush()
+
+
+def test_carrier_identity_is_broker_scoped_and_requires_evidence(db_session: Session) -> None:
+    add_broker_and_source(db_session, "broker-a", "source-a")
+    add_broker_and_source(db_session, "broker-b", "source-b")
+    db_session.add(
+        CarrierIdentity(
+            id="identity-a",
+            broker_id="broker-a",
+            normalized_mc_number="884201",
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    db_session.flush()
+    db_session.add(
+        CarrierIdentity(
+            id="identity-b",
+            broker_id="broker-b",
+            normalized_mc_number="884201",
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    db_session.flush()
+    db_session.add(
+        CarrierIdentity(id="missing-evidence", broker_id="broker-a", created_at=NOW, updated_at=NOW)
+    )
     with pytest.raises(IntegrityError):
         db_session.flush()
 
@@ -498,6 +529,96 @@ def test_initial_migration_upgrades_and_downgrades(tmp_path: Path, monkeypatch) 
 
     command.downgrade(alembic_config, "base")
     assert not inspect(create_engine(database_url)).has_table("loads")
+
+
+def test_carrier_identity_migration_backfills_deterministically(
+    tmp_path: Path, monkeypatch
+) -> None:
+    database_url = f"sqlite+pysqlite:///{tmp_path / 'carrier-identities.db'}"
+    monkeypatch.setattr(settings, "database_url", database_url)
+    alembic_config = Config(str(Path(__file__).parents[1] / "alembic.ini"))
+    command.upgrade(alembic_config, "3cd64c705778")
+    engine = create_engine(database_url)
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO brokers (id, name, created_at) VALUES ('broker-a', 'Broker A', :now)"
+            ),
+            {"now": NOW},
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO broker_sources (id, broker_id, tms_type, source_name, created_at)
+                VALUES ('source-a', 'broker-a', 'freightflow', 'FreightFlow A', :now)
+                """
+            ),
+            {"now": NOW},
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO carriers (
+                    id, broker_id, broker_source_id, source_carrier_id, name,
+                    mc_number, dot_number, created_at, updated_at
+                ) VALUES
+                    ('carrier-a', 'broker-a', 'source-a', 'ff-1', 'Carrier A',
+                     'MC-884201', 'DOT 2551377', :now, :now),
+                    ('carrier-b', 'broker-a', 'source-a', 'ff-2', 'Carrier A',
+                     '884201', '2551377', :now, :now)
+                """
+            ),
+            {"now": NOW},
+        )
+    engine.dispose()
+
+    command.upgrade(alembic_config, "head")
+    upgraded_engine = create_engine(database_url)
+    with upgraded_engine.connect() as connection:
+        links = (
+            connection.execute(
+                text(
+                    """
+                SELECT carrier_identity_id FROM carriers ORDER BY id
+                """
+                )
+            )
+            .scalars()
+            .all()
+        )
+        identity = (
+            connection.execute(
+                text(
+                    """
+                SELECT id, normalized_mc_number, normalized_dot_number
+                FROM carrier_identities
+                """
+                )
+            )
+            .mappings()
+            .one()
+        )
+    assert links == [identity["id"], identity["id"]]
+    assert identity["id"] == str(
+        uuid5(NAMESPACE_URL, "carrier-pool:carrier-identity:broker-a:884201:2551377")
+    )
+    assert (identity["normalized_mc_number"], identity["normalized_dot_number"]) == (
+        "884201",
+        "2551377",
+    )
+    upgraded_engine.dispose()
+
+    command.downgrade(alembic_config, "3cd64c705778")
+    command.upgrade(alembic_config, "head")
+    reupgraded_engine = create_engine(database_url)
+    with reupgraded_engine.connect() as connection:
+        reupgraded_links = (
+            connection.execute(text("SELECT carrier_identity_id FROM carriers ORDER BY id"))
+            .scalars()
+            .all()
+        )
+    assert reupgraded_links == links
+    reupgraded_engine.dispose()
 
 
 def test_provenance_migration_backfills_legacy_load_versions(tmp_path: Path, monkeypatch) -> None:

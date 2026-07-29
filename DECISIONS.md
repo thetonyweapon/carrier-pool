@@ -21,6 +21,7 @@
 - Every downstream entity carries both `broker_id` and `broker_source_id`. Composite foreign keys make cross-tenant references structurally impossible at the database level.
 - Tests prove that cross-tenant customer/carrier references are rejected with `IntegrityError`.
 - Shared carrier identity across brokers (the "opt-in pool") is explicitly deferred.
+- Broker-scoped `CarrierIdentity` records link source-specific carrier rows across TMSs using normalized MC/DOT evidence. MC/DOT values are independently unique per broker; complementary identities can merge, while contradictory evidence rejects the sync. A broker row lock serializes identity resolution across TMS sources. This does not cross broker boundaries or enable the shared carrier pool.
 
 *Alternatives rejected:* Schema-per-tenant (operational complexity, no shared pool possible); single flat namespace with application-level filtering (data-leak risk).
 
@@ -48,8 +49,9 @@
 - Pydantic v2 models validate the raw JSON before any database writes.
 - The entire file ingestion runs inside a single transaction; any load failure rolls back the entire file, including the `IngestionFile` record.
 - `BrokerSource` is locked with `SELECT ... FOR UPDATE` at transaction start, serializing ingestion per source. (PostgreSQL provides the row lock; SQLite accepts but ignores the clause.)
+- Carrier identity resolution also locks the broker row, serializing identity creation and complementary merges across different TMS sources.
 - Stop synchronization is diff-based: existing stops loaded by `sequence_number` are matched against desired stops. Existing stops are updated in place, new stops are added, removed stops are deleted. This preserves stop identity (same `id`) across syncs.
-- Customer/carrier upsert is conditional: `updated_at` only changes when field values actually differ.
+- Customer/carrier upsert is conditional: `updated_at` only changes when field values actually differ. HaulDesk rejects unexpected fields so source schema drift cannot be silently discarded.
 
 *Alternatives rejected:* Loading all historical data in one batch (violates chronological-syncs constraint); mutable stop replacement (breaks referential stability); unconditional timestamp updates (unnecessary churn).
 
@@ -74,6 +76,7 @@
 
 - Migration 1 (`3cd64c705778`): creates all 8 tables with constraints, indexes, and triggers.
 - Migration 2 (`8b3e1e01e7a2`): adds provenance columns as nullable, backfills legacy rows via deterministic `uuid5` IDs, then constrains to NOT NULL.
+- Migration 3 (`1b4c4f0a2d91`): adds broker-scoped carrier identities, deterministic backfills existing carrier evidence, and links source-specific carrier rows. Existing contradictory MC/DOT evidence fails the migration rather than being silently merged. Identity rows are derived from source carrier evidence and can be rebuilt on re-upgrade.
 - Backfill retries on collision with a bounded loop (max 1000 attempts), checking both ID and `(broker_source_id, filename)` collisions.
 - Fails fast with `RuntimeError` if any `load_versions` row references a nonexistent load (prevents silent data loss).
 - Downgrade deletes synthetic ingestion files by `error_message` marker and restores original foreign keys.
@@ -104,10 +107,10 @@ Weight is `Numeric(12, 1)`, distance is `Numeric(10, 1)` — these are not finan
 
 - Fast, isolated, no external dependencies. Every test gets a fresh database.
 - `make_sync()` builder produces realistic FreightFlow payloads with sensible defaults and override parameters.
-- 30 tests covering: basic ingestion, lifecycle across 3 syncs, multi-load files, idempotency, conflict detection, tenant isolation, unknown equipment, malformed payloads, fractional cents, out-of-range rates, CLI success/error paths, model constraint violations, currency validation, append-only enforcement, and migration upgrade/downgrade/re-upgrade round-trips.
+- The backend suite covers FreightFlow and HaulDesk ingestion, lifecycle corrections, rate-only and empty deltas, multi-load files, zero-sum corrections, cross-TMS carrier identity normalization and merging, idempotency, conflict detection, tenant isolation, unknown equipment, malformed and schema-drift payloads, fractional cents, out-of-range rates, CLI success/error paths, model constraint violations, currency validation, append-only enforcement, migration backfill and upgrade/downgrade/re-upgrade round-trips, and environment-gated PostgreSQL locking coverage.
 - Ruff for linting (line-length 100, Python 3.9 target, E/F/I rule sets).
 
-*Alternatives rejected:* Testcontainers/Postgres (slower, requires Docker); mocking SQLAlchemy (misses constraint enforcement).
+*Alternatives rejected:* Testcontainers/Postgres for the default suite (slower, requires Docker); mocking SQLAlchemy (misses constraint enforcement). PostgreSQL-specific locking coverage is available when `HAULDESK_POSTGRES_TEST_URL` is set.
 
 ---
 
@@ -115,7 +118,9 @@ Weight is `Numeric(12, 1)`, distance is `Numeric(10, 1)` — these are not finan
 
 - **Lane model.** The problem mentions lanes (from→to pairs) as a key analytical concept, but there is no `lanes` table or lane-level aggregation yet. Deferred to the analytics/estimation phase.
 - **Carrier scoring and price estimation.** The core deliverables ("which carrier to call first" and "what to pay") are not yet implemented. The codebase covers only ingestion and modeling.
-- **HaulDesk and BrokerOS adapters.** Only the FreightFlow (TMS A) adapter is implemented. The remaining two TMS adapters follow the same pattern but with different schemas.
+- **BrokerOS adapter.** The BrokerOS (TMS C) adapter remains to be implemented. It should follow the canonical adapter pattern with its own source schema.
+- **HaulDesk adapter.** HaulDesk is now supported as a flat-table delta adapter. It interprets naive timestamps as `America/Chicago`, maps its source-defined single pickup and single delivery to the two canonical stops, rounds metric conversions half-up to one decimal place, rejects repeated immutable rate IDs, and creates one load version for rate-only changes. HaulDesk cannot provide additional stops because its export has no multi-stop representation.
+- **Booking timestamps.** HaulDesk has no booking event timestamp, so `Load.booked_at` records the first source `updated_at` observed with a carrier or covered-or-later status rather than the ingestion time.
 - **Synthetic data generation.** The project requires 10 days of sync files (4/day × 3 TMS) with lifecycle progressions, corrections, and lane diversity. Not yet created.
 - **Frontend.** Only Vite/React stubs exist; no UI work has started.
 - **Shared carrier pool.** The opt-in cross-broker carrier pool is the bonus feature and is explicitly deferred.
