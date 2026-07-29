@@ -1,0 +1,54 @@
+name: Backend tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: carrier_pool
+          POSTGRES_USER: carrier_pool
+          POSTGRES_PASSWORD: carrier_pool
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U carrier_pool -d carrier_pool"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -e '.[dev]'
+      - name: Upgrade database schema
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+psycopg://carrier_pool:carrier_pool@localhost:5432/carrier_pool
+        run: alembic upgrade head
+      - name: Check migration state
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+psycopg://carrier_pool:carrier_pool@localhost:5432/carrier_pool
+        run: alembic check
+      - name: Run backend tests
+        working-directory: backend
+        env:
+          HAULDESK_POSTGRES_TEST_URL: postgresql+psycopg://carrier_pool:carrier_pool@localhost:5432/carrier_pool
+        run: pytest
+      - name: Run lint
+        working-directory: backend
+        run: ruff check .
+      - name: Check formatting
+        working-directory: backend
+        run: ruff format --check .

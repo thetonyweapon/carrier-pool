@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
+from app.ingestion.common import CarrierIdentityConflictError, upsert_carrier_identity
 from app.models import (
     BrokerSource,
     Carrier,
@@ -219,7 +220,10 @@ def _ingest_load(
     status = _map_status(source_load.status)
     equipment_type = _map_equipment(source_load.equipment)
     customer = _upsert_customer(session, source, source_load.customer, ingestion_file.synced_at)
-    carrier = _upsert_carrier(session, source, source_load.carrier, ingestion_file.synced_at)
+    try:
+        carrier = _upsert_carrier(session, source, source_load.carrier, ingestion_file.synced_at)
+    except CarrierIdentityConflictError as exc:
+        raise InvalidFreightFlowPayloadError(str(exc)) from exc
     source_load_id = str(source_load.shipmentId)
 
     load = session.scalar(
@@ -329,6 +333,13 @@ def _upsert_carrier(
         return None
 
     source_carrier_id = str(source_carrier.carrierMasterId)
+    carrier_identity = upsert_carrier_identity(
+        session,
+        source.broker_id,
+        source_carrier.mcNumber,
+        source_carrier.dotNumber,
+        observed_at,
+    )
     carrier = session.scalar(
         select(Carrier).where(
             Carrier.broker_source_id == source.id,
@@ -339,6 +350,7 @@ def _upsert_carrier(
         carrier = Carrier(
             broker_id=source.broker_id,
             broker_source_id=source.id,
+            carrier_identity_id=carrier_identity.id if carrier_identity else None,
             source_carrier_id=source_carrier_id,
             name=source_carrier.name,
             mc_number=source_carrier.mcNumber,
@@ -350,12 +362,14 @@ def _upsert_carrier(
         session.add(carrier)
     else:
         changed = (
-            carrier.name != source_carrier.name
+            carrier.carrier_identity_id != (carrier_identity.id if carrier_identity else None)
+            or carrier.name != source_carrier.name
             or carrier.mc_number != source_carrier.mcNumber
             or carrier.dot_number != source_carrier.dotNumber
             or carrier.phone_number != source_carrier.phoneNumber
         )
         if changed:
+            carrier.carrier_identity_id = carrier_identity.id if carrier_identity else None
             carrier.name = source_carrier.name
             carrier.mc_number = source_carrier.mcNumber
             carrier.dot_number = source_carrier.dotNumber

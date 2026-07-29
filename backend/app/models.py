@@ -200,12 +200,37 @@ class Customer(Base):
     )
 
 
+class CarrierIdentity(Base):
+    __tablename__ = "carrier_identities"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    broker_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    normalized_mc_number: Mapped[Optional[str]] = mapped_column(String(32))
+    normalized_dot_number: Mapped[Optional[str]] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["broker_id"], ["brokers.id"], name="fk_carrier_identities_broker", ondelete="CASCADE"
+        ),
+        CheckConstraint(
+            "normalized_mc_number IS NOT NULL OR normalized_dot_number IS NOT NULL",
+            name="ck_carrier_identities_has_identifier",
+        ),
+        UniqueConstraint("broker_id", "id", name="uq_carrier_identities_broker_id"),
+        UniqueConstraint("broker_id", "normalized_mc_number", name="uq_carrier_identities_mc"),
+        UniqueConstraint("broker_id", "normalized_dot_number", name="uq_carrier_identities_dot"),
+    )
+
+
 class Carrier(Base):
     __tablename__ = "carriers"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     broker_id: Mapped[str] = mapped_column(String(36), nullable=False)
     broker_source_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    carrier_identity_id: Mapped[Optional[str]] = mapped_column(String(36))
     source_carrier_id: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     mc_number: Mapped[Optional[str]] = mapped_column(String(32))
@@ -222,6 +247,11 @@ class Carrier(Base):
             ["broker_sources.broker_id", "broker_sources.id"],
             name="fk_carriers_source",
             ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["broker_id", "carrier_identity_id"],
+            ["carrier_identities.broker_id", "carrier_identities.id"],
+            name="fk_carriers_identity",
         ),
         UniqueConstraint("broker_id", "id", name="uq_carriers_broker_id_id"),
         UniqueConstraint(

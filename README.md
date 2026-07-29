@@ -150,6 +150,17 @@ pytest
 ruff check .
 ```
 
+The default tests use isolated in-memory SQLite databases. To run the
+PostgreSQL-specific HaulDesk row-lock test, set `HAULDESK_POSTGRES_TEST_URL`
+to a reachable PostgreSQL URL and run:
+
+```bash
+HAULDESK_POSTGRES_TEST_URL=postgresql+psycopg://carrier_pool:carrier_pool@localhost:5432/carrier_pool pytest
+```
+
+That test creates and removes a temporary schema, so it does not modify the
+normal application tables.
+
 The health route is intentionally synchronous. FastAPI runs synchronous routes
 and their database dependencies in a worker thread, keeping this SQLAlchemy
 check off the async event loop without introducing async database machinery
@@ -198,3 +209,40 @@ the running backend container with a `/data/...` path. The adapter records a
 checksum and synchronization time for idempotency, rejects altered content under
 an existing filename, and rejects files that are not later than the last
 successful sync for that broker source.
+
+## HaulDesk Ingestion
+
+HaulDesk exports are flat table deltas containing loads, carriers, and append-only
+rate rows. The adapter processes carriers first, then load rows, then rates. It
+also supports rate-only files that update a previously ingested load.
+
+From the backend directory, ingest one plain JSON sync file with:
+
+```bash
+python -m app.ingestion.hauldesk \
+  --broker-source-id <hauldesk-source-id> \
+  ../data/tms_b_hauldesk/2026-07-06T06-00_sync.json
+```
+
+HaulDesk timestamps are naive US Central time and are converted with
+`America/Chicago` timezone rules before storage. Pickup and delivery dates are
+stored as Central midnight values because the source provides dates rather than
+appointment windows. Kilograms and kilometers are converted to pounds and miles
+with Decimal arithmetic and explicit half-up rounding to one decimal place.
+
+Rate rows are immutable source events. Bill and pay totals are recalculated from
+the complete rate journal, so positive surcharges and negative adjustments are
+preserved in history. Repeated rate IDs are rejected even when the amount is
+unchanged; a new source rate ID is a new journal event. Contradictory status and
+carrier values are retained as provided by the source.
+
+HaulDesk's published export has exactly one pickup and one delivery, so the
+adapter creates those two stops and rejects unexpected schema fields rather than
+silently dropping them. A future HaulDesk multi-stop export requires an adapter
+revision because the current source has no multi-stop representation.
+
+MC/DOT evidence is normalized into a broker-scoped carrier identity shared by
+source-specific carrier rows. Matching is serialized by the broker row across
+TMS sources. Complementary MC-only and DOT-only identities are merged and their
+carrier rows are repointed. Conflicting evidence rejects the whole sync; it is
+never silently overwritten.

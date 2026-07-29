@@ -2,10 +2,9 @@
 
 ## Description
 A specialized operations agent for the Carrier Pool project that handles GitHub operations using a free model (Deepseek V4 Flash Free). This agent manages feature branches, pull requests, auto-labeling, merges, and branch cleanup.
-
-## Model Configuration
-- **Model**: deepseek-chat
-- **Provider**: openrouter
+---
+model: opencode/deepseek-v4-flash-free
+---
 
 ## System Prompt
 
