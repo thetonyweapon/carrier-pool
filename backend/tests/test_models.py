@@ -23,6 +23,7 @@ from app.models import (
     IngestionFile,
     IngestionStatus,
     Load,
+    LoadRateObservation,
     LoadStatus,
     LoadStop,
     LoadVersion,
@@ -441,6 +442,7 @@ def test_initial_migration_upgrades_and_downgrades(tmp_path: Path, monkeypatch) 
         connection.execute("PRAGMA foreign_keys=ON")
 
     assert inspect(engine).has_table("loads")
+    assert inspect(engine).has_table("load_rate_observations")
     command.check(alembic_config)
 
     with Session(engine) as session:
@@ -491,6 +493,41 @@ def test_initial_migration_upgrades_and_downgrades(tmp_path: Path, monkeypatch) 
 
         session.add(make_load("broker-a", "source-a", "customer-a"))
         session.flush()
+        session.add(
+            IngestionFile(
+                id="file-1",
+                broker_id="broker-a",
+                broker_source_id="source-a",
+                filename="observation.json",
+                checksum="c" * 64,
+                synced_at=NOW,
+                status=IngestionStatus.SUCCEEDED,
+                processed_at=NOW,
+            )
+        )
+        session.flush()
+        observation = LoadRateObservation(
+            id="observation-1",
+            broker_id="broker-a",
+            broker_source_id="source-a",
+            load_id="load-1",
+            ingestion_file_id="file-1",
+            side=RateSide.PAY,
+            amount=None,
+            observation_number=1,
+            observed_at=NOW,
+        )
+        session.add(observation)
+        session.commit()
+        observation.amount = Decimal("100.00")
+        with pytest.raises(IntegrityError, match="append-only"):
+            session.commit()
+        session.rollback()
+        session.delete(session.get(LoadRateObservation, "observation-1"))
+        with pytest.raises(IntegrityError, match="append-only"):
+            session.commit()
+        session.rollback()
+
         rate = RateLineItem(
             id="rate-1",
             broker_id="broker-a",
