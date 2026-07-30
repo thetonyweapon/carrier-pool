@@ -186,7 +186,13 @@ alembic downgrade base
 The initial migration creates broker-scoped canonical records, audit versions,
 append-only rate line items, and idempotent ingestion-file tracking. It
 enforces cross-tenant relationships with composite foreign keys; shared carrier
-identity is intentionally deferred to the opt-in pool design.
+identity across brokers is intentionally deferred to the opt-in pool design.
+
+The BrokerOS migration adds append-only `load_rate_observations` for mutable
+snapshot totals, plus date-only scheduling and source-location metadata on
+stops. BrokerOS replacement totals are not converted into synthetic rate-line
+adjustments: each changed value is recorded as a snapshot observation and the
+current value remains materialized on the load.
 
 Rate line items are a financial journal: they cannot be updated or deleted, and
 loads or sources with rate history cannot be deleted through a cascade. Corrections
@@ -246,3 +252,40 @@ source-specific carrier rows. Matching is serialized by the broker row across
 TMS sources. Complementary MC-only and DOT-only identities are merged and their
 carrier rows are repointed. Conflicting evidence rejects the whole sync; it is
 never silently overwritten.
+
+## BrokerOS Ingestion
+
+BrokerOS is a CRM-style export. Each load record contains opaque customer,
+carrier, and stop-location IDs resolved through the file's
+`referenced_records` object. The adapter validates reference types and required
+fields, rejects unknown source fields, and rolls back the entire file if any
+reference or record is invalid.
+
+From the backend directory, ingest one plain JSON sync file with:
+
+```bash
+python -m app.ingestion.brokeros \
+  --broker-source-id <brokeros-source-id> \
+  ../data/tms_c_brokeros/2026-07-06T06-00_sync.json
+```
+
+BrokerOS timestamps must include an offset and are stored as UTC. Its scheduled
+stop values are calendar dates and are stored in `LoadStop.scheduled_date`, not
+as invented midnight timestamps. Stops are sorted by their source sequence,
+which is also preserved alongside resolved location IDs and names. BrokerOS
+supports more than two stops, pickup/dropoff combinations, and actual arrival
+timestamps. The source does not expose stable child-stop IDs, so canonical stop
+IDs represent sequence slots rather than guaranteed physical-stop identity when
+an intermediate stop is inserted.
+
+BrokerOS customer and carrier accounts are source-specific. The documented
+schema does not provide MC/DOT evidence for carriers, so BrokerOS carriers are
+not guessed into the shared broker-scoped carrier identity model. Cargo weights
+support pounds and kilograms, use Decimal conversion and half-up rounding to
+one decimal pound, and reject unsupported units. Empty cargo line items produce
+an unknown aggregate weight.
+
+BrokerOS customer and carrier rates are mutable replacement totals. Changes are
+recorded in the append-only `load_rate_observations` table, including null-to-
+value, value-to-null, zero, and restatement transitions. They are not inserted
+into HaulDesk's additive `RateLineItem` journal.

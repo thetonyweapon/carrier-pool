@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from enum import Enum
 from typing import Optional
@@ -326,6 +326,10 @@ class LoadStop(Base):
     city: Mapped[str] = mapped_column(String(255), nullable=False)
     state: Mapped[str] = mapped_column(String(2), nullable=False)
     postal_code: Mapped[str] = mapped_column(String(16), nullable=False)
+    scheduled_date: Mapped[Optional[date]] = mapped_column()
+    source_location_id: Mapped[Optional[str]] = mapped_column(String(255))
+    location_name: Mapped[Optional[str]] = mapped_column(String(255))
+    source_sequence_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 3))
     latitude: Mapped[Optional[Decimal]] = mapped_column(Numeric(9, 6))
     longitude: Mapped[Optional[Decimal]] = mapped_column(Numeric(9, 6))
     scheduled_start_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
@@ -413,6 +417,60 @@ class RateLineItem(Base):
 
     @validates("amount")
     def validate_amount(self, key: str, value: Decimal) -> Decimal:
+        del key
+        return validate_currency(value)
+
+
+class LoadRateObservation(Base):
+    """Append-only snapshot of a TMS's mutable total rate value."""
+
+    __tablename__ = "load_rate_observations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    broker_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    broker_source_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    load_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    ingestion_file_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    side: Mapped[RateSide] = mapped_column(RATE_SIDE, nullable=False)
+    amount: Mapped[Optional[Decimal]] = mapped_column(CURRENCY)
+    observation_number: Mapped[int] = mapped_column(nullable=False)
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source_updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["broker_id", "broker_source_id"],
+            ["broker_sources.broker_id", "broker_sources.id"],
+            name="fk_load_rate_observations_source",
+        ),
+        ForeignKeyConstraint(
+            ["broker_id", "broker_source_id", "load_id"],
+            ["loads.broker_id", "loads.broker_source_id", "loads.id"],
+            name="fk_load_rate_observations_load",
+        ),
+        ForeignKeyConstraint(
+            ["broker_id", "broker_source_id", "ingestion_file_id"],
+            [
+                "ingestion_files.broker_id",
+                "ingestion_files.broker_source_id",
+                "ingestion_files.id",
+            ],
+            name="fk_load_rate_observations_ingestion_file",
+        ),
+        UniqueConstraint("broker_id", "id", name="uq_load_rate_observations_broker_id_id"),
+        UniqueConstraint(
+            "load_id", "side", "observation_number", name="uq_load_rate_observations_sequence"
+        ),
+        UniqueConstraint(
+            "ingestion_file_id",
+            "load_id",
+            "side",
+            name="uq_load_rate_observations_file_load_side",
+        ),
+    )
+
+    @validates("amount")
+    def validate_amount(self, key: str, value: Optional[Decimal]) -> Optional[Decimal]:
         del key
         return validate_currency(value)
 

@@ -77,6 +77,7 @@
 - Migration 1 (`3cd64c705778`): creates all 8 tables with constraints, indexes, and triggers.
 - Migration 2 (`8b3e1e01e7a2`): adds provenance columns as nullable, backfills legacy rows via deterministic `uuid5` IDs, then constrains to NOT NULL.
 - Migration 3 (`1b4c4f0a2d91`): adds broker-scoped carrier identities, deterministic backfills existing carrier evidence, and links source-specific carrier rows. Existing contradictory MC/DOT evidence fails the migration rather than being silently merged. Identity rows are derived from source carrier evidence and can be rebuilt on re-upgrade.
+- Migration 4 (`2f7d1c9a4e30`): adds BrokerOS mutable-rate observations and BrokerOS stop metadata (`scheduled_date`, source location, and source sequence). Observation rows are append-only and preserve null-versus-zero semantics.
 - Backfill retries on collision with a bounded loop (max 1000 attempts), checking both ID and `(broker_source_id, filename)` collisions.
 - Fails fast with `RuntimeError` if any `load_versions` row references a nonexistent load (prevents silent data loss).
 - Downgrade deletes synthetic ingestion files by `error_message` marker and restores original foreign keys.
@@ -118,8 +119,8 @@ Weight is `Numeric(12, 1)`, distance is `Numeric(10, 1)` — these are not finan
 
 - **Lane model.** The problem mentions lanes (from→to pairs) as a key analytical concept, but there is no `lanes` table or lane-level aggregation yet. Deferred to the analytics/estimation phase.
 - **Carrier scoring and price estimation.** The core deliverables ("which carrier to call first" and "what to pay") are not yet implemented. The codebase covers only ingestion and modeling.
-- **BrokerOS adapter.** The BrokerOS (TMS C) adapter remains to be implemented. It should follow the canonical adapter pattern with its own source schema.
-- **HaulDesk adapter.** HaulDesk is now supported as a flat-table delta adapter. It interprets naive timestamps as `America/Chicago`, maps its source-defined single pickup and single delivery to the two canonical stops, rounds metric conversions half-up to one decimal place, rejects repeated immutable rate IDs, and creates one load version for rate-only changes. HaulDesk cannot provide additional stops because its export has no multi-stop representation.
+- **BrokerOS adapter.** BrokerOS is supported as a strict CRM-style adapter. It resolves same-file Account and Location references, supports arbitrary ordered stops, stores date-only schedules without inventing timestamps, aggregates pounds/kilograms, and records mutable totals as append-only rate observations. The source does not provide MC/DOT evidence or stable child-stop IDs, so carrier identity linking and physical stop identity remain unavailable.
+- **HaulDesk adapter.** HaulDesk is supported as a flat-table delta adapter. It interprets naive timestamps as `America/Chicago`, maps its source-defined single pickup and single delivery to the two canonical stops, rounds metric conversions half-up to one decimal place, rejects repeated immutable rate IDs, and creates one load version for rate-only changes. HaulDesk cannot provide additional stops because its export has no multi-stop representation.
 - **Booking timestamps.** HaulDesk has no booking event timestamp, so `Load.booked_at` records the first source `updated_at` observed with a carrier or covered-or-later status rather than the ingestion time.
 - **Synthetic data generation.** The project requires 10 days of sync files (4/day × 3 TMS) with lifecycle progressions, corrections, and lane diversity. Not yet created.
 - **Frontend.** Only Vite/React stubs exist; no UI work has started.
