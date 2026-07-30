@@ -289,3 +289,35 @@ BrokerOS customer and carrier rates are mutable replacement totals. Changes are
 recorded in the append-only `load_rate_observations` table, including null-to-
 value, value-to-null, zero, and restatement transitions. They are not inserted
 into HaulDesk's additive `RateLineItem` journal.
+
+## Synthetic Dataset
+
+The checked-in synthetic dataset covers July 6-16, 2026 at the required
+six-hour cadence: 44 files per TMS, or 132 files total. It includes complete
+lifecycles, corrections, rich and thin Texas Triangle lanes, experienced and
+sparse carriers, and fresh Day 11 loads that remain uncovered.
+
+The files are generated deterministically from fixed scenarios. From the
+repository root, regenerate them with:
+
+```bash
+python3 backend/scripts/generate_synthetic_data.py
+```
+
+Generation overwrites only the expected dated sync filenames. To remove stale
+files from an older generated run, explicitly use `--clean`; unrelated JSON
+files are never removed.
+
+Validate every source schema and ingest all files in chronological order with:
+
+```bash
+cd backend
+python3 -m pytest tests/test_synthetic_data.py -q
+```
+
+The test also verifies duplicate-file idempotency and generator
+reproducibility against the checked-in files. Day 11 reuses stable active load
+IDs across its four syncs. HaulDesk uses unique additive rate IDs and
+adjustment rows.
+FreightFlow uses replacement snapshots, while BrokerOS uses
+replacement totals with append-only observations.

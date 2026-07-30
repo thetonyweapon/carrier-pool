@@ -1,0 +1,77 @@
+{
+  "loads": [
+    {
+      "carrier": null,
+      "createdDate": "2026-07-10T12:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-SOUTH",
+        "name": "Alamo Industrial"
+      },
+      "equipment": "Flatbed",
+      "lastModifiedDate": "2026-07-10T12:00:00-05:00",
+      "mileage": "242.0",
+      "shipmentId": "FF-007",
+      "status": "Quoting",
+      "stops": [
+        {
+          "actualDepartureDateTime": null,
+          "city": "Georgetown",
+          "estimatedCloseDateTime": "2026-07-11T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-11T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "78626"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "Irving",
+          "estimatedCloseDateTime": "2026-07-11T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-11T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "75039"
+        }
+      ],
+      "totalBuy": null,
+      "totalSell": "2490.00",
+      "weightTotal": "35000.0"
+    },
+    {
+      "carrier": null,
+      "createdDate": "2026-07-10T12:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-GULF",
+        "name": "Gulf Coast Foods"
+      },
+      "equipment": "Reefer",
+      "lastModifiedDate": "2026-07-10T12:00:00-05:00",
+      "mileage": "190.0",
+      "shipmentId": "FF-008",
+      "status": "Quoting",
+      "stops": [
+        {
+          "actualDepartureDateTime": null,
+          "city": "The Woodlands",
+          "estimatedCloseDateTime": "2026-07-11T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-11T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "77380"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "Round Rock",
+          "estimatedCloseDateTime": "2026-07-11T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-11T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "78664"
+        }
+      ],
+      "totalBuy": null,
+      "totalSell": "2380.00",
+      "weightTotal": "39000.0"
+    }
+  ],
+  "syncedAt": "2026-07-10T12:00:00-05:00"
+}

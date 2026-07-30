@@ -8,10 +8,10 @@
         "name": "Gulf Coast Foods"
       },
       "equipment": "Reefer",
-      "lastModifiedDate": "2026-07-06T06:00:00-05:00",
+      "lastModifiedDate": "2026-07-06T00:00:00-05:00",
       "mileage": "244.0",
       "shipmentId": "FF-001",
-      "status": "Booking",
+      "status": "Quoting",
       "stops": [
         {
           "actualDepartureDateTime": null,
@@ -44,10 +44,10 @@
         "name": "Northstar Retail"
       },
       "equipment": "Dry Van",
-      "lastModifiedDate": "2026-07-06T06:00:00-05:00",
+      "lastModifiedDate": "2026-07-06T00:00:00-05:00",
       "mileage": "271.0",
       "shipmentId": "FF-002",
-      "status": "Booking",
+      "status": "Quoting",
       "stops": [
         {
           "actualDepartureDateTime": null,
@@ -73,5 +73,5 @@
       "weightTotal": "36000.0"
     }
   ],
-  "syncedAt": "2026-07-06T06:00:00-05:00"
+  "syncedAt": "2026-07-06T00:00:00-05:00"
 }

@@ -1,0 +1,89 @@
+{
+  "loads": [
+    {
+      "carrier": {
+        "carrierMasterId": "CARR-ALPHA",
+        "dotNumber": "DOT-310001",
+        "mcNumber": "MC-120001",
+        "name": "Lone Star Logistics",
+        "phoneNumber": "214-555-1010"
+      },
+      "createdDate": "2026-07-09T00:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-NORTH",
+        "name": "Northstar Retail"
+      },
+      "equipment": "Reefer",
+      "lastModifiedDate": "2026-07-09T18:00:00-05:00",
+      "mileage": "248.0",
+      "shipmentId": "FF-005",
+      "status": "En Route",
+      "stops": [
+        {
+          "actualDepartureDateTime": "2026-07-09T18:00:00-05:00",
+          "city": "Arlington",
+          "estimatedCloseDateTime": "2026-07-09T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-09T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "76011"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "Missouri City",
+          "estimatedCloseDateTime": "2026-07-10T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-10T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "77459"
+        }
+      ],
+      "totalBuy": "2260.00",
+      "totalSell": "2910.00",
+      "weightTotal": "41000.0"
+    },
+    {
+      "carrier": {
+        "carrierMasterId": "CARR-ECHO",
+        "dotNumber": "DOT-310005",
+        "mcNumber": "MC-120005",
+        "name": "Bluebonnet Transport",
+        "phoneNumber": "214-555-1024"
+      },
+      "createdDate": "2026-07-09T00:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-GULF",
+        "name": "Gulf Coast Foods"
+      },
+      "equipment": "Dry Van",
+      "lastModifiedDate": "2026-07-09T18:00:00-05:00",
+      "mileage": "218.0",
+      "shipmentId": "FF-006",
+      "status": "En Route",
+      "stops": [
+        {
+          "actualDepartureDateTime": "2026-07-09T18:00:00-05:00",
+          "city": "Cypress",
+          "estimatedCloseDateTime": "2026-07-09T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-09T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "77429"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "Boerne",
+          "estimatedCloseDateTime": "2026-07-10T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-10T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "78006"
+        }
+      ],
+      "totalBuy": "1640.00",
+      "totalSell": "2195.00",
+      "weightTotal": "29000.0"
+    }
+  ],
+  "syncedAt": "2026-07-09T18:00:00-05:00"
+}

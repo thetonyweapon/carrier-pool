@@ -1,0 +1,77 @@
+{
+  "loads": [
+    {
+      "carrier": null,
+      "createdDate": "2026-07-16T00:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-DAY11",
+        "name": "Day Eleven Retail"
+      },
+      "equipment": "Dry Van",
+      "lastModifiedDate": "2026-07-16T12:00:00-05:00",
+      "mileage": "239.0",
+      "shipmentId": "FF-101",
+      "status": "Booking",
+      "stops": [
+        {
+          "actualDepartureDateTime": null,
+          "city": "Dallas",
+          "estimatedCloseDateTime": "2026-07-16T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-16T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "75201"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "Houston",
+          "estimatedCloseDateTime": "2026-07-17T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-17T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "77002"
+        }
+      ],
+      "totalBuy": null,
+      "totalSell": "2450.00",
+      "weightTotal": "30000.0"
+    },
+    {
+      "carrier": null,
+      "createdDate": "2026-07-16T00:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-DAY11",
+        "name": "Day Eleven Retail"
+      },
+      "equipment": "Reefer",
+      "lastModifiedDate": "2026-07-16T12:00:00-05:00",
+      "mileage": "214.0",
+      "shipmentId": "FF-102",
+      "status": "Booking",
+      "stops": [
+        {
+          "actualDepartureDateTime": null,
+          "city": "San Antonio",
+          "estimatedCloseDateTime": "2026-07-16T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-16T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "78205"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "Katy",
+          "estimatedCloseDateTime": "2026-07-17T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-17T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "77494"
+        }
+      ],
+      "totalBuy": null,
+      "totalSell": "2300.00",
+      "weightTotal": "28000.0"
+    }
+  ],
+  "syncedAt": "2026-07-16T12:00:00-05:00"
+}

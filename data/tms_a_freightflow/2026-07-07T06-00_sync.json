@@ -1,20 +1,26 @@
 {
   "loads": [
     {
-      "carrier": null,
+      "carrier": {
+        "carrierMasterId": "CARR-ALPHA",
+        "dotNumber": "DOT-310001",
+        "mcNumber": "MC-120001",
+        "name": "Lone Star Logistics",
+        "phoneNumber": "214-555-1010"
+      },
       "createdDate": "2026-07-06T00:00:00-05:00",
       "customer": {
         "customerId": "CUST-GULF",
         "name": "Gulf Coast Foods"
       },
       "equipment": "Reefer",
-      "lastModifiedDate": "2026-07-06T06:00:00-05:00",
-      "mileage": "244.0",
+      "lastModifiedDate": "2026-07-07T06:00:00-05:00",
+      "mileage": "246.0",
       "shipmentId": "FF-001",
-      "status": "Booking",
+      "status": "Completed",
       "stops": [
         {
-          "actualDepartureDateTime": null,
+          "actualDepartureDateTime": "2026-07-07T06:00:00-05:00",
           "city": "Sugar Land",
           "estimatedCloseDateTime": "2026-07-06T20:00:00-05:00",
           "estimatedReadyDateTime": "2026-07-06T12:00:00-05:00",
@@ -23,7 +29,7 @@
           "zipCode": "77478"
         },
         {
-          "actualDepartureDateTime": null,
+          "actualDepartureDateTime": "2026-07-07T06:00:00-05:00",
           "city": "Carrollton",
           "estimatedCloseDateTime": "2026-07-07T08:00:00-05:00",
           "estimatedReadyDateTime": "2026-07-07T00:00:00-05:00",
@@ -32,25 +38,31 @@
           "zipCode": "75006"
         }
       ],
-      "totalBuy": null,
-      "totalSell": "2850.00",
+      "totalBuy": "2200.00",
+      "totalSell": "2925.00",
       "weightTotal": "42000.0"
     },
     {
-      "carrier": null,
+      "carrier": {
+        "carrierMasterId": "CARR-BRAVO",
+        "dotNumber": "DOT-310002",
+        "mcNumber": "MC-120002",
+        "name": "Prairie State Freight",
+        "phoneNumber": "214-555-1024"
+      },
       "createdDate": "2026-07-06T00:00:00-05:00",
       "customer": {
         "customerId": "CUST-NORTH",
         "name": "Northstar Retail"
       },
       "equipment": "Dry Van",
-      "lastModifiedDate": "2026-07-06T06:00:00-05:00",
+      "lastModifiedDate": "2026-07-07T06:00:00-05:00",
       "mileage": "271.0",
       "shipmentId": "FF-002",
-      "status": "Booking",
+      "status": "Completed",
       "stops": [
         {
-          "actualDepartureDateTime": null,
+          "actualDepartureDateTime": "2026-07-07T06:00:00-05:00",
           "city": "Plano",
           "estimatedCloseDateTime": "2026-07-06T20:00:00-05:00",
           "estimatedReadyDateTime": "2026-07-06T12:00:00-05:00",
@@ -59,7 +71,7 @@
           "zipCode": "75024"
         },
         {
-          "actualDepartureDateTime": null,
+          "actualDepartureDateTime": "2026-07-07T06:00:00-05:00",
           "city": "Katy",
           "estimatedCloseDateTime": "2026-07-07T08:00:00-05:00",
           "estimatedReadyDateTime": "2026-07-07T00:00:00-05:00",
@@ -68,10 +80,10 @@
           "zipCode": "77494"
         }
       ],
-      "totalBuy": null,
+      "totalBuy": "1900.00",
       "totalSell": "2525.00",
       "weightTotal": "36000.0"
     }
   ],
-  "syncedAt": "2026-07-06T06:00:00-05:00"
+  "syncedAt": "2026-07-07T06:00:00-05:00"
 }

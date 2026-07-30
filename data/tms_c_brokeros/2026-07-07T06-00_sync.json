@@ -3,11 +3,11 @@
     {
       "CreatedDate": "2026-07-06T05:00:00.000+0000",
       "Id": "BROKEROS-001",
-      "LastModifiedDate": "2026-07-06T11:00:00.000+0000",
+      "LastModifiedDate": "2026-07-07T11:00:00.000+0000",
       "Name": "BOS000001",
-      "bos__Carrier_Rate__c": null,
-      "bos__Carrier__c": null,
-      "bos__Customer_Rate__c": "2850.00",
+      "bos__Carrier_Rate__c": "2200.00",
+      "bos__Carrier__c": "CARRIER-1",
+      "bos__Customer_Rate__c": "2925.00",
       "bos__Customer__c": "CUST-1",
       "bos__Distance_Miles__c": "244.0",
       "bos__Equipment_Type__c": "Reefer",
@@ -19,10 +19,10 @@
           "bos__Weight__c": "42000.0"
         }
       ],
-      "bos__Load_Status__c": "Ready to Book",
+      "bos__Load_Status__c": "Paid",
       "bos__Stops__r": [
         {
-          "bos__Arrival_Time__c": null,
+          "bos__Arrival_Time__c": "2026-07-07T11:00:00.000+0000",
           "bos__Is_Dropoff__c": false,
           "bos__Is_Pickup__c": true,
           "bos__Location__c": "LOC-1-P",
@@ -30,7 +30,7 @@
           "bos__Scheduled_Date__c": "2026-07-06"
         },
         {
-          "bos__Arrival_Time__c": null,
+          "bos__Arrival_Time__c": "2026-07-07T11:00:00.000+0000",
           "bos__Is_Dropoff__c": true,
           "bos__Is_Pickup__c": false,
           "bos__Location__c": "LOC-1-D",
@@ -42,10 +42,10 @@
     {
       "CreatedDate": "2026-07-06T05:00:00.000+0000",
       "Id": "BROKEROS-002",
-      "LastModifiedDate": "2026-07-06T11:00:00.000+0000",
+      "LastModifiedDate": "2026-07-07T11:00:00.000+0000",
       "Name": "BOS000002",
-      "bos__Carrier_Rate__c": null,
-      "bos__Carrier__c": null,
+      "bos__Carrier_Rate__c": "1900.00",
+      "bos__Carrier__c": "CARRIER-2",
       "bos__Customer_Rate__c": "2525.00",
       "bos__Customer__c": "CUST-2",
       "bos__Distance_Miles__c": "271.0",
@@ -58,10 +58,10 @@
           "bos__Weight__c": "36000.0"
         }
       ],
-      "bos__Load_Status__c": "Ready to Book",
+      "bos__Load_Status__c": "Paid",
       "bos__Stops__r": [
         {
-          "bos__Arrival_Time__c": null,
+          "bos__Arrival_Time__c": "2026-07-07T11:00:00.000+0000",
           "bos__Is_Dropoff__c": false,
           "bos__Is_Pickup__c": true,
           "bos__Location__c": "LOC-2-P",
@@ -69,7 +69,7 @@
           "bos__Scheduled_Date__c": "2026-07-06"
         },
         {
-          "bos__Arrival_Time__c": null,
+          "bos__Arrival_Time__c": "2026-07-07T11:00:00.000+0000",
           "bos__Is_Dropoff__c": true,
           "bos__Is_Pickup__c": false,
           "bos__Location__c": "LOC-2-D",
@@ -80,6 +80,16 @@
     }
   ],
   "referenced_records": {
+    "CARRIER-1": {
+      "Name": "Lone Star Logistics",
+      "record_type": "Carrier",
+      "type": "Account"
+    },
+    "CARRIER-2": {
+      "Name": "Prairie State Freight",
+      "record_type": "Carrier",
+      "type": "Account"
+    },
     "CUST-1": {
       "Name": "Gulf Coast Foods",
       "record_type": "Customer",
@@ -119,5 +129,5 @@
       "type": "Location"
     }
   },
-  "synced_at": "2026-07-06T11:00:00.000+0000"
+  "synced_at": "2026-07-07T11:00:00.000+0000"
 }

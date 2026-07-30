@@ -1,0 +1,51 @@
+{
+  "carriers": [],
+  "loads": [
+    {
+      "carrier_ref": null,
+      "customer_code": "CUST-DAY11",
+      "customer_name": "Day Eleven Retail",
+      "del_arrived_at": null,
+      "del_city": "Houston",
+      "del_date": "2026-07-17",
+      "del_state": "TX",
+      "del_zip": "77002",
+      "dist_km": "384.63",
+      "entered_at": "2026-07-16 00:00:00",
+      "equip": "Dry Van",
+      "load_num": "HD-101",
+      "pu_city": "Dallas",
+      "pu_date": "2026-07-16",
+      "pu_departed_at": null,
+      "pu_state": "TX",
+      "pu_zip": "75201",
+      "status_code": 20,
+      "updated_at": "2026-07-16 06:00:00",
+      "weight_kg": "13607.77"
+    },
+    {
+      "carrier_ref": null,
+      "customer_code": "CUST-DAY11",
+      "customer_name": "Day Eleven Retail",
+      "del_arrived_at": null,
+      "del_city": "Katy",
+      "del_date": "2026-07-17",
+      "del_state": "TX",
+      "del_zip": "77494",
+      "dist_km": "344.40",
+      "entered_at": "2026-07-16 00:00:00",
+      "equip": "Reefer",
+      "load_num": "HD-102",
+      "pu_city": "San Antonio",
+      "pu_date": "2026-07-16",
+      "pu_departed_at": null,
+      "pu_state": "TX",
+      "pu_zip": "78205",
+      "status_code": 20,
+      "updated_at": "2026-07-16 06:00:00",
+      "weight_kg": "12700.59"
+    }
+  ],
+  "rates": [],
+  "synced_at": "2026-07-16 06:00:00"
+}
