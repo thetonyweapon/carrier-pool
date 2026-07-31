@@ -5,7 +5,7 @@
       "Id": "BROKEROS-001",
       "LastModifiedDate": "2026-07-07T05:00:00.000+0000",
       "Name": "BOS000001",
-      "bos__Carrier_Rate__c": "2200.00",
+      "bos__Carrier_Rate__c": "2300.00",
       "bos__Carrier__c": "CARRIER-1",
       "bos__Customer_Rate__c": "2925.00",
       "bos__Customer__c": "CUST-1",

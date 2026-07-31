@@ -1,11 +1,11 @@
 # C1: System Context
 
-**Status: Delivered baseline with carrier recommendations and planned product capabilities**
+**Status: Delivered baseline with carrier recommendations, rate estimation, and planned product capabilities**
 
 Carrier Pool ingests broker-owned TMS exports into a canonical, tenant-scoped
 data model. The current implementation provides ingestion, lane intelligence,
-and carrier recommendations; rate estimates, UI workflows, and shared-pool
-behavior remain planned.
+carrier recommendations, and carrier rate estimates; UI workflows and
+shared-pool behavior remain planned.
 
 ```mermaid
 flowchart LR
@@ -17,7 +17,7 @@ flowchart LR
     postgres[(PostgreSQL)]
     platform[Carrier Pool platform]
     recommendations[Carrier recommendations\ndelivered]
-    estimates[Carrier-rate estimates\nplanned]
+    estimates[Carrier-rate estimates\ndelivered]
     pool[Opt-in shared carrier pool\nplanned]
 
     operator -.->|Future UI workflow| platform
@@ -27,7 +27,7 @@ flowchart LR
     files -->|Read-only chronological input| platform
     platform -->|Canonical records and audit history| postgres
     platform --> recommendations
-    platform -.-> estimates
+    platform --> estimates
     pool -.-> recommendations
     pool -.-> estimates
 
@@ -41,8 +41,8 @@ flowchart LR
     classDef delivered fill:#d9ead3,stroke:#38761d,color:#000;
     classDef planned fill:#f3f3f3,stroke:#666,color:#000,stroke-dasharray: 5 5;
     classDef external fill:#fff2cc,stroke:#bf9000,color:#000;
-    class platform,files,postgres,recommendations delivered;
-    class estimates,pool planned;
+    class platform,files,postgres,recommendations,estimates delivered;
+    class pool planned;
     class operator,ff,hd,bos external;
 ```
 

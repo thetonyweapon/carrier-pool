@@ -354,14 +354,36 @@ equipment-compatible counts and data sufficiency metadata. The MVP considers the
 Normalization uses the deterministic `tx-metro-v1` Texas geography map. The
 service is computed on demand from current canonical rows, so corrected stop,
 status, and equipment values are reflected without stale materialized counters.
-Authentication, coordinate-radius matching, persisted lane aggregates, and
-recommendation/rate-estimation responses are not implemented yet.
+Authentication, coordinate-radius matching, and persisted lane aggregates are
+not implemented yet.
 
 Run the focused tests with:
 
 ```bash
 cd backend
 python3 -m pytest tests/test_lane_intelligence.py -q
+```
+
+## Carrier Rate Estimation
+
+Carrier rate estimates are available for active, uncovered loads:
+
+```bash
+curl 'http://localhost:8000/brokers/<broker-id>/loads/<load-id>/carrier-rate-estimate'
+```
+
+The response estimates all-in USD carrier pay using one effective current total
+per completed historical load. It prefers exact directional lane and equipment
+history, then explicitly falls back through same-metro and broker-wide tiers.
+The estimate uses median rate-per-mile with an observed interquartile range,
+Decimal half-up cent rounding, confidence metadata, exclusion counts, and a
+`status: unavailable` result when evidence is insufficient.
+
+Run the focused tests with:
+
+```bash
+cd backend
+python3 -m pytest tests/test_rate_estimation.py -q
 ```
 
 ## Carrier Recommendations
