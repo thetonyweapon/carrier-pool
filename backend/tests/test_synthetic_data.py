@@ -69,9 +69,9 @@ def test_generated_dataset_is_complete_and_schema_valid() -> None:
                 current = sync.syncedAt
             elif tms_type == TmsType.HAULDESK:
                 sync = HaulDeskSync.model_validate(payload)
-                current = datetime.strptime(
-                    sync.synced_at, "%Y-%m-%d %H:%M:%S"
-                ).replace(tzinfo=timezone.utc)
+                current = datetime.strptime(sync.synced_at, "%Y-%m-%d %H:%M:%S").replace(
+                    tzinfo=timezone.utc
+                )
             else:
                 sync = BrokerOSSync.model_validate(payload)
                 current = sync.synced_at
