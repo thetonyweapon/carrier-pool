@@ -1,11 +1,30 @@
 {
-  "carriers": [],
+  "carriers": [
+    {
+      "carrier_id": "CARR-ALPHA",
+      "carrier_name": "Lone Star Logistics",
+      "dot_no": "DOT-310001",
+      "home_city": "Houston",
+      "home_state": "TX",
+      "mc_no": "MC-120001",
+      "phone": "214-555-1010"
+    },
+    {
+      "carrier_id": "CARR-BRAVO",
+      "carrier_name": "Prairie State Freight",
+      "dot_no": "DOT-310002",
+      "home_city": "Plano",
+      "home_state": "TX",
+      "mc_no": "MC-120002",
+      "phone": "214-555-1024"
+    }
+  ],
   "loads": [
     {
-      "carrier_ref": null,
+      "carrier_ref": "CARR-ALPHA",
       "customer_code": "CUST-GULF",
       "customer_name": "Gulf Coast Foods",
-      "del_arrived_at": null,
+      "del_arrived_at": "2026-07-07 00:00:00",
       "del_city": "Carrollton",
       "del_date": "2026-07-07",
       "del_state": "TX",
@@ -16,18 +35,18 @@
       "load_num": "HD-001",
       "pu_city": "Sugar Land",
       "pu_date": "2026-07-06",
-      "pu_departed_at": null,
+      "pu_departed_at": "2026-07-07 00:00:00",
       "pu_state": "TX",
       "pu_zip": "77478",
-      "status_code": 20,
-      "updated_at": "2026-07-06 06:00:00",
+      "status_code": 50,
+      "updated_at": "2026-07-07 00:00:00",
       "weight_kg": "19050.88"
     },
     {
-      "carrier_ref": null,
+      "carrier_ref": "CARR-BRAVO",
       "customer_code": "CUST-NORTH",
       "customer_name": "Northstar Retail",
-      "del_arrived_at": null,
+      "del_arrived_at": "2026-07-07 00:00:00",
       "del_city": "Katy",
       "del_date": "2026-07-07",
       "del_state": "TX",
@@ -38,14 +57,14 @@
       "load_num": "HD-002",
       "pu_city": "Plano",
       "pu_date": "2026-07-06",
-      "pu_departed_at": null,
+      "pu_departed_at": "2026-07-07 00:00:00",
       "pu_state": "TX",
       "pu_zip": "75024",
-      "status_code": 20,
-      "updated_at": "2026-07-06 06:00:00",
+      "status_code": 50,
+      "updated_at": "2026-07-07 00:00:00",
       "weight_kg": "16329.33"
     }
   ],
   "rates": [],
-  "synced_at": "2026-07-06 06:00:00"
+  "synced_at": "2026-07-07 00:00:00"
 }

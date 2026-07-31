@@ -1,0 +1,51 @@
+{
+  "carriers": [],
+  "loads": [
+    {
+      "carrier_ref": null,
+      "customer_code": "CUST-GULF",
+      "customer_name": "Gulf Coast Foods",
+      "del_arrived_at": null,
+      "del_city": "Schertz",
+      "del_date": "2026-07-08",
+      "del_state": "TX",
+      "del_zip": "78154",
+      "dist_km": "329.92",
+      "entered_at": "2026-07-07 12:00:00",
+      "equip": "Flatbed",
+      "load_num": "HD-003",
+      "pu_city": "Pearland",
+      "pu_date": "2026-07-08",
+      "pu_departed_at": null,
+      "pu_state": "TX",
+      "pu_zip": "77584",
+      "status_code": 10,
+      "updated_at": "2026-07-07 12:00:00",
+      "weight_kg": "17236.51"
+    },
+    {
+      "carrier_ref": null,
+      "customer_code": "CUST-SOUTH",
+      "customer_name": "Alamo Industrial",
+      "del_arrived_at": null,
+      "del_city": "McKinney",
+      "del_date": "2026-07-08",
+      "del_state": "TX",
+      "del_zip": "75070",
+      "dist_km": "460.27",
+      "entered_at": "2026-07-07 12:00:00",
+      "equip": "Dry Van",
+      "load_num": "HD-004",
+      "pu_city": "New Braunfels",
+      "pu_date": "2026-07-08",
+      "pu_departed_at": null,
+      "pu_state": "TX",
+      "pu_zip": "78130",
+      "status_code": 10,
+      "updated_at": "2026-07-07 12:00:00",
+      "weight_kg": "14968.55"
+    }
+  ],
+  "rates": [],
+  "synced_at": "2026-07-07 12:00:00"
+}

@@ -1,22 +1,61 @@
 {
   "records": [
     {
-      "CreatedDate": "2026-07-06T05:00:00.000+0000",
-      "Id": "BROKEROS-001",
-      "LastModifiedDate": "2026-07-06T11:00:00.000+0000",
-      "Name": "BOS000001",
+      "CreatedDate": "2026-07-10T17:00:00.000+0000",
+      "Id": "BROKEROS-007",
+      "LastModifiedDate": "2026-07-10T23:00:00.000+0000",
+      "Name": "BOS000007",
       "bos__Carrier_Rate__c": null,
       "bos__Carrier__c": null,
-      "bos__Customer_Rate__c": "2850.00",
-      "bos__Customer__c": "CUST-1",
-      "bos__Distance_Miles__c": "244.0",
+      "bos__Customer_Rate__c": "2490.00",
+      "bos__Customer__c": "CUST-7",
+      "bos__Distance_Miles__c": "242.0",
+      "bos__Equipment_Type__c": "Flatbed",
+      "bos__Line_Items__r": [
+        {
+          "bos__Commodity__c": "General freight",
+          "bos__Pallet_Count__c": "20",
+          "bos__Weight_Units__c": "pounds",
+          "bos__Weight__c": "35000.0"
+        }
+      ],
+      "bos__Load_Status__c": "Ready to Book",
+      "bos__Stops__r": [
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": false,
+          "bos__Is_Pickup__c": true,
+          "bos__Location__c": "LOC-7-P",
+          "bos__Number__c": "1",
+          "bos__Scheduled_Date__c": "2026-07-11"
+        },
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": true,
+          "bos__Is_Pickup__c": false,
+          "bos__Location__c": "LOC-7-D",
+          "bos__Number__c": "2",
+          "bos__Scheduled_Date__c": "2026-07-11"
+        }
+      ]
+    },
+    {
+      "CreatedDate": "2026-07-10T17:00:00.000+0000",
+      "Id": "BROKEROS-008",
+      "LastModifiedDate": "2026-07-10T23:00:00.000+0000",
+      "Name": "BOS000008",
+      "bos__Carrier_Rate__c": null,
+      "bos__Carrier__c": null,
+      "bos__Customer_Rate__c": "2380.00",
+      "bos__Customer__c": "CUST-8",
+      "bos__Distance_Miles__c": "190.0",
       "bos__Equipment_Type__c": "Reefer",
       "bos__Line_Items__r": [
         {
           "bos__Commodity__c": "General freight",
           "bos__Pallet_Count__c": "20",
           "bos__Weight_Units__c": "pounds",
-          "bos__Weight__c": "42000.0"
+          "bos__Weight__c": "39000.0"
         }
       ],
       "bos__Load_Status__c": "Ready to Book",
@@ -25,99 +64,60 @@
           "bos__Arrival_Time__c": null,
           "bos__Is_Dropoff__c": false,
           "bos__Is_Pickup__c": true,
-          "bos__Location__c": "LOC-1-P",
+          "bos__Location__c": "LOC-8-P",
           "bos__Number__c": "1",
-          "bos__Scheduled_Date__c": "2026-07-06"
+          "bos__Scheduled_Date__c": "2026-07-11"
         },
         {
           "bos__Arrival_Time__c": null,
           "bos__Is_Dropoff__c": true,
           "bos__Is_Pickup__c": false,
-          "bos__Location__c": "LOC-1-D",
+          "bos__Location__c": "LOC-8-D",
           "bos__Number__c": "2",
-          "bos__Scheduled_Date__c": "2026-07-07"
-        }
-      ]
-    },
-    {
-      "CreatedDate": "2026-07-06T05:00:00.000+0000",
-      "Id": "BROKEROS-002",
-      "LastModifiedDate": "2026-07-06T11:00:00.000+0000",
-      "Name": "BOS000002",
-      "bos__Carrier_Rate__c": null,
-      "bos__Carrier__c": null,
-      "bos__Customer_Rate__c": "2525.00",
-      "bos__Customer__c": "CUST-2",
-      "bos__Distance_Miles__c": "271.0",
-      "bos__Equipment_Type__c": "Dry Van",
-      "bos__Line_Items__r": [
-        {
-          "bos__Commodity__c": "General freight",
-          "bos__Pallet_Count__c": "20",
-          "bos__Weight_Units__c": "pounds",
-          "bos__Weight__c": "36000.0"
-        }
-      ],
-      "bos__Load_Status__c": "Ready to Book",
-      "bos__Stops__r": [
-        {
-          "bos__Arrival_Time__c": null,
-          "bos__Is_Dropoff__c": false,
-          "bos__Is_Pickup__c": true,
-          "bos__Location__c": "LOC-2-P",
-          "bos__Number__c": "1",
-          "bos__Scheduled_Date__c": "2026-07-06"
-        },
-        {
-          "bos__Arrival_Time__c": null,
-          "bos__Is_Dropoff__c": true,
-          "bos__Is_Pickup__c": false,
-          "bos__Location__c": "LOC-2-D",
-          "bos__Number__c": "2",
-          "bos__Scheduled_Date__c": "2026-07-07"
+          "bos__Scheduled_Date__c": "2026-07-11"
         }
       ]
     }
   ],
   "referenced_records": {
-    "CUST-1": {
+    "CUST-7": {
+      "Name": "Alamo Industrial",
+      "record_type": "Customer",
+      "type": "Account"
+    },
+    "CUST-8": {
       "Name": "Gulf Coast Foods",
       "record_type": "Customer",
       "type": "Account"
     },
-    "CUST-2": {
-      "Name": "Northstar Retail",
-      "record_type": "Customer",
-      "type": "Account"
-    },
-    "LOC-1-D": {
-      "Name": "Carrollton Distribution",
-      "bos__City__c": "Carrollton",
-      "bos__Postal_Code__c": "75006",
+    "LOC-7-D": {
+      "Name": "Irving Distribution",
+      "bos__City__c": "Irving",
+      "bos__Postal_Code__c": "75039",
       "bos__State__c": "TX",
       "type": "Location"
     },
-    "LOC-1-P": {
-      "Name": "Sugar Land Crossdock",
-      "bos__City__c": "Sugar Land",
-      "bos__Postal_Code__c": "77478",
+    "LOC-7-P": {
+      "Name": "Georgetown Crossdock",
+      "bos__City__c": "Georgetown",
+      "bos__Postal_Code__c": "78626",
       "bos__State__c": "TX",
       "type": "Location"
     },
-    "LOC-2-D": {
-      "Name": "Katy Distribution",
-      "bos__City__c": "Katy",
-      "bos__Postal_Code__c": "77494",
+    "LOC-8-D": {
+      "Name": "Round Rock Distribution",
+      "bos__City__c": "Round Rock",
+      "bos__Postal_Code__c": "78664",
       "bos__State__c": "TX",
       "type": "Location"
     },
-    "LOC-2-P": {
-      "Name": "Plano Crossdock",
-      "bos__City__c": "Plano",
-      "bos__Postal_Code__c": "75024",
+    "LOC-8-P": {
+      "Name": "The Woodlands Crossdock",
+      "bos__City__c": "The Woodlands",
+      "bos__Postal_Code__c": "77380",
       "bos__State__c": "TX",
       "type": "Location"
     }
   },
-  "synced_at": "2026-07-06T11:00:00.000+0000"
+  "synced_at": "2026-07-10T23:00:00.000+0000"
 }

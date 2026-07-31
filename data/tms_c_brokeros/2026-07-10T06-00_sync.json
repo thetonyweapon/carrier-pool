@@ -1,0 +1,133 @@
+{
+  "records": [
+    {
+      "CreatedDate": "2026-07-09T05:00:00.000+0000",
+      "Id": "BROKEROS-005",
+      "LastModifiedDate": "2026-07-10T11:00:00.000+0000",
+      "Name": "BOS000005",
+      "bos__Carrier_Rate__c": "2260.00",
+      "bos__Carrier__c": "CARRIER-5",
+      "bos__Customer_Rate__c": "2910.00",
+      "bos__Customer__c": "CUST-5",
+      "bos__Distance_Miles__c": "248.0",
+      "bos__Equipment_Type__c": "Reefer",
+      "bos__Line_Items__r": [
+        {
+          "bos__Commodity__c": "General freight",
+          "bos__Pallet_Count__c": "20",
+          "bos__Weight_Units__c": "pounds",
+          "bos__Weight__c": "41000.0"
+        }
+      ],
+      "bos__Load_Status__c": "Paid",
+      "bos__Stops__r": [
+        {
+          "bos__Arrival_Time__c": "2026-07-10T11:00:00.000+0000",
+          "bos__Is_Dropoff__c": false,
+          "bos__Is_Pickup__c": true,
+          "bos__Location__c": "LOC-5-P",
+          "bos__Number__c": "1",
+          "bos__Scheduled_Date__c": "2026-07-09"
+        },
+        {
+          "bos__Arrival_Time__c": "2026-07-10T11:00:00.000+0000",
+          "bos__Is_Dropoff__c": true,
+          "bos__Is_Pickup__c": false,
+          "bos__Location__c": "LOC-5-D",
+          "bos__Number__c": "2",
+          "bos__Scheduled_Date__c": "2026-07-10"
+        }
+      ]
+    },
+    {
+      "CreatedDate": "2026-07-09T05:00:00.000+0000",
+      "Id": "BROKEROS-006",
+      "LastModifiedDate": "2026-07-10T11:00:00.000+0000",
+      "Name": "BOS000006",
+      "bos__Carrier_Rate__c": "1640.00",
+      "bos__Carrier__c": "CARRIER-6",
+      "bos__Customer_Rate__c": "2195.00",
+      "bos__Customer__c": "CUST-6",
+      "bos__Distance_Miles__c": "218.0",
+      "bos__Equipment_Type__c": "Dry Van",
+      "bos__Line_Items__r": [
+        {
+          "bos__Commodity__c": "General freight",
+          "bos__Pallet_Count__c": "20",
+          "bos__Weight_Units__c": "pounds",
+          "bos__Weight__c": "29000.0"
+        }
+      ],
+      "bos__Load_Status__c": "Paid",
+      "bos__Stops__r": [
+        {
+          "bos__Arrival_Time__c": "2026-07-10T11:00:00.000+0000",
+          "bos__Is_Dropoff__c": false,
+          "bos__Is_Pickup__c": true,
+          "bos__Location__c": "LOC-6-P",
+          "bos__Number__c": "1",
+          "bos__Scheduled_Date__c": "2026-07-09"
+        },
+        {
+          "bos__Arrival_Time__c": "2026-07-10T11:00:00.000+0000",
+          "bos__Is_Dropoff__c": true,
+          "bos__Is_Pickup__c": false,
+          "bos__Location__c": "LOC-6-D",
+          "bos__Number__c": "2",
+          "bos__Scheduled_Date__c": "2026-07-10"
+        }
+      ]
+    }
+  ],
+  "referenced_records": {
+    "CARRIER-5": {
+      "Name": "Lone Star Logistics",
+      "record_type": "Carrier",
+      "type": "Account"
+    },
+    "CARRIER-6": {
+      "Name": "Bluebonnet Transport",
+      "record_type": "Carrier",
+      "type": "Account"
+    },
+    "CUST-5": {
+      "Name": "Northstar Retail",
+      "record_type": "Customer",
+      "type": "Account"
+    },
+    "CUST-6": {
+      "Name": "Gulf Coast Foods",
+      "record_type": "Customer",
+      "type": "Account"
+    },
+    "LOC-5-D": {
+      "Name": "Missouri City Distribution",
+      "bos__City__c": "Missouri City",
+      "bos__Postal_Code__c": "77459",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-5-P": {
+      "Name": "Arlington Crossdock",
+      "bos__City__c": "Arlington",
+      "bos__Postal_Code__c": "76011",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-6-D": {
+      "Name": "Boerne Distribution",
+      "bos__City__c": "Boerne",
+      "bos__Postal_Code__c": "78006",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-6-P": {
+      "Name": "Cypress Crossdock",
+      "bos__City__c": "Cypress",
+      "bos__Postal_Code__c": "77429",
+      "bos__State__c": "TX",
+      "type": "Location"
+    }
+  },
+  "synced_at": "2026-07-10T11:00:00.000+0000"
+}

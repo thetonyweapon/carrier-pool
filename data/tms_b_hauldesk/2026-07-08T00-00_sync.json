@@ -1,0 +1,103 @@
+{
+  "carriers": [
+    {
+      "carrier_id": "CARR-CHARLIE",
+      "carrier_name": "Triangle Heavy Haul",
+      "dot_no": "DOT-310003",
+      "home_city": "San Antonio",
+      "home_state": "TX",
+      "mc_no": "MC-120003",
+      "phone": "214-555-1014"
+    },
+    {
+      "carrier_id": "CARR-DELTA",
+      "carrier_name": "Hill Country Carriers",
+      "dot_no": "DOT-310004",
+      "home_city": "New Braunfels",
+      "home_state": "TX",
+      "mc_no": "MC-120004",
+      "phone": "214-555-1010"
+    }
+  ],
+  "loads": [
+    {
+      "carrier_ref": "CARR-CHARLIE",
+      "customer_code": "CUST-GULF",
+      "customer_name": "Gulf Coast Foods",
+      "del_arrived_at": null,
+      "del_city": "Schertz",
+      "del_date": "2026-07-08",
+      "del_state": "TX",
+      "del_zip": "78154",
+      "dist_km": "329.92",
+      "entered_at": "2026-07-07 12:00:00",
+      "equip": "Flatbed",
+      "load_num": "HD-003",
+      "pu_city": "Pearland",
+      "pu_date": "2026-07-08",
+      "pu_departed_at": null,
+      "pu_state": "TX",
+      "pu_zip": "77584",
+      "status_code": 30,
+      "updated_at": "2026-07-08 00:00:00",
+      "weight_kg": "17236.51"
+    },
+    {
+      "carrier_ref": "CARR-DELTA",
+      "customer_code": "CUST-SOUTH",
+      "customer_name": "Alamo Industrial",
+      "del_arrived_at": null,
+      "del_city": "McKinney",
+      "del_date": "2026-07-08",
+      "del_state": "TX",
+      "del_zip": "75070",
+      "dist_km": "460.27",
+      "entered_at": "2026-07-07 12:00:00",
+      "equip": "Dry Van",
+      "load_num": "HD-004",
+      "pu_city": "New Braunfels",
+      "pu_date": "2026-07-08",
+      "pu_departed_at": null,
+      "pu_state": "TX",
+      "pu_zip": "78130",
+      "status_code": 30,
+      "updated_at": "2026-07-08 00:00:00",
+      "weight_kg": "14968.55"
+    }
+  ],
+  "rates": [
+    {
+      "amount_usd": "2310.00",
+      "code": "LINEHAUL",
+      "created_at": "2026-07-08 00:00:00",
+      "load_num": "HD-003",
+      "rate_id": "RATE-0006",
+      "side": "bill"
+    },
+    {
+      "amount_usd": "1725.00",
+      "code": "LINEHAUL",
+      "created_at": "2026-07-08 00:00:00",
+      "load_num": "HD-003",
+      "rate_id": "RATE-0007",
+      "side": "pay"
+    },
+    {
+      "amount_usd": "2680.00",
+      "code": "LINEHAUL",
+      "created_at": "2026-07-08 00:00:00",
+      "load_num": "HD-004",
+      "rate_id": "RATE-0008",
+      "side": "bill"
+    },
+    {
+      "amount_usd": "2050.00",
+      "code": "LINEHAUL",
+      "created_at": "2026-07-08 00:00:00",
+      "load_num": "HD-004",
+      "rate_id": "RATE-0009",
+      "side": "pay"
+    }
+  ],
+  "synced_at": "2026-07-08 00:00:00"
+}

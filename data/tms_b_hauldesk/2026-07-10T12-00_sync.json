@@ -1,0 +1,51 @@
+{
+  "carriers": [],
+  "loads": [
+    {
+      "carrier_ref": null,
+      "customer_code": "CUST-SOUTH",
+      "customer_name": "Alamo Industrial",
+      "del_arrived_at": null,
+      "del_city": "Irving",
+      "del_date": "2026-07-11",
+      "del_state": "TX",
+      "del_zip": "75039",
+      "dist_km": "389.46",
+      "entered_at": "2026-07-10 12:00:00",
+      "equip": "Flatbed",
+      "load_num": "HD-007",
+      "pu_city": "Georgetown",
+      "pu_date": "2026-07-11",
+      "pu_departed_at": null,
+      "pu_state": "TX",
+      "pu_zip": "78626",
+      "status_code": 10,
+      "updated_at": "2026-07-10 12:00:00",
+      "weight_kg": "15875.73"
+    },
+    {
+      "carrier_ref": null,
+      "customer_code": "CUST-GULF",
+      "customer_name": "Gulf Coast Foods",
+      "del_arrived_at": null,
+      "del_city": "Round Rock",
+      "del_date": "2026-07-11",
+      "del_state": "TX",
+      "del_zip": "78664",
+      "dist_km": "305.78",
+      "entered_at": "2026-07-10 12:00:00",
+      "equip": "Reefer",
+      "load_num": "HD-008",
+      "pu_city": "The Woodlands",
+      "pu_date": "2026-07-11",
+      "pu_departed_at": null,
+      "pu_state": "TX",
+      "pu_zip": "77380",
+      "status_code": 10,
+      "updated_at": "2026-07-10 12:00:00",
+      "weight_kg": "17690.10"
+    }
+  ],
+  "rates": [],
+  "synced_at": "2026-07-10 12:00:00"
+}

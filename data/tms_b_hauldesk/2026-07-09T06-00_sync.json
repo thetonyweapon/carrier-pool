@@ -1,0 +1,51 @@
+{
+  "carriers": [],
+  "loads": [
+    {
+      "carrier_ref": null,
+      "customer_code": "CUST-NORTH",
+      "customer_name": "Northstar Retail",
+      "del_arrived_at": null,
+      "del_city": "Missouri City",
+      "del_date": "2026-07-10",
+      "del_state": "TX",
+      "del_zip": "77459",
+      "dist_km": "399.12",
+      "entered_at": "2026-07-09 00:00:00",
+      "equip": "Reefer",
+      "load_num": "HD-005",
+      "pu_city": "Arlington",
+      "pu_date": "2026-07-09",
+      "pu_departed_at": null,
+      "pu_state": "TX",
+      "pu_zip": "76011",
+      "status_code": 20,
+      "updated_at": "2026-07-09 06:00:00",
+      "weight_kg": "18597.29"
+    },
+    {
+      "carrier_ref": null,
+      "customer_code": "CUST-GULF",
+      "customer_name": "Gulf Coast Foods",
+      "del_arrived_at": null,
+      "del_city": "Boerne",
+      "del_date": "2026-07-10",
+      "del_state": "TX",
+      "del_zip": "78006",
+      "dist_km": "350.84",
+      "entered_at": "2026-07-09 00:00:00",
+      "equip": "Dry Van",
+      "load_num": "HD-006",
+      "pu_city": "Cypress",
+      "pu_date": "2026-07-09",
+      "pu_departed_at": null,
+      "pu_state": "TX",
+      "pu_zip": "77429",
+      "status_code": 20,
+      "updated_at": "2026-07-09 06:00:00",
+      "weight_kg": "13154.18"
+    }
+  ],
+  "rates": [],
+  "synced_at": "2026-07-09 06:00:00"
+}

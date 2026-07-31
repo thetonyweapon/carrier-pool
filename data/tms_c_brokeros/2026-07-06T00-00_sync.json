@@ -3,7 +3,7 @@
     {
       "CreatedDate": "2026-07-06T05:00:00.000+0000",
       "Id": "BROKEROS-001",
-      "LastModifiedDate": "2026-07-06T11:00:00.000+0000",
+      "LastModifiedDate": "2026-07-06T05:00:00.000+0000",
       "Name": "BOS000001",
       "bos__Carrier_Rate__c": null,
       "bos__Carrier__c": null,
@@ -19,7 +19,7 @@
           "bos__Weight__c": "42000.0"
         }
       ],
-      "bos__Load_Status__c": "Ready to Book",
+      "bos__Load_Status__c": "Quotes Requested",
       "bos__Stops__r": [
         {
           "bos__Arrival_Time__c": null,
@@ -42,7 +42,7 @@
     {
       "CreatedDate": "2026-07-06T05:00:00.000+0000",
       "Id": "BROKEROS-002",
-      "LastModifiedDate": "2026-07-06T11:00:00.000+0000",
+      "LastModifiedDate": "2026-07-06T05:00:00.000+0000",
       "Name": "BOS000002",
       "bos__Carrier_Rate__c": null,
       "bos__Carrier__c": null,
@@ -58,7 +58,7 @@
           "bos__Weight__c": "36000.0"
         }
       ],
-      "bos__Load_Status__c": "Ready to Book",
+      "bos__Load_Status__c": "Quotes Requested",
       "bos__Stops__r": [
         {
           "bos__Arrival_Time__c": null,
@@ -119,5 +119,5 @@
       "type": "Location"
     }
   },
-  "synced_at": "2026-07-06T11:00:00.000+0000"
+  "synced_at": "2026-07-06T05:00:00.000+0000"
 }
