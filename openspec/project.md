@@ -9,9 +9,10 @@ loads.
 ## Current Baseline
 
 The delivered baseline covers the backend foundation, canonical multi-tenant
-model, three chronological file-ingestion adapters, and deterministic synthetic
-data. Recommendation, estimation, frontend, and shared-pool capabilities are
-planned but not implemented.
+model, three chronological file-ingestion adapters, deterministic synthetic
+data, on-demand broker-scoped lane intelligence, and explainable carrier
+recommendations. Rate estimation, frontend, and shared-pool capabilities remain
+planned.
 
 ## System Boundaries
 
@@ -52,8 +53,8 @@ planned but not implemented.
 | HaulDesk ingestion | Delivered |
 | BrokerOS ingestion | Delivered |
 | Synthetic dataset | Delivered |
-| Lane intelligence | Planned |
-| Carrier recommendations | Planned |
+| Lane intelligence | Delivered |
+| Carrier recommendations | Delivered |
 | Carrier rate estimation | Planned |
 | Broker operations UI | Planned |
 | Shared carrier pool | Planned |

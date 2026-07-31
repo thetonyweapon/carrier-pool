@@ -30,9 +30,12 @@ flowchart LR
         freight[FreightFlowSync and mapping]
         haul[HaulDeskSync and mapping]
         broker[BrokerOSSync and mapping]
+        geography[app.lane_geography\nversioned metro mapping]
+        lanes[app.lane_intelligence\nprimary lane and history queries]
+        recommendations[app.carrier_recommendations\nversioned carrier ranking]
     end
 
-    future[Recommendation and estimation modules\nPLANNED]
+        future[Rate-estimation module\nPLANNED]
     database[(Database)]
     raw[(data/tms_*/*.json)]
 
@@ -45,6 +48,14 @@ flowchart LR
     freight --> shared
     haul --> shared
     broker --> shared
+    lanes --> geography
+    lanes --> entities
+    lanes --> stops
+    lanes --> database
+    recommendations --> lanes
+    recommendations --> entities
+    recommendations --> stops
+    recommendations --> database
     freight --> base
     haul --> base
     broker --> base
@@ -67,7 +78,7 @@ flowchart LR
     classDef delivered fill:#d9ead3,stroke:#38761d,color:#000;
     classDef planned fill:#f3f3f3,stroke:#666,color:#000,stroke-dasharray: 5 5;
     classDef external fill:#fff2cc,stroke:#bf9000,color:#000;
-    class create,health,session,base,entities,history,stops,files,migrations,shared,freight,haul,broker,ingest,generate delivered;
+    class create,health,session,base,entities,history,stops,files,migrations,shared,freight,haul,broker,geography,lanes,recommendations,ingest,generate delivered;
     class future planned;
     class database,raw external;
 ```
@@ -89,8 +100,6 @@ flowchart LR
 
 ## Planned Code Areas
 
-- Lane key and aggregate modules.
-- Explainable carrier ranking service.
 - Explainable carrier-rate estimation service.
 - HTTP contracts consumed by the future operations UI.
 - Shared-pool policy and redaction enforcement.

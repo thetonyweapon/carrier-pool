@@ -334,3 +334,52 @@ IDs across its four syncs. HaulDesk uses unique additive rate IDs and
 adjustment rows.
 FreightFlow uses replacement snapshots, while BrokerOS uses
 replacement totals with append-only observations.
+
+## Lane Intelligence
+
+Lane Intelligence is available for an active or historical load through the
+broker-scoped endpoint below:
+
+```bash
+curl 'http://localhost:8000/brokers/<broker-id>/loads/<load-id>/lane-intelligence'
+```
+
+The response derives a directional lane using the first pickup-capable and final
+delivery-capable stops, then reports exact endpoint history separately from
+same-metro fallback history. History is restricted to the requesting broker's
+`DELIVERED` and `COMPLETED` loads, counts each canonical load once, and includes
+equipment-compatible counts and data sufficiency metadata. The MVP considers the
+500 most recently synced eligible loads for predictable response cost.
+
+Normalization uses the deterministic `tx-metro-v1` Texas geography map. The
+service is computed on demand from current canonical rows, so corrected stop,
+status, and equipment values are reflected without stale materialized counters.
+Authentication, coordinate-radius matching, persisted lane aggregates, and
+recommendation/rate-estimation responses are not implemented yet.
+
+Run the focused tests with:
+
+```bash
+cd backend
+python3 -m pytest tests/test_lane_intelligence.py -q
+```
+
+## Carrier Recommendations
+
+Carrier recommendations are available for active, uncovered loads:
+
+```bash
+curl 'http://localhost:8000/brokers/<broker-id>/loads/<load-id>/carrier-recommendations'
+```
+
+The response ranks broker-owned logical carriers using deterministic
+`carrier-recommendations-v1` scoring. Exact and same-metro directional lane
+experience, equipment history, customer familiarity, conservative operational
+recency, and capped completed-load volume are returned as explainable factors.
+Source-specific carrier rows linked by broker-scoped MC/DOT identity aggregate
+into one candidate; carriers without eligible history appear separately as
+unscored cold starts.
+
+Recommendations do not claim current availability, capacity, deadhead, safety,
+or service quality. History uses the 500 most recently synced eligible loads and
+is computed from current canonical rows.
