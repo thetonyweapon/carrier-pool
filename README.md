@@ -1,5 +1,18 @@
 # Take-Home: Carrier Recommendation for Freight Brokers
 
+## Design Documentation
+
+Start with the [OpenSpec project overview](openspec/project.md) for the
+capability map and current implementation status. The [C4 architecture
+overview](openspec/architecture/README.md) links to GitHub-rendered diagrams at
+system context, container, component, and code levels.
+
+- [C1: System context](openspec/architecture/context.md)
+- [C2: Containers](openspec/architecture/containers.md)
+- [C3: Backend components](openspec/architecture/components.md)
+- [C4: Code responsibilities](openspec/architecture/code.md)
+- [Architecture decisions](openspec/architecture/decisions.md)
+
 - You may use AI coding tools (Claude Code, Codex, Cursor, etc) are strongly encouraged.
 - With AI tools and the provided skeleton, a working baseline is roughly a **4-hour job — that's the floor, not the goal**. Strong submissions typically take one to two focused days on top.
 - **Cutting scope deliberately is a valid strategy, not a failure** — a smaller thing done deeply beats a big thing done shallow. Say what you cut and why in `DECISIONS.md`.
