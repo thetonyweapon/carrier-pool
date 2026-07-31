@@ -27,11 +27,11 @@ an explicit, reviewable exception rather than an accidental leak path.
 
 ## Current versus Planned Containers
 
-The FastAPI service exposes health, lane intelligence, and recommendation
-behavior. Ingestion is not represented as a background worker because the
-delivered workflow is a CLI processing one file at a time. Rate-estimation and
-UI containers remain planned in C2. The shared pool is a data-sharing policy
-that cuts across those containers, not a separate runtime container.
+The FastAPI service exposes health, lane intelligence, recommendation, and rate
+estimation behavior. Ingestion is not represented as a background worker because
+the delivered workflow is a CLI processing one file at a time. The UI container
+remains planned in C2. The shared pool is a data-sharing policy that cuts across
+those containers, not a separate runtime container.
 
 ## Mermaid in Markdown
 
@@ -40,8 +40,8 @@ renders the diagrams from source and changes remain reviewable in pull requests.
 
 ## Deferred Architecture
 
-Rate estimation, UI, shared pool, and platform hardening remain separate
-capabilities. Lane normalization and carrier recommendations are delivered as
+UI, shared pool, and platform hardening remain separate capabilities. Lane
+normalization, carrier recommendations, and rate estimation are delivered as
 on-demand backend services rather than persisted aggregates.
 
 ## Lane Normalization and Aggregation
@@ -70,3 +70,12 @@ equipment, customer, conservative operational recency, and overall history
 evidence. Known carriers without eligible history remain visible separately
 without fabricated scores. Availability, deadhead, and service-quality signals
 are not inferred from fields that do not exist in the canonical model.
+
+## Carrier Rate Estimation
+
+Rate estimation uses one current effective all-in carrier total per completed
+load. It prefers exact directional lane/equipment evidence, then same-metro and
+broker-wide tiers over 180 days, retrying over 365 days when necessary. Median
+rate-per-mile and observed quartiles are calculated with Decimal half-up rounding.
+Insufficient evidence is a normal unavailable result; source audit rows are
+explanatory history and are never treated as separate shipments.

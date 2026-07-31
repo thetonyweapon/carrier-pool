@@ -1,6 +1,6 @@
 # C4: Code-Level Responsibilities
 
-**Status: Delivered baseline with planned code areas**
+**Status: Delivered baseline with planned UI and shared-pool code areas**
 
 This is a code-level map of the most important symbols and package groups. It
 is intentionally selective; it documents architectural ownership rather than
@@ -33,9 +33,9 @@ flowchart LR
         geography[app.lane_geography\nversioned metro mapping]
         lanes[app.lane_intelligence\nprimary lane and history queries]
         recommendations[app.carrier_recommendations\nversioned carrier ranking]
+        estimation[app.rate_estimation\nversioned pay estimation]
     end
 
-        future[Rate-estimation module\nPLANNED]
     database[(Database)]
     raw[(data/tms_*/*.json)]
 
@@ -56,6 +56,11 @@ flowchart LR
     recommendations --> entities
     recommendations --> stops
     recommendations --> database
+    estimation --> lanes
+    estimation --> entities
+    estimation --> history
+    estimation --> stops
+    estimation --> database
     freight --> base
     haul --> base
     broker --> base
@@ -71,15 +76,11 @@ flowchart LR
     migrations --> database
     raw --> generate
     generate -.-> ingest
-    future -.-> entities
-    future -.-> history
-    future -.-> stops
 
     classDef delivered fill:#d9ead3,stroke:#38761d,color:#000;
     classDef planned fill:#f3f3f3,stroke:#666,color:#000,stroke-dasharray: 5 5;
     classDef external fill:#fff2cc,stroke:#bf9000,color:#000;
-    class create,health,session,base,entities,history,stops,files,migrations,shared,freight,haul,broker,geography,lanes,recommendations,ingest,generate delivered;
-    class future planned;
+    class create,health,session,base,entities,history,stops,files,migrations,shared,freight,haul,broker,geography,lanes,recommendations,estimation,ingest,generate delivered;
     class database,raw external;
 ```
 
@@ -100,6 +101,5 @@ flowchart LR
 
 ## Planned Code Areas
 
-- Explainable carrier-rate estimation service.
 - HTTP contracts consumed by the future operations UI.
 - Shared-pool policy and redaction enforcement.

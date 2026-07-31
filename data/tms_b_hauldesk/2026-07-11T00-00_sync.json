@@ -31,7 +31,7 @@
       "del_zip": "75039",
       "dist_km": "389.46",
       "entered_at": "2026-07-10 12:00:00",
-      "equip": "Flatbed",
+      "equip": "F",
       "load_num": "HD-007",
       "pu_city": "Georgetown",
       "pu_date": "2026-07-11",
@@ -53,7 +53,7 @@
       "del_zip": "78664",
       "dist_km": "305.78",
       "entered_at": "2026-07-10 12:00:00",
-      "equip": "Reefer",
+      "equip": "R",
       "load_num": "HD-008",
       "pu_city": "The Woodlands",
       "pu_date": "2026-07-11",
@@ -71,7 +71,7 @@
       "code": "LINEHAUL",
       "created_at": "2026-07-11 00:00:00",
       "load_num": "HD-007",
-      "rate_id": "RATE-0014",
+      "rate_id": "RATE-0015",
       "side": "bill"
     },
     {
@@ -79,7 +79,7 @@
       "code": "LINEHAUL",
       "created_at": "2026-07-11 00:00:00",
       "load_num": "HD-007",
-      "rate_id": "RATE-0015",
+      "rate_id": "RATE-0016",
       "side": "pay"
     },
     {
@@ -87,7 +87,7 @@
       "code": "LINEHAUL",
       "created_at": "2026-07-11 00:00:00",
       "load_num": "HD-008",
-      "rate_id": "RATE-0016",
+      "rate_id": "RATE-0017",
       "side": "bill"
     },
     {
@@ -95,7 +95,7 @@
       "code": "LINEHAUL",
       "created_at": "2026-07-11 00:00:00",
       "load_num": "HD-008",
-      "rate_id": "RATE-0017",
+      "rate_id": "RATE-0018",
       "side": "pay"
     }
   ],

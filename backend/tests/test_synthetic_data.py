@@ -29,6 +29,7 @@ from app.models import (
     RateSide,
     TmsType,
 )
+from app.rate_estimation import estimate_carrier_rate
 from scripts.generate_synthetic_data import DATA_ROOT, generate
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -154,9 +155,12 @@ def test_generated_dataset_ingests_in_chronological_order() -> None:
         assert hauldesk_load.distance_miles == 244
         assert hauldesk_load.weight_lbs == 42000
         assert hauldesk_load.customer_rate == 2925
+        assert hauldesk_load.carrier_rate == 2300
         assert brokeros_load.status == LoadStatus.COMPLETED
         assert brokeros_load.customer_rate == 2925
         assert brokeros_load.weight_lbs == 42000
+        assert brokeros_load.carrier_rate == 2300
+        assert freightflow_load.carrier_rate == 2300
 
         hauldesk_rates = session.scalars(
             select(RateLineItem).where(RateLineItem.load_id == hauldesk_load.id)
@@ -165,6 +169,7 @@ def test_generated_dataset_ingests_in_chronological_order() -> None:
             (RateSide.BILL, "LINEHAUL", 2850),
             (RateSide.PAY, "LINEHAUL", 2200),
             (RateSide.BILL, "ADJUSTMENT", 75),
+            (RateSide.PAY, "ADJUSTMENT", 100),
         }
         brokeros_bill = session.scalars(
             select(LoadRateObservation)
@@ -175,6 +180,15 @@ def test_generated_dataset_ingests_in_chronological_order() -> None:
             .order_by(LoadRateObservation.observation_number)
         ).all()
         assert [item.amount for item in brokeros_bill] == [2850, 2925]
+        brokeros_pay = session.scalars(
+            select(LoadRateObservation)
+            .where(
+                LoadRateObservation.load_id == brokeros_load.id,
+                LoadRateObservation.side == RateSide.PAY,
+            )
+            .order_by(LoadRateObservation.observation_number)
+        ).all()
+        assert [item.amount for item in brokeros_pay] == [None, 2200, 2300]
 
         for load in session.scalars(select(Load)).all():
             stops = session.scalars(
@@ -222,6 +236,22 @@ def test_generated_dataset_ingests_in_chronological_order() -> None:
             assert recommendations.recommendations
             if source_id == "source-a":
                 assert recommendations.recommendations[0].name == "Prairie State Freight"
+
+        for source_id, source_load_id, broker_id in day11_targets:
+            target = session.scalar(
+                select(Load).where(
+                    Load.broker_source_id == source_id, Load.source_load_id == source_load_id
+                )
+            )
+            estimate = estimate_carrier_rate(session, broker_id, target.id)
+            assert estimate is not None
+            assert estimate.status == "estimated"
+            if source_load_id.endswith("101"):
+                assert estimate.selected_tier == "exact_lane_equipment"
+                assert estimate.sample_size == 3
+            else:
+                assert estimate.selected_tier == "broker_equipment"
+                assert estimate.sample_size == 3
 
         source_brokers = {"source-a": "broker-a", "source-b": "broker-b", "source-c": "broker-c"}
         for model in (Customer, Carrier, Load, LoadVersion, RateLineItem, LoadRateObservation):

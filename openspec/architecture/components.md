@@ -1,6 +1,6 @@
 # C3: Backend Components
 
-**Status: Delivered baseline with planned service components**
+**Status: Delivered baseline with planned UI and shared-pool components**
 
 This view describes the current backend package boundaries. Planned components
 are shown only to establish future ownership and integration points.
@@ -22,7 +22,7 @@ flowchart TB
         geography[lane_geography.py\nversioned metro normalization]
         lanes[lane_intelligence.py\non-demand lane history]
         recommendation[carrier_recommendations.py\nexplainable ranking]
-        estimation[Rate-estimation service\nPLANNED]
+        estimation[rate_estimation.py\nexplainable pay estimate]
     end
 
     db[(PostgreSQL / SQLite)]
@@ -49,25 +49,25 @@ flowchart TB
     bos --> common
     main --> lanes
     main --> recommendation
+    main --> estimation
     lanes --> geography
     lanes --> database
     lanes --> models
     recommendation --> lanes
     recommendation --> models
+    estimation --> lanes
+    estimation --> models
     framework --> database
     framework --> models
     common --> models
     database --> db
     models --> db
     migrations --> db
-    main -.-> estimation
-    estimation -.-> models
 
     classDef delivered fill:#d9ead3,stroke:#38761d,color:#000;
     classDef planned fill:#f3f3f3,stroke:#666,color:#000,stroke-dasharray: 5 5;
     classDef external fill:#fff2cc,stroke:#bf9000,color:#000;
-    class main,health,config,database,models,common,framework,ff,hd,bos,migrations,geography,lanes,recommendation delivered;
-    class estimation planned;
+    class main,health,config,database,models,common,framework,ff,hd,bos,migrations,geography,lanes,recommendation,estimation delivered;
     class db,files,http,cli external;
 ```
 
@@ -91,10 +91,13 @@ flowchart TB
 - `carrier_recommendations.py` aggregates logical broker-owned carriers, scores
   historical evidence, and returns deterministic explanations on demand.
 - `recommendation_api.py` exposes the broker-scoped recommendation contract.
+- `rate_estimation.py` computes versioned, explainable all-in carrier-pay
+  estimates from canonical completed-load history.
+- `rate_estimation_api.py` exposes the broker-scoped rate-estimation contract.
 
 ## Planned Integration Points
 
 - Recommendation logic consumes canonical loads, stops, carriers, and the
   delivered lane-intelligence history contract.
-- Rate estimation will consume canonical rate history and lane dimensions.
+- Rate estimation consumes canonical rate history and lane dimensions.
 - Both services must be broker-scoped and expose explanation metadata.

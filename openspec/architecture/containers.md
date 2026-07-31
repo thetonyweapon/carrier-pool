@@ -14,10 +14,10 @@ flowchart TB
 
     subgraph system[Carrier Pool platform]
         ui[Broker operations UI\nReact/Vite\nPLANNED]
-        api[Backend API\nFastAPI\nhealth endpoint delivered]
+        api[Backend API\nFastAPI\nhealth, lane, recommendation, and rate endpoints delivered]
         cli[Ingestion adapters\nPython CLI modules\nDelivered]
     rec[Recommendation service\nDelivered]
-        rate[Rate-estimation service\nPLANNED]
+        rate[Rate-estimation service\nDelivered]
         db[(Canonical database\nPostgreSQL 16\nDelivered)]
     end
 
@@ -28,15 +28,15 @@ flowchart TB
     ui -.-> api
     api --> db
     api --> rec
-    api -.-> rate
-    rec -.-> db
-    rate -.-> db
+    api --> rate
+    rec --> db
+    rate --> db
 
     classDef delivered fill:#d9ead3,stroke:#38761d,color:#000;
     classDef planned fill:#f3f3f3,stroke:#666,color:#000,stroke-dasharray: 5 5;
     classDef external fill:#fff2cc,stroke:#bf9000,color:#000;
-    class api,cli,db,files delivered;
-    class ui,rec,rate planned;
+    class api,cli,db,files,rec,rate delivered;
+    class ui planned;
     class operator,tms external;
 ```
 
@@ -44,13 +44,13 @@ flowchart TB
 
 | Container | Responsibility | Status |
 |---|---|---|
-| Backend API | FastAPI health, lane intelligence, and broker-scoped recommendation endpoints | Delivered |
+| Backend API | FastAPI health, lane intelligence, recommendation, and rate-estimation endpoints | Delivered |
 | Ingestion adapters | Validate, normalize, and transactionally ingest one file | Delivered |
 | Canonical database | Tenant-scoped state, versions, journals, and observations | Delivered |
 | Sync-file directory | Immutable input boundary for downloaded exports | Delivered |
 | Operations UI | Load list and recommendation workflow | Planned |
 | Recommendation service | Explainable broker-scoped carrier ranking | Delivered |
-| Rate-estimation service | Explainable expected carrier pay | Planned |
+| Rate-estimation service | Explainable broker-scoped expected carrier pay | Delivered |
 
 ## Deployment Notes
 

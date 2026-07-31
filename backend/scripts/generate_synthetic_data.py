@@ -144,6 +144,45 @@ SCENARIOS = (
         Decimal("1780.00"),
         18,
     ),
+    Scenario(
+        9,
+        ("Dallas", "TX", "75201", "DFW"),
+        ("Houston", "TX", "77002", "Houston"),
+        "Dry Van",
+        "CUST-NORTH",
+        "CARR-BRAVO",
+        Decimal("250.0"),
+        Decimal("34000.0"),
+        Decimal("2550.00"),
+        Decimal("2000.00"),
+        24,
+    ),
+    Scenario(
+        10,
+        ("Dallas", "TX", "75201", "DFW"),
+        ("Houston", "TX", "77002", "Houston"),
+        "Dry Van",
+        "CUST-NORTH",
+        "CARR-DELTA",
+        Decimal("260.0"),
+        Decimal("35000.0"),
+        Decimal("2675.00"),
+        Decimal("2100.00"),
+        29,
+    ),
+    Scenario(
+        11,
+        ("Dallas", "TX", "75201", "DFW"),
+        ("Houston", "TX", "77002", "Houston"),
+        "Dry Van",
+        "CUST-GULF",
+        "CARR-ECHO",
+        Decimal("240.0"),
+        Decimal("32000.0"),
+        Decimal("2460.00"),
+        Decimal("1920.00"),
+        34,
+    ),
 )
 
 DAY11_SCENARIOS = (
@@ -226,8 +265,9 @@ def scenario_rates(scenario: Scenario, slot: int) -> Tuple[Decimal, Decimal]:
     status, _ = lifecycle(slot, scenario.start_slot)
     if status in {"planned", "active"}:
         return scenario.sell, Decimal("0.00")
-    correction = Decimal("75.00") if scenario.number == 1 and slot >= 3 else Decimal("0.00")
-    return scenario.sell + correction, scenario.buy
+    sell_correction = Decimal("75.00") if scenario.number == 1 and slot >= 3 else Decimal("0.00")
+    pay_correction = Decimal("100.00") if scenario.number == 1 and slot >= 3 else Decimal("0.00")
+    return scenario.sell + sell_correction, scenario.buy + pay_correction
 
 
 def scheduled_times(scenario: Scenario) -> Tuple[datetime, datetime]:
@@ -328,7 +368,7 @@ def hauldesk_payload(slot: int, records: Sequence[Scenario], known_rates: Dict[s
                 "customer_code": scenario.customer,
                 "customer_name": customer_name(scenario.customer),
                 "carrier_ref": carrier_ref,
-                "equip": scenario.equipment,
+                "equip": {"Dry Van": "V", "Reefer": "R", "Flatbed": "F"}[scenario.equipment],
                 "weight_kg": (scenario.weight_lbs / Decimal("2.2046226218487757")).quantize(
                     Decimal("0.01")
                 ),
@@ -387,6 +427,22 @@ def hauldesk_payload(slot: int, records: Sequence[Scenario], known_rates: Dict[s
                     Decimal("75.00"),
                     updated,
                     "adjustment",
+                )
+            )
+        if (
+            scenario.number == 1
+            and slot >= 3
+            and f"{scenario.number}-pay-adjustment" not in known_rates
+        ):
+            rates.append(
+                rate_row(
+                    known_rates,
+                    scenario,
+                    "pay",
+                    "ADJUSTMENT",
+                    Decimal("100.00"),
+                    updated,
+                    "pay-adjustment",
                 )
             )
     return {
