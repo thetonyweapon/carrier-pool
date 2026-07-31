@@ -44,7 +44,7 @@ flowchart TB
 
 | Container | Responsibility | Status |
 |---|---|---|
-| Backend API | FastAPI application and database health check | Delivered |
+| Backend API | FastAPI health and broker-scoped lane intelligence endpoints | Delivered |
 | Ingestion adapters | Validate, normalize, and transactionally ingest one file | Delivered |
 | Canonical database | Tenant-scoped state, versions, journals, and observations | Delivered |
 | Sync-file directory | Immutable input boundary for downloaded exports | Delivered |

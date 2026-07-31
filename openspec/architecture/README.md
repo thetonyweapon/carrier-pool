@@ -30,5 +30,6 @@ exist.
 - [Platform foundation](../specs/platform-foundation/spec.md)
 - [Ingestion framework](../specs/ingestion-framework/spec.md)
 - [Canonical data model](../specs/canonical-data-model/spec.md)
+- [Lane intelligence](../specs/lane-intelligence/spec.md)
 - [Planned carrier recommendations](../specs/carrier-recommendations/spec.md)
 - [Planned carrier-rate estimation](../specs/carrier-rate-estimation/spec.md)

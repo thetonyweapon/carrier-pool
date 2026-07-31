@@ -41,7 +41,23 @@ renders the diagrams from source and changes remain reviewable in pull requests.
 
 ## Deferred Architecture
 
-Lane normalization, recommendations, rate estimation, UI, shared pool, and
-platform hardening remain separate capabilities. Separating them prevents the
-current ingestion architecture from claiming product behavior that has not yet
-been designed or implemented.
+Recommendations, rate estimation, UI, shared pool, and platform hardening remain
+separate capabilities. Lane normalization is delivered as an on-demand backend
+service rather than a runtime container or persisted aggregate.
+
+## Lane Normalization and Aggregation
+
+Lane Intelligence uses a checked-in `tx-metro-v1` ZIP/city-to-metro mapping.
+Runtime geocoding and radius matching were deferred because current source
+adapters do not populate coordinates and reproducibility is a requirement.
+Lanes are directional, equipment is a query dimension rather than part of the
+geographic key, and a multi-stop load uses its first pickup-capable and final
+delivery-capable stops for the primary lane.
+
+History is computed from current broker-scoped canonical loads, restricted to
+delivered and completed statuses. This intentionally avoids mutable counters or
+materialized contributions: a corrected stop, status, or equipment value is
+immediately reflected without reversing a stale aggregate. The tradeoff is
+query work at read time, bounded in the MVP to the 500 most recently synced
+eligible loads per broker; persistence or database aggregation can be added after
+measuring volume.

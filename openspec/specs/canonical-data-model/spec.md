@@ -59,4 +59,5 @@
 
 ## Limitations
 
-- No lane table or derived analytics model exists yet.
+- Lane intelligence is computed on demand; no persisted lane assignment or
+  materialized analytics model exists yet.
