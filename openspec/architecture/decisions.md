@@ -27,12 +27,11 @@ an explicit, reviewable exception rather than an accidental leak path.
 
 ## Current versus Planned Containers
 
-The FastAPI service currently exposes health behavior only. Ingestion is not
-represented as a background worker because the delivered workflow is a CLI
-processing one file at a time. Recommendation, rate-estimation, and UI
-containers are shown as planned in C2 rather than inferred as existing. The
-shared pool is a data-sharing policy that cuts across those containers, not a
-separate runtime container.
+The FastAPI service exposes health, lane intelligence, and recommendation
+behavior. Ingestion is not represented as a background worker because the
+delivered workflow is a CLI processing one file at a time. Rate-estimation and
+UI containers remain planned in C2. The shared pool is a data-sharing policy
+that cuts across those containers, not a separate runtime container.
 
 ## Mermaid in Markdown
 
@@ -41,9 +40,9 @@ renders the diagrams from source and changes remain reviewable in pull requests.
 
 ## Deferred Architecture
 
-Recommendations, rate estimation, UI, shared pool, and platform hardening remain
-separate capabilities. Lane normalization is delivered as an on-demand backend
-service rather than a runtime container or persisted aggregate.
+Rate estimation, UI, shared pool, and platform hardening remain separate
+capabilities. Lane normalization and carrier recommendations are delivered as
+on-demand backend services rather than persisted aggregates.
 
 ## Lane Normalization and Aggregation
 
@@ -61,3 +60,13 @@ immediately reflected without reversing a stale aggregate. The tradeoff is
 query work at read time, bounded in the MVP to the 500 most recently synced
 eligible loads per broker; persistence or database aggregation can be added after
 measuring volume.
+
+## Carrier Recommendation Ranking
+
+Carrier recommendations rank logical broker-owned candidates: linked source rows
+aggregate under `CarrierIdentity`, while rows without identity evidence remain
+separate. The v1 score uses capped integer contributions for directional lane,
+equipment, customer, conservative operational recency, and overall history
+evidence. Known carriers without eligible history remain visible separately
+without fabricated scores. Availability, deadhead, and service-quality signals
+are not inferred from fields that do not exist in the canonical model.

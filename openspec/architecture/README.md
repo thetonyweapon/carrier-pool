@@ -19,9 +19,8 @@ artifacts.
 - Dashed nodes and edges represent planned capabilities.
 - The platform boundary excludes source TMS systems and external operators.
 
-The diagrams intentionally do not imply that planned carrier recommendations,
-carrier-rate estimation, operations UI, or shared-carrier-pool features already
-exist.
+The diagrams distinguish delivered carrier recommendations from planned
+carrier-rate estimation, operations UI, and shared-carrier-pool features.
 
 ## Related Documents
 
@@ -31,5 +30,5 @@ exist.
 - [Ingestion framework](../specs/ingestion-framework/spec.md)
 - [Canonical data model](../specs/canonical-data-model/spec.md)
 - [Lane intelligence](../specs/lane-intelligence/spec.md)
-- [Planned carrier recommendations](../specs/carrier-recommendations/spec.md)
+- [Carrier recommendations](../specs/carrier-recommendations/spec.md)
 - [Planned carrier-rate estimation](../specs/carrier-rate-estimation/spec.md)

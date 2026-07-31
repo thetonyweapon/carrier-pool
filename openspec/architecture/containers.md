@@ -3,8 +3,8 @@
 **Status: Delivered baseline with planned containers**
 
 Containers are logical runtime or deployment units. The current system has a
-FastAPI foundation and CLI ingestion modules rather than a background ingestion
-service or recommendation API.
+FastAPI foundation with lane and recommendation APIs plus CLI ingestion modules
+rather than a background ingestion service.
 
 ```mermaid
 flowchart TB
@@ -16,7 +16,7 @@ flowchart TB
         ui[Broker operations UI\nReact/Vite\nPLANNED]
         api[Backend API\nFastAPI\nhealth endpoint delivered]
         cli[Ingestion adapters\nPython CLI modules\nDelivered]
-        rec[Recommendation service\nPLANNED]
+    rec[Recommendation service\nDelivered]
         rate[Rate-estimation service\nPLANNED]
         db[(Canonical database\nPostgreSQL 16\nDelivered)]
     end
@@ -27,7 +27,7 @@ flowchart TB
     operator -.->|Planned browser workflow| ui
     ui -.-> api
     api --> db
-    api -.-> rec
+    api --> rec
     api -.-> rate
     rec -.-> db
     rate -.-> db
@@ -44,12 +44,12 @@ flowchart TB
 
 | Container | Responsibility | Status |
 |---|---|---|
-| Backend API | FastAPI health and broker-scoped lane intelligence endpoints | Delivered |
+| Backend API | FastAPI health, lane intelligence, and broker-scoped recommendation endpoints | Delivered |
 | Ingestion adapters | Validate, normalize, and transactionally ingest one file | Delivered |
 | Canonical database | Tenant-scoped state, versions, journals, and observations | Delivered |
 | Sync-file directory | Immutable input boundary for downloaded exports | Delivered |
 | Operations UI | Load list and recommendation workflow | Planned |
-| Recommendation service | Explainable carrier ranking | Planned |
+| Recommendation service | Explainable broker-scoped carrier ranking | Delivered |
 | Rate-estimation service | Explainable expected carrier pay | Planned |
 
 ## Deployment Notes

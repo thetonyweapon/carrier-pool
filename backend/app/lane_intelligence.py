@@ -9,6 +9,7 @@ from app.lane_geography import (
     NormalizedLocation,
     normalize_location,
 )
+from app.load_stops import load_stops
 from app.models import Load, LoadStatus, LoadStop, StopType
 
 MIN_SUFFICIENT_HISTORY = 3
@@ -126,22 +127,6 @@ def _history_scope(exact_count: int, nearby_count: int) -> tuple[str, str, Optio
     return "none", "none", "No exact or same-metro directional history"
 
 
-def _load_stops(
-    session: Session, broker_id: str, load_ids: Sequence[str]
-) -> dict[str, list[LoadStop]]:
-    if not load_ids:
-        return {}
-    rows = session.scalars(
-        select(LoadStop)
-        .where(LoadStop.broker_id == broker_id, LoadStop.load_id.in_(load_ids))
-        .order_by(LoadStop.load_id, LoadStop.sequence_number)
-    ).all()
-    stops_by_load: dict[str, list[LoadStop]] = {}
-    for stop in rows:
-        stops_by_load.setdefault(stop.load_id, []).append(stop)
-    return stops_by_load
-
-
 def get_lane_intelligence(
     session: Session,
     broker_id: str,
@@ -170,7 +155,7 @@ def get_lane_intelligence(
         .order_by(Load.last_synced_at.desc(), Load.id.desc())
         .limit(HISTORY_LOAD_LIMIT)
     ).all()
-    stops_by_load = _load_stops(
+    stops_by_load = load_stops(
         session, broker_id, [target.id, *(load.id for load in history_loads)]
     )
     target_lane = derive_primary_lane(stops_by_load.get(target.id, []))

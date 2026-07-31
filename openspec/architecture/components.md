@@ -21,7 +21,7 @@ flowchart TB
         migrations[Alembic migrations\nschema evolution]
         geography[lane_geography.py\nversioned metro normalization]
         lanes[lane_intelligence.py\non-demand lane history]
-        recommendation[Recommendation service\nPLANNED]
+        recommendation[carrier_recommendations.py\nexplainable ranking]
         estimation[Rate-estimation service\nPLANNED]
     end
 
@@ -48,25 +48,26 @@ flowchart TB
     hd --> common
     bos --> common
     main --> lanes
+    main --> recommendation
     lanes --> geography
     lanes --> database
     lanes --> models
+    recommendation --> lanes
+    recommendation --> models
     framework --> database
     framework --> models
     common --> models
     database --> db
     models --> db
     migrations --> db
-    main -.-> recommendation
     main -.-> estimation
-    recommendation -.-> models
     estimation -.-> models
 
     classDef delivered fill:#d9ead3,stroke:#38761d,color:#000;
     classDef planned fill:#f3f3f3,stroke:#666,color:#000,stroke-dasharray: 5 5;
     classDef external fill:#fff2cc,stroke:#bf9000,color:#000;
-    class main,health,config,database,models,common,framework,ff,hd,bos,migrations,geography,lanes delivered;
-    class recommendation,estimation planned;
+    class main,health,config,database,models,common,framework,ff,hd,bos,migrations,geography,lanes,recommendation delivered;
+    class estimation planned;
     class db,files,http,cli external;
 ```
 
@@ -87,10 +88,13 @@ flowchart TB
 - `lane_geography.py` owns the versioned bundled ZIP/city-to-metro mapping.
 - `lane_intelligence.py` derives primary lanes and correction-safe history on
   demand from current broker-scoped canonical rows.
+- `carrier_recommendations.py` aggregates logical broker-owned carriers, scores
+  historical evidence, and returns deterministic explanations on demand.
+- `recommendation_api.py` exposes the broker-scoped recommendation contract.
 
 ## Planned Integration Points
 
-- Recommendation logic will consume canonical loads, stops, carriers, and the
+- Recommendation logic consumes canonical loads, stops, carriers, and the
   delivered lane-intelligence history contract.
 - Rate estimation will consume canonical rate history and lane dimensions.
 - Both services must be broker-scoped and expose explanation metadata.

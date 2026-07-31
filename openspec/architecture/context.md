@@ -1,11 +1,11 @@
 # C1: System Context
 
-**Status: Delivered baseline with planned product capabilities**
+**Status: Delivered baseline with carrier recommendations and planned product capabilities**
 
 Carrier Pool ingests broker-owned TMS exports into a canonical, tenant-scoped
-data model. The current implementation provides ingestion and health behavior;
-recommendations, rate estimates, UI workflows, and shared-pool behavior are
-planned.
+data model. The current implementation provides ingestion, lane intelligence,
+and carrier recommendations; rate estimates, UI workflows, and shared-pool
+behavior remain planned.
 
 ```mermaid
 flowchart LR
@@ -16,7 +16,7 @@ flowchart LR
     files[(Downloaded sync files)]
     postgres[(PostgreSQL)]
     platform[Carrier Pool platform]
-    recommendations[Carrier recommendations\nplanned]
+    recommendations[Carrier recommendations\ndelivered]
     estimates[Carrier-rate estimates\nplanned]
     pool[Opt-in shared carrier pool\nplanned]
 
@@ -26,7 +26,7 @@ flowchart LR
     bos -->|Exports sync files| files
     files -->|Read-only chronological input| platform
     platform -->|Canonical records and audit history| postgres
-    platform -.-> recommendations
+    platform --> recommendations
     platform -.-> estimates
     pool -.-> recommendations
     pool -.-> estimates
@@ -41,8 +41,8 @@ flowchart LR
     classDef delivered fill:#d9ead3,stroke:#38761d,color:#000;
     classDef planned fill:#f3f3f3,stroke:#666,color:#000,stroke-dasharray: 5 5;
     classDef external fill:#fff2cc,stroke:#bf9000,color:#000;
-    class platform,files,postgres delivered;
-    class recommendations,estimates,pool planned;
+    class platform,files,postgres,recommendations delivered;
+    class estimates,pool planned;
     class operator,ff,hd,bos external;
 ```
 
@@ -51,6 +51,6 @@ flowchart LR
 - TMSs export files; Carrier Pool does not call TMS APIs.
 - Sync files are read-only inputs and are processed one file at a time.
 - PostgreSQL stores canonical broker-scoped records and ingestion history.
-- Future recommendations and estimates must use broker-owned history by default.
+- Recommendations and future estimates must use broker-owned history by default.
 - The shared pool is the only planned cross-broker exception and requires
   explicit opt-in and data-minimization rules.

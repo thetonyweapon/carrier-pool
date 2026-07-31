@@ -6,6 +6,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
+from app.carrier_recommendations import get_carrier_recommendations
 from app.ingestion.brokeros import BrokerOSSync
 from app.ingestion.brokeros import ingest_file as ingest_brokeros
 from app.ingestion.freightflow import FreightFlowSync
@@ -209,6 +210,18 @@ def test_generated_dataset_ingests_in_chronological_order() -> None:
             assert target.broker_id == broker_id
             assert target.status == LoadStatus.ACTIVE
             assert target.carrier_id is None
+
+        for source_id, source_load_id, broker_id in day11_targets[::2]:
+            target = session.scalar(
+                select(Load).where(
+                    Load.broker_source_id == source_id, Load.source_load_id == source_load_id
+                )
+            )
+            recommendations = get_carrier_recommendations(session, broker_id, target.id)
+            assert recommendations is not None
+            assert recommendations.recommendations
+            if source_id == "source-a":
+                assert recommendations.recommendations[0].name == "Prairie State Freight"
 
         source_brokers = {"source-a": "broker-a", "source-b": "broker-b", "source-c": "broker-c"}
         for model in (Customer, Carrier, Load, LoadVersion, RateLineItem, LoadRateObservation):

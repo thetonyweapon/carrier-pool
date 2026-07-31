@@ -9,6 +9,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKeyConstraint,
+    Index,
     Numeric,
     String,
     TypeDecorator,
@@ -307,6 +308,13 @@ class Load(Base):
             "broker_id", "broker_source_id", "id", name="uq_loads_broker_source_id_id"
         ),
         UniqueConstraint("broker_source_id", "source_load_id", name="uq_loads_source_load_id"),
+        Index(
+            "ix_loads_broker_status_synced",
+            "broker_id",
+            "status",
+            "last_synced_at",
+            "id",
+        ),
     )
 
     @validates("customer_rate", "carrier_rate")

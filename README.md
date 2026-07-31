@@ -363,3 +363,23 @@ Run the focused tests with:
 cd backend
 python3 -m pytest tests/test_lane_intelligence.py -q
 ```
+
+## Carrier Recommendations
+
+Carrier recommendations are available for active, uncovered loads:
+
+```bash
+curl 'http://localhost:8000/brokers/<broker-id>/loads/<load-id>/carrier-recommendations'
+```
+
+The response ranks broker-owned logical carriers using deterministic
+`carrier-recommendations-v1` scoring. Exact and same-metro directional lane
+experience, equipment history, customer familiarity, conservative operational
+recency, and capped completed-load volume are returned as explainable factors.
+Source-specific carrier rows linked by broker-scoped MC/DOT identity aggregate
+into one candidate; carriers without eligible history appear separately as
+unscored cold starts.
+
+Recommendations do not claim current availability, capacity, deadhead, safety,
+or service quality. History uses the 500 most recently synced eligible loads and
+is computed from current canonical rows.
