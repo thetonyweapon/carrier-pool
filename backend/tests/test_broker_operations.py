@@ -1,6 +1,5 @@
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from pathlib import Path
 from typing import Optional
 
 import pytest
@@ -260,6 +259,15 @@ def test_load_list_detail_and_filters_are_broker_scoped(
     assert client.get("/brokers/broker-b/loads/target").status_code == 404
 
 
+@pytest.mark.parametrize("field", ["status", "equipment", "assignment_state"])
+def test_load_list_rejects_empty_enum_filters_but_omitted_filters_work(
+    client: TestClient, db_session: Session, field: str
+) -> None:
+    seed_operations(db_session)
+    assert client.get("/brokers/broker-a/loads").status_code == 200
+    assert client.get("/brokers/broker-a/loads", params={field: ""}).status_code == 422
+
+
 def test_candidate_detail_supports_canonical_and_identity_ids_and_rejects_foreign(
     client: TestClient, db_session: Session
 ) -> None:
@@ -361,39 +369,3 @@ def test_assignment_rejects_noncanonical_candidate_resolution(
         json={"candidate_id": "identity:missing"},
     )
     assert response.status_code == 422
-
-
-def test_bootstrap_runs_without_error_on_empty_root(monkeypatch, tmp_path: Path) -> None:
-    from scripts import bootstrap_demo
-
-    class FakeSession:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            return False
-
-        def get(self, *args):
-            return None
-
-        def scalar(self, *args):
-            return None
-
-        def add(self, item):
-            pass
-
-        def commit(self):
-            pass
-
-    monkeypatch.setattr(bootstrap_demo, "SessionLocal", lambda: FakeSession())
-    monkeypatch.setattr(
-        bootstrap_demo, "ingest_freightflow", lambda *args: type("R", (), {"duplicate": True})()
-    )
-    monkeypatch.setattr(
-        bootstrap_demo, "ingest_hauldesk", lambda *args: type("R", (), {"duplicate": True})()
-    )
-    monkeypatch.setattr(
-        bootstrap_demo, "ingest_brokeros", lambda *args: type("R", (), {"duplicate": True})()
-    )
-    assert bootstrap_demo.bootstrap(tmp_path) == 0
-    assert bootstrap_demo.bootstrap(tmp_path) == 0

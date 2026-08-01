@@ -36,7 +36,8 @@
 - Load status: TMS-specific strings mapped to a canonical lifecycle (`planned` → `active` → `covered` → `in_transit` → `delivered` → `completed`).
 - `LoadVersion` stores both `raw_payload` (original TMS JSON) and `normalized_snapshot` (serialized canonical model fields). This supports point-in-time reconstruction and re-processing if mapping logic changes.
 - `RateLineItem` is append-only. Database triggers on both PostgreSQL (PL/pgSQL) and SQLite block UPDATE/DELETE. Corrections are new rows, not mutations.
-- All primary keys are UUID4 strings. `source_*_id` fields track TMS foreign identity for idempotent upserts.
+- Domain primary keys are UUID4 strings; the fixed demo broker/source rows are the deliberate stable-ID exception. `source_*_id` fields track TMS foreign identity for idempotent upserts.
+- Demo broker IDs (`broker-a` through `broker-c`) and source IDs (`source-a` through `source-c`) are stable identities, separate from display names. Bootstrap creates the configured display names, reconciles only legacy ID-as-name placeholders, preserves custom names, and validates source ownership and TMS type before committing.
 
 *Alternatives rejected:* TMS-specific tables (does not scale to multiple TMS types); mutable rate records (loses audit trail); auto-increment PKs (leaks entity count).
 
@@ -108,7 +109,7 @@ Weight is `Numeric(12, 1)`, distance is `Numeric(10, 1)` — these are not finan
 
 - Fast, isolated, no external dependencies. Every test gets a fresh database.
 - `make_sync()` builder produces realistic FreightFlow payloads with sensible defaults and override parameters.
-- The backend suite covers FreightFlow and HaulDesk ingestion, lifecycle corrections, rate-only and empty deltas, multi-load files, zero-sum corrections, cross-TMS carrier identity normalization and merging, idempotency, conflict detection, tenant isolation, unknown equipment, malformed and schema-drift payloads, fractional cents, out-of-range rates, CLI success/error paths, model constraint violations, currency validation, append-only enforcement, migration backfill and upgrade/downgrade/re-upgrade round-trips, and environment-gated PostgreSQL locking coverage.
+- The backend suite covers FreightFlow and HaulDesk ingestion, lifecycle corrections, rate-only and empty deltas, multi-load files, zero-sum corrections, cross-TMS carrier identity normalization and merging, idempotency, conflict detection, tenant isolation, unknown equipment, malformed and schema-drift payloads, fractional cents, out-of-range rates, CLI success/error paths, model constraint violations, currency validation, append-only enforcement, migration backfill and upgrade/downgrade/re-upgrade round-trips, real temporary SQLite bootstrap behavior, and environment-gated PostgreSQL locking coverage.
 - Ruff for linting (line-length 100, Python 3.9 target, E/F/I rule sets).
 
 *Alternatives rejected:* Testcontainers/Postgres for the default suite (slower, requires Docker); mocking SQLAlchemy (misses constraint enforcement). PostgreSQL-specific locking coverage is available when `HAULDESK_POSTGRES_TEST_URL` is set.

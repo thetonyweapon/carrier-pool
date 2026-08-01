@@ -434,8 +434,9 @@ back to a TMS, and switching brokers in the UI is not authentication.
 ### Option A: Docker Compose (recommended)
 
 Compose sets `DEMO_MODE=true` automatically, runs migrations, creates the three
-demo brokers (`broker-a`, `broker-b`, `broker-c`), and ingests the checked-in
-132-file dataset before the API starts:
+demo brokers with stable IDs and display names (`broker-a` / `Ithaca Freight
+Partners`, `broker-b` / `Aegean Route Logistics`, and `broker-c` / `Olive Harbor
+Transport`), and ingests the checked-in 132-file dataset before the API starts:
 
 ```bash
 docker compose up --build
@@ -461,8 +462,14 @@ python -m scripts.bootstrap_demo --root ../data
 uvicorn app.main:app --reload
 ```
 
-`bootstrap_demo` creates the demo brokers and sources and ingests the
-`data/` TMS sync directories. Run it once per fresh database; it is idempotent.
+`bootstrap_demo` creates the demo brokers and sources and ingests the `data/` TMS
+sync directories. Broker IDs (`broker-a` through `broker-c`) and source IDs
+(`source-a` through `source-c`) are stable ingestion identities; their display
+names are `Ithaca Freight Partners`, `Aegean Route Logistics`, `Olive Harbor
+Transport`, `FreightFlow`, `HaulDesk`, and `BrokerOS`, respectively. Compose
+runs it on every backend startup; standalone users can rerun it safely because
+it is idempotent, only replaces legacy ID-as-name placeholders, and preserves
+custom names.
 
 In a second terminal, start the frontend dev server:
 
@@ -483,3 +490,27 @@ pagination, ordered stop details with browser-local timestamps, 24-hour stale
 warnings, independent lane/rate/recommendation panels, and a carrier contact
 drawer with demo assignment. Analytics for an actively assigned load return
 `ineligible` (409) until the assignment overlay changes.
+
+### Frontend verification
+
+Run the component and integration suite from `frontend/`:
+
+```bash
+npm ci
+npm run typecheck
+npm test
+npm run test:coverage
+npm run build
+```
+
+With the Docker Compose demo stack running, install the Playwright browsers and
+run the real Chromium flow:
+
+```bash
+npx playwright install chromium
+npm run test:e2e -- --project=chromium
+```
+
+The scheduled browser workflow also runs WebKit and a mobile viewport. The UI
+tests assert that cleared enum filters are omitted from requests, preventing
+the empty-filter 422 regression.

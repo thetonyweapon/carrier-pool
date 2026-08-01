@@ -26,6 +26,10 @@ recommendations, and the reasons behind both answers.
 
 ## Backend Contract
 
+- Demo bootstrap keeps broker IDs (`broker-a` through `broker-c`) and source IDs
+  (`source-a` through `source-c`) stable while using display names for broker
+  and TMS labels. Existing custom labels are preserved; only legacy ID-as-name
+  placeholders are reconciled.
 - `GET /brokers/{broker_id}/loads` returns all lifecycle statuses with
   `page`, `page_size`, and `total`; it supports `status`, `equipment`,
   `assignment_state`, and `search` filters. Results sort by pickup schedule,

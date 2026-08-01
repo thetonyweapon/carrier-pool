@@ -54,6 +54,8 @@ flowchart TB
 ## Deployment Notes
 
 - Docker Compose runs PostgreSQL, the backend, and the React/Vite console.
-- The backend container runs Alembic migrations, demo bootstrap, and Uvicorn.
+- The backend container runs Alembic migrations, reconciles legacy demo display
+  names without changing stable broker/source IDs, bootstraps sync files, and
+  starts Uvicorn.
 - The `data/` directory is mounted read-only at `/data`.
 - The default test suite uses SQLite; PostgreSQL is the deployment database.

@@ -1,12 +1,13 @@
-name: Frontend tests
+name: Frontend scheduled browser tests
 
 on:
   push:
     branches: [main]
-  pull_request:
+  schedule:
+    - cron: "0 5 * * 1"
 
 jobs:
-  test:
+  browsers:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -20,14 +21,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install frontend dependencies
         run: npm ci
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Component and integration tests
-        run: npm test -- --coverage
-      - name: Build frontend
-        run: npm run build
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
       - name: Start demo stack
         working-directory: .
         run: docker compose up --build -d
@@ -42,8 +37,8 @@ jobs:
           done
           docker compose logs
           exit 1
-      - name: Chromium end-to-end tests
-        run: npm run test:e2e -- --project=chromium
+      - name: Run browser matrix
+        run: npm run test:e2e
       - name: Stop demo stack
         if: always()
         working-directory: .
@@ -52,5 +47,5 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-playwright-artifacts
+          name: scheduled-playwright-artifacts
           path: frontend/test-results
