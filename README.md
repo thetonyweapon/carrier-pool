@@ -426,19 +426,45 @@ make the load ineligible for recommendations and rate estimation.
 
 ## Broker Operations UI
 
-Run the populated demo console with Docker Compose:
+The operations console is demo-mode only. `DEMO_MODE=true` enables demo broker
+discovery (`GET /demo/brokers`) and platform assignment creation; it is `false`
+by default. Demo assignments are auditable platform overlays that never write
+back to a TMS, and switching brokers in the UI is not authentication.
+
+### Option A: Docker Compose (recommended)
+
+Compose sets `DEMO_MODE=true` automatically, runs migrations, creates the three
+demo brokers (`broker-a`, `broker-b`, `broker-c`), and ingests the checked-in
+132-file dataset before the API starts:
 
 ```bash
 docker compose up --build
 ```
 
-Open <http://localhost:3000>. Compose runs migrations, creates the three demo
-brokers, and ingests the checked-in 132-file dataset before starting the API.
-The console is explicitly demo-only: switching brokers is not authentication,
-and carrier assignments are auditable platform overlays that do not write back
-to a TMS.
+Open <http://localhost:3000>. The frontend nginx container proxies `/api/` to
+the backend on port 8000.
 
-The frontend is also runnable independently after starting the API:
+### Option B: Standalone backend + frontend
+
+Start a Postgres instance and point `DATABASE_URL` at it, then run the backend
+with `DEMO_MODE` enabled:
+
+```bash
+cd backend
+cp .env.example .env
+# Set DEMO_MODE=true in .env (the example defaults to false)
+python -m venv .venv
+source .venv/bin/activate
+pip install -e '.[dev]'
+alembic upgrade head
+python -m scripts.bootstrap_demo --root ../data
+uvicorn app.main:app --reload
+```
+
+`bootstrap_demo` creates the demo brokers and sources and ingests the
+`data/` TMS sync directories. Run it once per fresh database; it is idempotent.
+
+In a second terminal, start the frontend dev server:
 
 ```bash
 cd frontend
@@ -446,6 +472,14 @@ npm install
 npm run dev
 ```
 
-The UI provides an all-lifecycle load queue, server-side filters and pagination,
-ordered stop details, browser-local timestamp display, 24-hour stale warnings,
-independent lane/rate/recommendation panels, and a carrier contact drawer.
+Open the URL printed by Vite (default <http://localhost:5173>); the dev server
+proxies `/api/` to `localhost:8000`. Set `VITE_API_BASE_URL` if the backend
+lives elsewhere.
+
+### What the UI shows
+
+The console provides an all-lifecycle load queue with server-side filters and
+pagination, ordered stop details with browser-local timestamps, 24-hour stale
+warnings, independent lane/rate/recommendation panels, and a carrier contact
+drawer with demo assignment. Analytics for an actively assigned load return
+`ineligible` (409) until the assignment overlay changes.
