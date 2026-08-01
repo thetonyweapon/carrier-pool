@@ -1,11 +1,11 @@
 # C1: System Context
 
-**Status: Delivered baseline with carrier recommendations, rate estimation, and planned product capabilities**
+**Status: Delivered baseline with demo operations UI and planned shared-pool/hardening capabilities**
 
 Carrier Pool ingests broker-owned TMS exports into a canonical, tenant-scoped
 data model. The current implementation provides ingestion, lane intelligence,
-carrier recommendations, and carrier rate estimates; UI workflows and
-shared-pool behavior remain planned.
+carrier recommendations, carrier rate estimates, and a demo-mode broker
+operations workflow; shared-pool behavior and production hardening remain planned.
 
 ```mermaid
 flowchart LR
@@ -20,7 +20,7 @@ flowchart LR
     estimates[Carrier-rate estimates\ndelivered]
     pool[Opt-in shared carrier pool\nplanned]
 
-    operator -.->|Future UI workflow| platform
+    operator -->|Demo operations workflow| platform
     ff -->|Exports sync files| files
     hd -->|Exports sync files| files
     bos -->|Exports sync files| files

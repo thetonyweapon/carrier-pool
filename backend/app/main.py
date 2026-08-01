@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.broker_operations_api import router as broker_operations_router
 from app.health import router as health_router
 from app.lane_api import router as lane_router
 from app.rate_estimation_api import router as rate_estimation_router
@@ -12,6 +13,7 @@ def create_app() -> FastAPI:
     application.include_router(lane_router)
     application.include_router(recommendation_router)
     application.include_router(rate_estimation_router)
+    application.include_router(broker_operations_router)
     return application
 
 

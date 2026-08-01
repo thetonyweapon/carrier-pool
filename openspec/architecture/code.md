@@ -101,5 +101,5 @@ flowchart LR
 
 ## Planned Code Areas
 
-- HTTP contracts consumed by the future operations UI.
+- HTTP contracts consumed by the demo-mode operations UI.
 - Shared-pool policy and redaction enforcement.

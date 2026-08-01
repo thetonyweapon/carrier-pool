@@ -15,7 +15,15 @@ from app.lane_intelligence import (
     validate_normalization_version,
 )
 from app.load_stops import load_stops
-from app.models import Carrier, EquipmentType, Load, LoadStatus, LoadStop, StopType
+from app.models import (
+    Carrier,
+    EquipmentType,
+    Load,
+    LoadStatus,
+    LoadStop,
+    PlatformAssignment,
+    StopType,
+)
 
 SCORING_VERSION = "carrier-recommendations-v1"
 MAX_RECOMMENDATIONS = 20
@@ -355,7 +363,17 @@ def get_carrier_recommendations(
     target = session.scalar(select(Load).where(Load.broker_id == broker_id, Load.id == load_id))
     if target is None:
         return None
-    if target.status != LoadStatus.ACTIVE or target.carrier_id is not None:
+    if (
+        target.status != LoadStatus.ACTIVE
+        or target.carrier_id is not None
+        or session.scalar(
+            select(PlatformAssignment.id).where(
+                PlatformAssignment.broker_id == broker_id,
+                PlatformAssignment.load_id == load_id,
+            )
+        )
+        is not None
+    ):
         raise RecommendationNotEligible("load must be active and uncovered")
 
     carriers = session.scalars(

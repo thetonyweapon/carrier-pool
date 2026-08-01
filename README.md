@@ -405,3 +405,47 @@ unscored cold starts.
 Recommendations do not claim current availability, capacity, deadhead, safety,
 or service quality. History uses the 500 most recently synced eligible loads and
 is computed from current canonical rows.
+
+## Broker Operations Backend
+
+The broker operations API is broker scoped and exposes the complete lifecycle:
+
+```bash
+curl 'http://localhost:8000/brokers/<broker-id>/loads?page=1&page_size=25'
+curl 'http://localhost:8000/brokers/<broker-id>/loads/<load-id>'
+curl 'http://localhost:8000/brokers/<broker-id>/carrier-candidates/carrier:<carrier-id>'
+```
+
+List filters are `status`, `equipment`, `assignment_state` (`assigned` or
+`unassigned`), and `search`. Currency, weight, and distance values are
+serialized as strings. Pickup schedule, display number, and id provide stable
+ordering. `DEMO_MODE=true` enables broker discovery and assignment creation;
+it is false by default. Assignments are platform overlays with optimistic
+`expected_assignment_version`, do not mutate canonical ingestion fields, and
+make the load ineligible for recommendations and rate estimation.
+
+## Broker Operations UI
+
+Run the populated demo console with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+Open <http://localhost:3000>. Compose runs migrations, creates the three demo
+brokers, and ingests the checked-in 132-file dataset before starting the API.
+The console is explicitly demo-only: switching brokers is not authentication,
+and carrier assignments are auditable platform overlays that do not write back
+to a TMS.
+
+The frontend is also runnable independently after starting the API:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The UI provides an all-lifecycle load queue, server-side filters and pagination,
+ordered stop details, browser-local timestamp display, 24-hour stale warnings,
+independent lane/rate/recommendation panels, and a carrier contact drawer.

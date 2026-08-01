@@ -1,0 +1,9 @@
+{
+  "name": "carrier-pool-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {"dev": "vite", "build": "tsc -b && vite build", "typecheck": "tsc --noEmit"},
+  "dependencies": {"react": "19.1.1", "react-dom": "19.1.1", "react-router-dom": "7.18.2"},
+  "devDependencies": {"@vitejs/plugin-react": "^6.0.5", "@types/react": "^19.2.18", "@types/react-dom": "^19.2.4", "vite": "^8.2.0", "typescript": "^7.0.2"}
+}

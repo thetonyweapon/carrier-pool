@@ -14,7 +14,7 @@ from app.lane_intelligence import (
     validate_normalization_version,
 )
 from app.load_stops import load_stops
-from app.models import BrokerSource, EquipmentType, Load, LoadStatus, TmsType
+from app.models import BrokerSource, EquipmentType, Load, LoadStatus, PlatformAssignment, TmsType
 
 ESTIMATION_VERSION = "carrier-rate-estimation-v1"
 HISTORY_STATUSES = (LoadStatus.COMPLETED,)
@@ -306,7 +306,17 @@ def estimate_carrier_rate(
     target = session.scalar(select(Load).where(Load.broker_id == broker_id, Load.id == load_id))
     if target is None:
         return None
-    if target.status != LoadStatus.ACTIVE or target.carrier_id is not None:
+    if (
+        target.status != LoadStatus.ACTIVE
+        or target.carrier_id is not None
+        or session.scalar(
+            select(PlatformAssignment.id).where(
+                PlatformAssignment.broker_id == broker_id,
+                PlatformAssignment.load_id == load_id,
+            )
+        )
+        is not None
+    ):
         raise RateEstimationNotEligible("load must be active and uncovered")
 
     as_of = _as_utc(target.last_synced_at)

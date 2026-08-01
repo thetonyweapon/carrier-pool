@@ -20,6 +20,7 @@ services:
       context: ./backend
     environment:
       DATABASE_URL: postgresql+psycopg://carrier_pool:carrier_pool@db:5432/carrier_pool
+      DEMO_MODE: "true"
     ports:
       - "8000:8000"
     volumes:
@@ -28,6 +29,20 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    command: >-
+      sh -c "alembic upgrade head && python -m scripts.bootstrap_demo --root /data
+      && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/"]
+      interval: 5s
+      retries: 3
 
 volumes:
   postgres_data:

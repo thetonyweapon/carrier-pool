@@ -29,7 +29,7 @@ capabilities remain planned.
 - SQLAlchemy 2.0 and Alembic.
 - PostgreSQL in deployment; SQLite is used for the default isolated tests.
 - Pydantic v2 for source validation.
-- React/Vite frontend stub only.
+- React/Vite broker operations console with a documented demo-mode workflow.
 
 ## OpenSpec Conventions
 
@@ -56,7 +56,7 @@ capabilities remain planned.
 | Lane intelligence | Delivered |
 | Carrier recommendations | Delivered |
 | Carrier rate estimation | Delivered |
-| Broker operations UI | Planned |
+| Broker operations UI | Delivered (demo mode) |
 | Shared carrier pool | Planned |
 | Platform hardening | Planned |
 

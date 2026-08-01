@@ -129,7 +129,10 @@ Weight is `Numeric(12, 1)`, distance is `Numeric(10, 1)` — these are not finan
 - **HaulDesk adapter.** HaulDesk is supported as a flat-table delta adapter. It interprets naive timestamps as `America/Chicago`, maps its source-defined single pickup and single delivery to the two canonical stops, rounds metric conversions half-up to one decimal place, rejects repeated immutable rate IDs, and creates one load version for rate-only changes. HaulDesk cannot provide additional stops because its export has no multi-stop representation.
 - **Booking timestamps.** HaulDesk has no booking event timestamp, so `Load.booked_at` records the first source `updated_at` observed with a carrier or covered-or-later status rather than the ingestion time.
 - **Synthetic data generation.** The deterministic generator in `backend/scripts/generate_synthetic_data.py` creates 44 files per TMS for July 6-16, 2026. The checked-in 132-file dataset uses explicit Texas Triangle scenarios with full lifecycles, chronologically valid stop events, rate/detail corrections, rich/thin lanes, carrier experience contrast, and stable uncovered Day 11 targets. Source semantics remain distinct: FreightFlow replacement snapshots, HaulDesk additive rate rows with adjustments, and BrokerOS replacement totals with append-only observations. Generation only removes expected dated files when `--clean` is explicit. `tests/test_synthetic_data.py` validates schemas, chronology, sequential ingestion, normalization, tenant ownership, idempotency, and reproducibility against checked-in output.
-- **Frontend.** Only Vite/React stubs exist; no UI work has started.
+- **Frontend.** The broker operations console is delivered in explicit demo mode
+  with a broker switcher, lifecycle queue, analytics workspace, carrier drawer,
+  and platform assignment overlays. Production authentication and non-demo writes
+  remain deferred to platform hardening.
 - **Shared carrier pool.** The opt-in cross-broker carrier pool is the bonus feature and is explicitly deferred.
 
 ## What I'd Do Next With More Time
