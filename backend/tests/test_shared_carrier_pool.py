@@ -5,7 +5,7 @@ from typing import Optional
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.auth import issue_demo_token
@@ -207,6 +207,29 @@ def test_shared_results_require_three_distinct_opted_in_contributors(db_session:
     assert db_session.scalar(
         select(SharedPoolQueryAudit).where(SharedPoolQueryAudit.load_id == "target")
     )
+
+
+def test_set_shared_pool_policy_sees_pending_broker_with_autoflush_disabled() -> None:
+    """Regression: app.database.SessionLocal uses autoflush=False, so a freshly
+    added (uncommitted) broker was invisible to Session.get inside
+    set_shared_pool_policy, crashing bootstrap under docker compose with
+    "ValueError: broker not found"."""
+    engine = create_engine(
+        "sqlite+pysqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+    with session_factory() as session:
+        session.add(Broker(id="broker-a", name="Ithaca Freight Partners", created_at=NOW))
+        policy = set_shared_pool_policy(
+            session, "broker-a", enabled=True, changed_by="demo-bootstrap"
+        )
+        assert policy.enabled is True
+        assert session.get(Broker, "broker-a") is not None
+        session.commit()
+    engine.dispose()
 
 
 def test_opt_out_revokes_future_shared_results_and_records_policy_event(

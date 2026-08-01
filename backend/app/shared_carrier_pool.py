@@ -85,6 +85,10 @@ def set_shared_pool_policy(
     reason: Optional[str] = None,
 ) -> SharedPoolPolicy:
     """Record participation state for a future authenticated policy boundary."""
+    # Make pending rows visible before the existence check. SessionLocal uses
+    # autoflush=False, so a freshly-added (uncommitted) broker is not yet
+    # reachable via Session.get unless we flush first.
+    session.flush()
     if session.get(Broker, broker_id) is None:
         raise ValueError("broker not found")
     now = datetime.now(timezone.utc)
