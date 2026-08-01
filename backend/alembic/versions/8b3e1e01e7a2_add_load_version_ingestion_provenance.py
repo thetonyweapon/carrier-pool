@@ -30,6 +30,8 @@ def upgrade() -> None:
             ["broker_id", "broker_source_id", "id"],
         )
 
+    _ensure_load_source_identity_unique_constraint()
+
     with op.batch_alter_table("load_versions") as batch_op:
         batch_op.add_column(sa.Column("broker_source_id", sa.String(length=36), nullable=True))
         batch_op.add_column(sa.Column("ingestion_file_id", sa.String(length=36), nullable=True))
@@ -51,6 +53,24 @@ def upgrade() -> None:
             "fk_load_versions_ingestion_file",
             "ingestion_files",
             ["broker_id", "broker_source_id", "ingestion_file_id"],
+            ["broker_id", "broker_source_id", "id"],
+        )
+
+
+def _ensure_load_source_identity_unique_constraint() -> None:
+    """Repair databases created before the composite load constraint existed."""
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    expected_columns = {"broker_id", "broker_source_id", "id"}
+    existing_constraints = inspector.get_unique_constraints("loads")
+    if any(
+        set(constraint["column_names"]) == expected_columns for constraint in existing_constraints
+    ):
+        return
+
+    with op.batch_alter_table("loads") as batch_op:
+        batch_op.create_unique_constraint(
+            "uq_loads_broker_source_id_id",
             ["broker_id", "broker_source_id", "id"],
         )
 
