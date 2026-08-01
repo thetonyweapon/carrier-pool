@@ -1,0 +1,390 @@
+import hashlib
+import hmac
+from collections import Counter, defaultdict
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Optional, Sequence
+
+from sqlalchemy import and_, func, select, tuple_
+from sqlalchemy.orm import Session
+
+from app.lane_geography import NORMALIZATION_VERSION
+from app.lane_intelligence import (
+    ELIGIBLE_HISTORY_STATUSES,
+    HISTORY_LOAD_LIMIT,
+    LaneNotDerivable,
+    derive_primary_lane,
+)
+from app.load_stops import load_stops
+from app.models import (
+    Broker,
+    Carrier,
+    CarrierIdentity,
+    EquipmentType,
+    Load,
+    LoadStatus,
+    LoadStop,
+    SharedPoolPolicy,
+    SharedPoolPolicyEvent,
+    SharedPoolQueryAudit,
+)
+
+SHARED_POOL_POLICY_VERSION = "shared-carrier-pool-v1"
+SHARED_POOL_ATTRIBUTE_PROFILE = "public-carrier-name-v1"
+SHARED_POOL_SCORING_VERSION = "shared-carrier-recommendations-v1"
+MIN_SHARED_CONTRIBUTING_BROKERS = 3
+
+
+class SharedPoolDisabled(ValueError):
+    pass
+
+
+class SharedPoolNotEligible(ValueError):
+    pass
+
+
+class SharedPoolUnavailable(ValueError):
+    pass
+
+
+@dataclass(frozen=True)
+class SharedCarrierRecommendation:
+    candidate_id: str
+    name: str
+    match_quality: str
+    equipment_type: EquipmentType
+    evidence_count_bucket: str
+    contributing_broker_count_bucket: str
+    score: int = 0
+
+
+@dataclass(frozen=True)
+class SharedCarrierPoolResult:
+    broker_id: str
+    load_id: str
+    policy_version: str
+    policy_revision: int
+    scoring_version: str
+    normalization_version: str
+    recommendations: tuple[SharedCarrierRecommendation, ...]
+
+
+@dataclass(frozen=True)
+class _Evidence:
+    broker_id: str
+    carrier_name: str
+    exact: bool
+    equipment_type: EquipmentType
+
+
+def set_shared_pool_policy(
+    session: Session,
+    broker_id: str,
+    enabled: bool,
+    changed_by: str,
+    reason: Optional[str] = None,
+) -> SharedPoolPolicy:
+    """Record participation state for a future authenticated policy boundary."""
+    if session.get(Broker, broker_id) is None:
+        raise ValueError("broker not found")
+    now = datetime.now(timezone.utc)
+    # PostgreSQL uses this row lock to serialize concurrent policy revisions;
+    # SQLite test databases do not provide row-level locking.
+    policy = session.scalar(
+        select(SharedPoolPolicy).where(SharedPoolPolicy.broker_id == broker_id).with_for_update()
+    )
+    if policy is None:
+        policy = SharedPoolPolicy(
+            broker_id=broker_id,
+            enabled=enabled,
+            policy_revision=1,
+            attribute_profile=SHARED_POOL_ATTRIBUTE_PROFILE,
+            changed_by=changed_by,
+            reason=reason,
+            updated_at=now,
+        )
+        session.add(policy)
+    else:
+        policy.enabled = enabled
+        policy.policy_revision += 1
+        policy.attribute_profile = SHARED_POOL_ATTRIBUTE_PROFILE
+        policy.changed_by = changed_by
+        policy.reason = reason
+        policy.updated_at = now
+    session.add(
+        SharedPoolPolicyEvent(
+            broker_id=broker_id,
+            enabled=enabled,
+            policy_revision=policy.policy_revision,
+            policy_version=SHARED_POOL_POLICY_VERSION,
+            attribute_profile=SHARED_POOL_ATTRIBUTE_PROFILE,
+            changed_by=changed_by,
+            reason=reason,
+            created_at=now,
+        )
+    )
+    session.flush()
+    return policy
+
+
+def get_shared_carrier_recommendations(
+    session: Session,
+    broker_id: str,
+    load_id: str,
+    id_secret: str,
+    normalization_version: str = NORMALIZATION_VERSION,
+) -> Optional[SharedCarrierPoolResult]:
+    if not id_secret:
+        raise SharedPoolUnavailable("shared pool identifier secret is not configured")
+    if normalization_version != NORMALIZATION_VERSION:
+        raise ValueError(f"unsupported normalization version: {normalization_version}")
+
+    requester_policy = session.scalar(
+        select(SharedPoolPolicy).where(
+            SharedPoolPolicy.broker_id == broker_id,
+            SharedPoolPolicy.enabled.is_(True),
+        )
+    )
+    if requester_policy is None:
+        raise SharedPoolDisabled("requesting broker has not opted into the shared pool")
+
+    target = session.scalar(select(Load).where(Load.broker_id == broker_id, Load.id == load_id))
+    if target is None:
+        return None
+    if target.status != LoadStatus.ACTIVE or target.carrier_id is not None:
+        raise SharedPoolNotEligible("load must be active and uncovered")
+
+    target_stops = load_stops(session, broker_id, [target.id]).get(target.id, [])
+    try:
+        target_lane = derive_primary_lane(target_stops)
+    except LaneNotDerivable as exc:
+        raise SharedPoolNotEligible(str(exc)) from exc
+
+    policies = session.scalars(
+        select(SharedPoolPolicy)
+        .where(SharedPoolPolicy.enabled.is_(True))
+        .order_by(SharedPoolPolicy.broker_id)
+    ).all()
+    participant_scope_digest = _participant_scope_digest(policies)
+    participant_ids = [policy.broker_id for policy in policies]
+    historical_loads = _historical_loads(session, participant_ids)
+    historical_stops = _load_stops_by_scope(
+        session, participant_ids, [load.id for load in historical_loads]
+    )
+    carrier_refs = {
+        (load.broker_id, load.carrier_id)
+        for load in historical_loads
+        if load.carrier_id is not None
+    }
+    carriers = session.scalars(
+        select(Carrier)
+        .where(
+            tuple_(Carrier.broker_id, Carrier.id).in_(carrier_refs),
+        )
+        .order_by(Carrier.broker_id, Carrier.id)
+    ).all()
+    identity_refs = {
+        (carrier.broker_id, carrier.carrier_identity_id)
+        for carrier in carriers
+        if carrier.carrier_identity_id is not None
+    }
+    identities = session.scalars(
+        select(CarrierIdentity).where(
+            tuple_(CarrierIdentity.broker_id, CarrierIdentity.id).in_(identity_refs)
+        )
+    ).all()
+    identity_by_id = {(identity.broker_id, identity.id): identity for identity in identities}
+    carrier_candidates = {
+        (carrier.broker_id, carrier.id): _carrier_candidate(carrier, identity_by_id)
+        for carrier in carriers
+    }
+    carrier_candidates = {
+        key: value for key, value in carrier_candidates.items() if value is not None
+    }
+
+    evidence_by_candidate: dict[str, list[_Evidence]] = defaultdict(list)
+    for historical_load in historical_loads:
+        if historical_load.broker_id == broker_id and historical_load.id == load_id:
+            continue
+        candidate = carrier_candidates.get((historical_load.broker_id, historical_load.carrier_id))
+        if candidate is None:
+            continue
+        stops = historical_stops.get((historical_load.broker_id, historical_load.id), [])
+        try:
+            lane = derive_primary_lane(stops)
+        except LaneNotDerivable:
+            continue
+        exact = lane.exact_key == target_lane.exact_key
+        nearby = (
+            not exact
+            and target_lane.metro_key is not None
+            and lane.metro_key == target_lane.metro_key
+        )
+        if not exact and not nearby:
+            continue
+        evidence_by_candidate[candidate[0]].append(
+            _Evidence(
+                broker_id=historical_load.broker_id,
+                carrier_name=candidate[1],
+                exact=exact,
+                equipment_type=historical_load.equipment_type,
+            )
+        )
+
+    candidates = [
+        _build_recommendation(candidate_key, evidence, id_secret, target.equipment_type)
+        for candidate_key, evidence in evidence_by_candidate.items()
+        if len({item.broker_id for item in evidence}) >= MIN_SHARED_CONTRIBUTING_BROKERS
+    ]
+    candidates.sort(key=_recommendation_sort_key)
+    result = SharedCarrierPoolResult(
+        broker_id=broker_id,
+        load_id=load_id,
+        policy_version=SHARED_POOL_POLICY_VERSION,
+        policy_revision=requester_policy.policy_revision,
+        scoring_version=SHARED_POOL_SCORING_VERSION,
+        normalization_version=normalization_version,
+        recommendations=tuple(candidates),
+    )
+    session.add(
+        SharedPoolQueryAudit(
+            broker_id=broker_id,
+            load_id=load_id,
+            query_type="recommendations",
+            policy_version=SHARED_POOL_POLICY_VERSION,
+            policy_revision=requester_policy.policy_revision,
+            scoring_version=SHARED_POOL_SCORING_VERSION,
+            normalization_version=normalization_version,
+            participant_scope_digest=participant_scope_digest,
+            participant_count=len(participant_ids),
+            result_count=len(candidates),
+            created_at=datetime.now(timezone.utc),
+        )
+    )
+    session.commit()
+    return result
+
+
+def _carrier_candidate(
+    carrier: Carrier,
+    identity_by_id: dict[tuple[str, str], CarrierIdentity],
+) -> Optional[tuple[str, str]]:
+    identity = identity_by_id.get((carrier.broker_id, carrier.carrier_identity_id or ""))
+    if identity is None:
+        return None
+    identifier = identity.normalized_mc_number or identity.normalized_dot_number
+    if identifier is None:
+        return None
+    prefix = "mc" if identity.normalized_mc_number else "dot"
+    return f"{prefix}:{identifier}", carrier.name
+
+
+def _load_stops_by_scope(
+    session: Session, broker_ids: Sequence[str], load_ids: Sequence[str]
+) -> dict[tuple[str, str], list[LoadStop]]:
+    if not broker_ids or not load_ids:
+        return {}
+    grouped: dict[tuple[str, str], list[LoadStop]] = defaultdict(list)
+    stops = session.scalars(
+        select(LoadStop)
+        .where(LoadStop.broker_id.in_(broker_ids), LoadStop.load_id.in_(load_ids))
+        .order_by(LoadStop.broker_id, LoadStop.load_id, LoadStop.sequence_number)
+    ).all()
+    for stop in stops:
+        grouped[(stop.broker_id, stop.load_id)].append(stop)
+    return grouped
+
+
+def _historical_loads(session: Session, participant_ids: Sequence[str]) -> list[Load]:
+    """Fetch a bounded, deterministic history slice for every participant."""
+    if not participant_ids:
+        return []
+    ranked = (
+        select(
+            Load.id.label("load_id"),
+            Load.broker_id.label("load_broker_id"),
+            func.row_number()
+            .over(
+                partition_by=Load.broker_id,
+                order_by=(Load.last_synced_at.desc(), Load.id.desc()),
+            )
+            .label("history_rank"),
+        )
+        .where(
+            Load.broker_id.in_(participant_ids),
+            Load.status.in_(ELIGIBLE_HISTORY_STATUSES),
+            Load.carrier_id.is_not(None),
+        )
+        .subquery()
+    )
+    return session.scalars(
+        select(Load)
+        .join(
+            ranked,
+            and_(Load.id == ranked.c.load_id, Load.broker_id == ranked.c.load_broker_id),
+        )
+        .where(ranked.c.history_rank <= HISTORY_LOAD_LIMIT)
+        .order_by(Load.broker_id, Load.last_synced_at.desc(), Load.id.desc())
+    ).all()
+
+
+def _build_recommendation(
+    candidate_key: str,
+    evidence: Sequence[_Evidence],
+    id_secret: str,
+    target_equipment: EquipmentType,
+) -> SharedCarrierRecommendation:
+    exact = [item for item in evidence if item.exact]
+    nearby = [item for item in evidence if not item.exact]
+    exact_same = [item for item in exact if item.equipment_type == target_equipment]
+    nearby_same = [item for item in nearby if item.equipment_type == target_equipment]
+    exact_other = [item for item in exact if item.equipment_type != target_equipment]
+    nearby_other = [item for item in nearby if item.equipment_type != target_equipment]
+    score = (
+        min(len(exact_same), 3) * 10
+        + min(len(nearby_same), 3) * 6
+        + min(len(exact_other), 3) * 4
+        + min(len(nearby_other), 3) * 2
+        + min(len(evidence), 4)
+    )
+    names = Counter(item.carrier_name for item in evidence)
+    name = min(names, key=lambda value: (-names[value], value.casefold(), value))
+    return SharedCarrierRecommendation(
+        candidate_id=_opaque_candidate_id(candidate_key, id_secret),
+        name=name,
+        match_quality="exact" if exact else "same_metro",
+        equipment_type=(
+            target_equipment if exact_same or nearby_same else evidence[0].equipment_type
+        ),
+        evidence_count_bucket=_count_bucket(len(evidence)),
+        contributing_broker_count_bucket=_count_bucket(len({item.broker_id for item in evidence})),
+        score=score,
+    )
+
+
+def _recommendation_sort_key(item: SharedCarrierRecommendation) -> tuple[bool, int, str, str]:
+    return (item.match_quality != "exact", -item.score, item.name.casefold(), item.candidate_id)
+
+
+def _opaque_candidate_id(candidate_key: str, secret: str) -> str:
+    digest = hmac.new(secret.encode(), candidate_key.encode(), hashlib.sha256).hexdigest()
+    return f"shared:{digest}"
+
+
+def _participant_scope_digest(policies: Sequence[SharedPoolPolicy]) -> str:
+    scope = ",".join(f"{policy.broker_id}:{policy.policy_revision}" for policy in policies)
+    return hashlib.sha256(scope.encode()).hexdigest()
+
+
+def _count_bucket(value: int) -> str:
+    if value <= 0:
+        return "0"
+    if value == 1:
+        return "1"
+    if value == 2:
+        return "2"
+    if value <= 5:
+        return "3-5"
+    if value <= 10:
+        return "6-10"
+    return "11+"

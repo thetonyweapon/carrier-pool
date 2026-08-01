@@ -29,6 +29,9 @@ from app.models import (
     LoadVersion,
     RateLineItem,
     RateSide,
+    SharedPoolPolicy,
+    SharedPoolPolicyEvent,
+    SharedPoolQueryAudit,
     StopType,
     TmsType,
 )
@@ -443,6 +446,9 @@ def test_initial_migration_upgrades_and_downgrades(tmp_path: Path, monkeypatch) 
 
     assert inspect(engine).has_table("loads")
     assert inspect(engine).has_table("load_rate_observations")
+    assert inspect(engine).has_table("shared_pool_policies")
+    assert inspect(engine).has_table("shared_pool_policy_events")
+    assert inspect(engine).has_table("shared_pool_query_audits")
     command.check(alembic_config)
 
     with Session(engine) as session:
@@ -566,6 +572,80 @@ def test_initial_migration_upgrades_and_downgrades(tmp_path: Path, monkeypatch) 
 
     command.downgrade(alembic_config, "base")
     assert not inspect(create_engine(database_url)).has_table("loads")
+
+
+def test_shared_pool_audit_migration_enforces_append_only(tmp_path: Path, monkeypatch) -> None:
+    database_url = f"sqlite+pysqlite:///{tmp_path / 'shared-pool.db'}"
+    monkeypatch.setattr(settings, "database_url", database_url)
+    alembic_config = Config(str(Path(__file__).parents[1] / "alembic.ini"))
+    command.upgrade(alembic_config, "head")
+    engine = create_engine(database_url)
+
+    @event.listens_for(engine, "connect")
+    def enable_foreign_keys(connection, connection_record) -> None:
+        del connection_record
+        connection.execute("PRAGMA foreign_keys=ON")
+
+    with Session(engine) as session:
+        add_broker_and_source(session, "broker-a", "source-a")
+        add_customer(session, "broker-a", "source-a", "customer-a")
+        session.add(make_load("broker-a", "source-a", "customer-a", load_id="target"))
+        session.flush()
+        session.add(
+            SharedPoolPolicy(
+                broker_id="broker-a",
+                enabled=True,
+                policy_revision=1,
+                attribute_profile="public-carrier-name-v1",
+                changed_by="test-admin",
+                updated_at=NOW,
+            )
+        )
+        policy_event = SharedPoolPolicyEvent(
+            broker_id="broker-a",
+            enabled=True,
+            policy_revision=1,
+            policy_version="shared-carrier-pool-v1",
+            attribute_profile="public-carrier-name-v1",
+            changed_by="test-admin",
+            created_at=NOW,
+        )
+        query_audit = SharedPoolQueryAudit(
+            broker_id="broker-a",
+            load_id="target",
+            query_type="recommendations",
+            policy_version="shared-carrier-pool-v1",
+            policy_revision=1,
+            scoring_version="shared-carrier-recommendations-v1",
+            normalization_version="tx-metro-v1",
+            participant_scope_digest="a" * 64,
+            participant_count=3,
+            result_count=1,
+            created_at=NOW,
+        )
+        session.add_all([policy_event, query_audit])
+        session.commit()
+
+        policy_event.policy_revision = 2
+        with pytest.raises(IntegrityError, match="append-only"):
+            session.commit()
+        session.rollback()
+        session.delete(session.get(SharedPoolPolicyEvent, policy_event.id))
+        with pytest.raises(IntegrityError, match="append-only"):
+            session.commit()
+        session.rollback()
+
+        query_audit.result_count = 2
+        with pytest.raises(IntegrityError, match="append-only"):
+            session.commit()
+        session.rollback()
+        session.delete(session.get(SharedPoolQueryAudit, query_audit.id))
+        with pytest.raises(IntegrityError, match="append-only"):
+            session.commit()
+        session.rollback()
+
+    engine.dispose()
+    command.downgrade(alembic_config, "base")
 
 
 def test_carrier_identity_migration_backfills_deterministically(

@@ -134,7 +134,15 @@ Weight is `Numeric(12, 1)`, distance is `Numeric(10, 1)` — these are not finan
   with a broker switcher, lifecycle queue, analytics workspace, carrier drawer,
   and platform assignment overlays. Production authentication and non-demo writes
   remain deferred to platform hardening.
-- **Shared carrier pool.** The opt-in cross-broker carrier pool is the bonus feature and is explicitly deferred.
+- **Shared carrier pool.** The first backend slice keeps broker-owned identities
+  broker-scoped and matches only normalized MC/DOT evidence across opted-in
+  brokers. It returns a separate redacted recommendation list with public
+  carrier names, opaque HMAC candidate IDs, bucketed evidence, and a minimum of
+  three contributing brokers. The requester's own opted-in history contributes.
+  Policy changes and every query are audited; on-demand computation makes
+  revocation effective immediately. Shared rates, assignment, UI presentation,
+  and production identity-provider integration remain deferred to platform
+  hardening; the demo path uses signed broker bearer tokens.
 
 ## What I'd Do Next With More Time
 

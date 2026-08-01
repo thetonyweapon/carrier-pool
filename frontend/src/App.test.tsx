@@ -116,6 +116,9 @@ describe("operations UI", () => {
     renderApp("/brokers/broker-a/loads/load-1?candidate=carrier%3Acarrier-1");
     expect(await screen.findByRole("heading", { name: "LOAD-001" })).toBeInTheDocument();
     expect(await screen.findByText("Dallas, TX")).toBeInTheDocument();
+    expect(await screen.findByText("Lone Star Transport")).toBeInTheDocument();
+    expect(screen.getByText("SHARED / exact")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "SHARED POOL ON" })).toBeInTheDocument();
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Lone Star Logistics" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Close carrier details" })).toBeInTheDocument();
@@ -146,5 +149,22 @@ describe("operations UI", () => {
     renderApp("/brokers/broker-a/loads/load-1");
     expect(await screen.findByText("Not available for this load")).toBeInTheDocument();
     expect(await screen.findByText("Rate estimate unavailable for this load.")).toBeInTheDocument();
+  });
+
+  it("updates the authenticated shared-pool policy from the shell", async () => {
+    server.use(
+      http.put("http://localhost:3000/api/brokers/:broker/shared-pool-policy", () =>
+        HttpResponse.json({
+          broker_id: "broker-a",
+          enabled: false,
+          policy_revision: 2,
+          attribute_profile: "public-carrier-name-v1",
+        }),
+      ),
+    );
+    renderApp();
+    const toggle = await screen.findByRole("button", { name: "SHARED POOL ON" });
+    fireEvent.click(toggle);
+    expect(await screen.findByRole("button", { name: "SHARED POOL OFF" })).toBeInTheDocument();
   });
 });

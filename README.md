@@ -431,6 +431,28 @@ discovery (`GET /demo/brokers`) and platform assignment creation; it is `false`
 by default. Demo assignments are auditable platform overlays that never write
 back to a TMS, and switching brokers in the UI is not authentication.
 
+### Guarded shared carrier pool
+
+The shared-pool workflow is disabled by default. Compose enables its
+demo-authenticated path with `SHARED_POOL_READ_ENABLED=true`, `AUTH_SECRET`, and
+`SHARED_POOL_ID_SECRET`:
+
+```text
+GET /brokers/<broker-id>/loads/<load-id>/shared-carrier-recommendations
+GET /brokers/<broker-id>/loads/<load-id>/shared-carrier-rate-estimate
+```
+
+Opted-in brokers contribute only normalized MC/DOT-linked history. Results need
+evidence from at least three distinct opted-in brokers and expose only a public
+carrier name, coarse match/evidence buckets, and an opaque candidate ID. They
+omit MC/DOT values, source broker identity, customers, rates, raw payloads,
+exact source lanes, and precise timestamps. Shared candidates are informational
+only and cannot be assigned through the local assignment endpoint. Policy
+changes require the current broker's signed bearer token. Shared rate estimates
+use the same three-broker threshold and expose only an aggregate amount/range,
+never source rates or dates. The demo token issuer is not a production identity
+provider.
+
 ### Option A: Docker Compose (recommended)
 
 Compose sets `DEMO_MODE=true` automatically, runs migrations, creates the three
@@ -441,6 +463,11 @@ Transport`), and ingests the checked-in 132-file dataset before the API starts:
 ```bash
 docker compose up --build
 ```
+
+The Compose secrets use demo-only fallback values so the sample stack starts
+without extra setup. Set `AUTH_SECRET` and `SHARED_POOL_ID_SECRET` from a secret
+manager or deployment environment before using the stack outside local
+evaluation; never reuse the documented fallback values.
 
 Open <http://localhost:3000>. The frontend nginx container proxies `/api/` to
 the backend on port 8000.

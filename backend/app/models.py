@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKeyConstraint,
@@ -153,6 +154,100 @@ class Broker(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class SharedPoolPolicy(Base):
+    """Current broker participation state for the shared carrier pool."""
+
+    __tablename__ = "shared_pool_policies"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    broker_id: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    policy_revision: Mapped[int] = mapped_column(nullable=False, default=1)
+    attribute_profile: Mapped[str] = mapped_column(String(64), nullable=False)
+    changed_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    reason: Mapped[Optional[str]] = mapped_column(String(1000))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["broker_id"], ["brokers.id"], name="fk_shared_pool_policies_broker", ondelete="CASCADE"
+        ),
+        CheckConstraint("policy_revision > 0", name="ck_shared_pool_policies_revision_positive"),
+    )
+
+
+class SharedPoolPolicyEvent(Base):
+    """Append-only record of each broker participation policy change."""
+
+    __tablename__ = "shared_pool_policy_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    broker_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    policy_revision: Mapped[int] = mapped_column(nullable=False)
+    policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    attribute_profile: Mapped[str] = mapped_column(String(64), nullable=False)
+    changed_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    reason: Mapped[Optional[str]] = mapped_column(String(1000))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["broker_id"],
+            ["brokers.id"],
+            name="fk_shared_pool_policy_events_broker",
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "policy_revision > 0", name="ck_shared_pool_policy_events_revision_positive"
+        ),
+        Index("ix_shared_pool_policy_events_broker_created", "broker_id", "created_at"),
+    )
+
+
+class SharedPoolQueryAudit(Base):
+    """Append-only audit record for each shared-pool query."""
+
+    __tablename__ = "shared_pool_query_audits"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    broker_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    load_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    query_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    policy_revision: Mapped[int] = mapped_column(nullable=False)
+    scoring_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    normalization_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    participant_scope_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    participant_count: Mapped[int] = mapped_column(nullable=False)
+    result_count: Mapped[int] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["broker_id"],
+            ["brokers.id"],
+            name="fk_shared_pool_query_audits_broker",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["broker_id", "load_id"],
+            ["loads.broker_id", "loads.id"],
+            name="fk_shared_pool_query_audits_load",
+        ),
+        CheckConstraint(
+            "policy_revision > 0", name="ck_shared_pool_query_audits_revision_positive"
+        ),
+        CheckConstraint(
+            "participant_count >= 0", name="ck_shared_pool_query_audits_participants_nonnegative"
+        ),
+        CheckConstraint(
+            "result_count >= 0", name="ck_shared_pool_query_audits_results_nonnegative"
+        ),
+        Index("ix_shared_pool_query_audits_broker_created", "broker_id", "created_at"),
+    )
 
 
 class BrokerSource(Base):

@@ -1,6 +1,6 @@
 # C2: Containers
 
-**Status: Delivered baseline with demo operations UI and planned containers**
+**Status: Delivered baseline with authenticated shared-pool workflow**
 
 Containers are logical runtime or deployment units. The current system has a
 FastAPI foundation, a React/Vite operations console, and CLI ingestion modules
@@ -16,7 +16,8 @@ flowchart TB
         ui[Broker operations UI\nReact/Vite\ndemo mode delivered]
         api[Backend API\nFastAPI\noperations and analytics endpoints delivered]
         cli[Ingestion adapters\nPython CLI modules\nDelivered]
-    rec[Recommendation service\nDelivered]
+        rec[Recommendation service\nDelivered]
+        pool[Shared-pool service\nAuthenticated and redacted]
         rate[Rate-estimation service\nDelivered]
         db[(Canonical database\nPostgreSQL 16\nDelivered)]
     end
@@ -30,6 +31,7 @@ flowchart TB
     api --> rec
     api --> rate
     rec --> db
+    pool --> db
     rate --> db
 
     classDef delivered fill:#d9ead3,stroke:#38761d,color:#000;
@@ -49,6 +51,7 @@ flowchart TB
 | Sync-file directory | Immutable input boundary for downloaded exports | Delivered |
 | Operations UI | Lifecycle load queue, detail workspace, analytics, and demo assignment overlay | Delivered (demo mode) |
 | Recommendation service | Explainable broker-scoped carrier ranking | Delivered |
+| Shared-pool service | Opt-in, redacted cross-broker carrier ranking/rates and query audit | Delivered (demo auth) |
 | Rate-estimation service | Explainable broker-scoped expected carrier pay | Delivered |
 
 ## Deployment Notes
@@ -59,3 +62,7 @@ flowchart TB
   starts Uvicorn.
 - The `data/` directory is mounted read-only at `/data`.
 - The default test suite uses SQLite; PostgreSQL is the deployment database.
+- Shared-pool reads are disabled by default. Enabling them requires an opaque-ID
+  secret and broker bearer authentication. Compose uses a demo-only signed token
+  issuer; production should connect this boundary to the platform identity
+  provider.

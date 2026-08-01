@@ -24,6 +24,17 @@ test("broker selection and dispatch board filter flow", async ({ page }) => {
   expect(requests.every((url) => !/[?&](status|equipment|assignment_state)=(&|$)/.test(url))).toBe(true);
 });
 
+test("authenticated shared pool appears separately from local analytics", async ({ page }) => {
+  await page.goto("/brokers");
+  await page.getByRole("button", { name: /Ithaca Freight Partners/ }).click();
+  await expect(page.getByRole("link", { name: "FF-101" })).toBeVisible();
+  await page.getByRole("link", { name: "FF-101" }).click();
+  await expect(page).toHaveURL(/\/brokers\/broker-a\/loads\/.+/);
+  await expect(page.getByRole("heading", { name: "Shared carrier pool" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Shared rate estimate" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "SHARED POOL ON" })).toBeVisible();
+});
+
 test("landing and dispatch board have no critical accessibility violations", async ({ page }) => {
   test.setTimeout(60000);
   await page.goto("/brokers");

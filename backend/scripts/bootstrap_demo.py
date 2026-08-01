@@ -10,7 +10,8 @@ from app.database import SessionLocal
 from app.ingestion.brokeros import ingest_file as ingest_brokeros
 from app.ingestion.freightflow import ingest_file as ingest_freightflow
 from app.ingestion.hauldesk import ingest_file as ingest_hauldesk
-from app.models import Broker, BrokerSource, TmsType
+from app.models import Broker, BrokerSource, SharedPoolPolicy, TmsType
+from app.shared_carrier_pool import set_shared_pool_policy
 
 SOURCE_CONFIG = (
     (
@@ -107,6 +108,19 @@ def bootstrap(root: Path) -> int:
                 )
             elif source.source_name == source_id:
                 source.source_name = source_name
+            if (
+                session.scalar(
+                    select(SharedPoolPolicy).where(SharedPoolPolicy.broker_id == broker_id)
+                )
+                is None
+            ):
+                set_shared_pool_policy(
+                    session,
+                    broker_id,
+                    enabled=True,
+                    changed_by="demo-bootstrap",
+                    reason="demo broker opted into shared carrier pool",
+                )
         session.commit()
 
         ingested = 0

@@ -57,7 +57,7 @@ capabilities remain planned.
 | Carrier recommendations | Delivered |
 | Carrier rate estimation | Delivered |
 | Broker operations UI | Delivered (demo mode) |
-| Shared carrier pool | Planned |
+| Shared carrier pool | Delivered (authenticated demo path) |
 | Platform hardening | Planned |
 
 ## Architecture

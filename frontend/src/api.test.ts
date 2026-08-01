@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "./test/server";
-import { api, ApiError } from "./api";
+import { api, ApiError, setAuthToken } from "./api";
 
 describe("api client", () => {
   it("turns validation arrays into readable errors", async () => {
@@ -41,5 +41,18 @@ describe("api client", () => {
       ),
     );
     await expect(api.brokers()).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("adds the current broker token to authenticated requests", async () => {
+    let authorization = "";
+    server.use(
+      http.get("http://localhost:3000/api/brokers/broker-a/shared-pool-policy", ({ request }) => {
+        authorization = request.headers.get("Authorization") || "";
+        return HttpResponse.json({ broker_id: "broker-a", enabled: true, policy_revision: 1 });
+      }),
+    );
+    setAuthToken("token-from-demo-auth");
+    await api.sharedPolicy("broker-a");
+    expect(authorization).toBe("Bearer token-from-demo-auth");
   });
 });
