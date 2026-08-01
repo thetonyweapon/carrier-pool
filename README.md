@@ -405,3 +405,112 @@ unscored cold starts.
 Recommendations do not claim current availability, capacity, deadhead, safety,
 or service quality. History uses the 500 most recently synced eligible loads and
 is computed from current canonical rows.
+
+## Broker Operations Backend
+
+The broker operations API is broker scoped and exposes the complete lifecycle:
+
+```bash
+curl 'http://localhost:8000/brokers/<broker-id>/loads?page=1&page_size=25'
+curl 'http://localhost:8000/brokers/<broker-id>/loads/<load-id>'
+curl 'http://localhost:8000/brokers/<broker-id>/carrier-candidates/carrier:<carrier-id>'
+```
+
+List filters are `status`, `equipment`, `assignment_state` (`assigned` or
+`unassigned`), and `search`. Currency, weight, and distance values are
+serialized as strings. Pickup schedule, display number, and id provide stable
+ordering. `DEMO_MODE=true` enables broker discovery and assignment creation;
+it is false by default. Assignments are platform overlays with optimistic
+`expected_assignment_version`, do not mutate canonical ingestion fields, and
+make the load ineligible for recommendations and rate estimation.
+
+## Broker Operations UI
+
+The operations console is demo-mode only. `DEMO_MODE=true` enables demo broker
+discovery (`GET /demo/brokers`) and platform assignment creation; it is `false`
+by default. Demo assignments are auditable platform overlays that never write
+back to a TMS, and switching brokers in the UI is not authentication.
+
+### Option A: Docker Compose (recommended)
+
+Compose sets `DEMO_MODE=true` automatically, runs migrations, creates the three
+demo brokers with stable IDs and display names (`broker-a` / `Ithaca Freight
+Partners`, `broker-b` / `Aegean Route Logistics`, and `broker-c` / `Olive Harbor
+Transport`), and ingests the checked-in 132-file dataset before the API starts:
+
+```bash
+docker compose up --build
+```
+
+Open <http://localhost:3000>. The frontend nginx container proxies `/api/` to
+the backend on port 8000.
+
+### Option B: Standalone backend + frontend
+
+Start a Postgres instance and point `DATABASE_URL` at it, then run the backend
+with `DEMO_MODE` enabled:
+
+```bash
+cd backend
+cp .env.example .env
+# Set DEMO_MODE=true in .env (the example defaults to false)
+python -m venv .venv
+source .venv/bin/activate
+pip install -e '.[dev]'
+alembic upgrade head
+python -m scripts.bootstrap_demo --root ../data
+uvicorn app.main:app --reload
+```
+
+`bootstrap_demo` creates the demo brokers and sources and ingests the `data/` TMS
+sync directories. Broker IDs (`broker-a` through `broker-c`) and source IDs
+(`source-a` through `source-c`) are stable ingestion identities; their display
+names are `Ithaca Freight Partners`, `Aegean Route Logistics`, `Olive Harbor
+Transport`, `FreightFlow`, `HaulDesk`, and `BrokerOS`, respectively. Compose
+runs it on every backend startup; standalone users can rerun it safely because
+it is idempotent, only replaces legacy ID-as-name placeholders, and preserves
+custom names.
+
+In a second terminal, start the frontend dev server:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open the URL printed by Vite (default <http://localhost:5173>); the dev server
+proxies `/api/` to `localhost:8000`. Set `VITE_API_BASE_URL` if the backend
+lives elsewhere.
+
+### What the UI shows
+
+The console provides an all-lifecycle load queue with server-side filters and
+pagination, ordered stop details with browser-local timestamps, 24-hour stale
+warnings, independent lane/rate/recommendation panels, and a carrier contact
+drawer with demo assignment. Analytics for an actively assigned load return
+`ineligible` (409) until the assignment overlay changes.
+
+### Frontend verification
+
+Run the component and integration suite from `frontend/`:
+
+```bash
+npm ci
+npm run typecheck
+npm test
+npm run test:coverage
+npm run build
+```
+
+With the Docker Compose demo stack running, install the Playwright browsers and
+run the real Chromium flow:
+
+```bash
+npx playwright install chromium
+npm run test:e2e -- --project=chromium
+```
+
+The scheduled browser workflow also runs WebKit and a mobile viewport. The UI
+tests assert that cleared enum filters are omitted from requests, preventing
+the empty-filter 422 regression.

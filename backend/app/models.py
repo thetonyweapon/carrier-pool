@@ -358,6 +358,81 @@ class LoadStop(Base):
     )
 
 
+class PlatformAssignment(Base):
+    """Current platform decision, deliberately separate from TMS ownership."""
+
+    __tablename__ = "platform_assignments"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    broker_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    load_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    carrier_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    candidate_id: Mapped[Optional[str]] = mapped_column(String(255))
+    assignment_version: Mapped[int] = mapped_column(nullable=False, default=1)
+    demo_actor: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["broker_id", "load_id"],
+            ["loads.broker_id", "loads.id"],
+            name="fk_platform_assignments_load",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["broker_id", "carrier_id"],
+            ["carriers.broker_id", "carriers.id"],
+            name="fk_platform_assignments_carrier",
+        ),
+        UniqueConstraint("broker_id", "load_id", name="uq_platform_assignments_broker_load"),
+        UniqueConstraint("broker_id", "id", name="uq_platform_assignments_broker_id"),
+        CheckConstraint("assignment_version > 0", name="ck_platform_assignments_version_positive"),
+        Index("ix_platform_assignments_broker_carrier", "broker_id", "carrier_id"),
+    )
+
+
+class PlatformAssignmentEvent(Base):
+    """Append-only audit record for each platform assignment decision."""
+
+    __tablename__ = "platform_assignment_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    broker_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    assignment_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    load_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    carrier_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    candidate_id: Mapped[Optional[str]] = mapped_column(String(255))
+    assignment_version: Mapped[int] = mapped_column(nullable=False)
+    demo_actor: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["broker_id", "assignment_id"],
+            ["platform_assignments.broker_id", "platform_assignments.id"],
+            name="fk_platform_assignment_events_assignment",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["broker_id", "load_id"],
+            ["loads.broker_id", "loads.id"],
+            name="fk_platform_assignment_events_load",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["broker_id", "carrier_id"],
+            ["carriers.broker_id", "carriers.id"],
+            name="fk_platform_assignment_events_carrier",
+        ),
+        CheckConstraint(
+            "assignment_version > 0", name="ck_platform_assignment_events_version_positive"
+        ),
+        UniqueConstraint("broker_id", "id", name="uq_platform_assignment_events_broker_id_id"),
+        Index("ix_platform_assignment_events_assignment_created", "assignment_id", "created_at"),
+    )
+
+
 class LoadVersion(Base):
     __tablename__ = "load_versions"
 

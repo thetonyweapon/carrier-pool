@@ -1,0 +1,56 @@
+name: Frontend tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Component and integration tests
+        run: npm test -- --coverage
+      - name: Build frontend
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start demo stack
+        working-directory: .
+        run: docker compose up --build -d
+      - name: Wait for demo stack
+        working-directory: .
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://localhost:3000/api/demo/brokers; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs
+          exit 1
+      - name: Chromium end-to-end tests
+        run: npm run test:e2e -- --project=chromium
+      - name: Stop demo stack
+        if: always()
+        working-directory: .
+        run: docker compose down -v
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-playwright-artifacts
+          path: frontend/test-results

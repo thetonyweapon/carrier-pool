@@ -19,8 +19,8 @@ artifacts.
 - Dashed nodes and edges represent planned capabilities.
 - The platform boundary excludes source TMS systems and external operators.
 
-The diagrams distinguish delivered carrier recommendations and rate estimation
-from planned operations UI and shared-carrier-pool features.
+The diagrams distinguish delivered carrier recommendations, rate estimation, and
+the demo-mode operations UI from planned shared-carrier-pool features.
 
 ## Related Documents
 
