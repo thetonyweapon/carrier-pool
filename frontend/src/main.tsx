@@ -171,15 +171,12 @@ function Queue() {
   useEffect(() => {
     if (!brokerId) return;
     setLoading(true);
+    const params = new URLSearchParams({ page: String(page), page_size: "25" });
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
     api
-      .loads(
-        brokerId,
-        new URLSearchParams({
-          ...filters,
-          page: String(page),
-          page_size: "25",
-        }).toString(),
-      )
+      .loads(brokerId, params.toString())
       .then(setData)
       .catch(setError)
       .finally(() => setLoading(false));
