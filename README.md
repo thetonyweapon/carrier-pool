@@ -473,6 +473,9 @@ evaluation; never reuse the documented fallback values.
 Open <http://localhost:3000>. The frontend nginx container proxies `/api/` to
 the backend on port 8000.
 
+Production deployment and recovery procedures are documented in
+`PRODUCTION_RUNBOOK.md`.
+
 ### Resource controls
 
 The backend uses bounded PostgreSQL connection pools and applies statement and
