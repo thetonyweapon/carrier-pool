@@ -4,7 +4,7 @@ from typing import Optional
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
@@ -377,3 +377,35 @@ def test_assignment_rejects_noncanonical_candidate_resolution(
         json={"candidate_id": "identity:missing"},
     )
     assert response.status_code == 422
+
+
+def test_assignment_idempotency_replays_original_event(
+    client: TestClient, db_session: Session, monkeypatch
+) -> None:
+    seeded = seed_operations(db_session)
+    monkeypatch.setattr(settings, "demo_mode", True)
+    first = client.post(
+        f"/brokers/broker-a/loads/{seeded['target'].id}/assignments",
+        json={"carrier_id": seeded["canonical"].id, "idempotency_key": "assign-001"},
+    )
+    replay = client.post(
+        f"/brokers/broker-a/loads/{seeded['target'].id}/assignments",
+        json={
+            "carrier_id": seeded["canonical"].id,
+            "idempotency_key": "assign-001",
+            "expected_assignment_version": 99,
+            "demo_actor": "spoofed-actor",
+        },
+    )
+
+    assert first.status_code == 200
+    assert replay.status_code == 200
+    assert replay.json() == first.json()
+    assert (
+        db_session.scalar(
+            select(func.count())
+            .select_from(PlatformAssignmentEvent)
+            .where(PlatformAssignmentEvent.load_id == seeded["target"].id)
+        )
+        == 1
+    )

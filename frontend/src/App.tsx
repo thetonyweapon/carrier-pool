@@ -943,8 +943,8 @@ function CandidateDrawer({
       await api.assign(b, l, {
         carrier_id: carrier?.id,
         candidate_id: candidate,
+        idempotency_key: crypto.randomUUID(),
         expected_assignment_version: version,
-        demo_actor: "demo-user",
       });
        setResult({ kind: "success", message: "Assignment overlay created" });
        onAssigned();

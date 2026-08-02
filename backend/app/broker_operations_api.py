@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -102,6 +102,7 @@ class LoadDetailResponse(LoadListItem):
 class AssignmentRequest(BaseModel):
     carrier_id: Optional[str] = None
     candidate_id: Optional[str] = None
+    idempotency_key: Optional[str] = Field(default=None, min_length=1, max_length=128)
     expected_assignment_version: int = 0
     demo_actor: str = "demo-user"
 
@@ -169,6 +170,20 @@ def _assignment(
         candidate_id=assignment.candidate_id,
         assignment_version=assignment.assignment_version,
         assigned_at=assignment.updated_at,
+    )
+
+
+def _assignment_event_response(
+    event: PlatformAssignmentEvent, carrier: Carrier
+) -> AssignmentResponse:
+    return AssignmentResponse(
+        broker_id=event.broker_id,
+        load_id=event.load_id,
+        state="assigned",
+        carrier=_carrier_summary(carrier),
+        candidate_id=event.candidate_id,
+        assignment_version=event.assignment_version,
+        assigned_at=event.created_at,
     )
 
 
@@ -436,7 +451,29 @@ def assign_load(
     actor = principal.actor
     if not settings.demo_mode:
         raise HTTPException(status_code=404, detail="not found")
-    load = _load_or_404(db, broker_id, load_id)
+    load = db.scalar(
+        select(Load).where(Load.broker_id == broker_id, Load.id == load_id).with_for_update()
+    )
+    if load is None:
+        raise HTTPException(status_code=404, detail="load not found")
+    if request.idempotency_key:
+        prior_event = db.scalar(
+            select(PlatformAssignmentEvent).where(
+                PlatformAssignmentEvent.broker_id == broker_id,
+                PlatformAssignmentEvent.idempotency_key == request.idempotency_key,
+            )
+        )
+        if prior_event is not None:
+            if prior_event.load_id != load_id:
+                raise HTTPException(status_code=409, detail="idempotency key already used")
+            prior_carrier = db.scalar(
+                select(Carrier).where(
+                    Carrier.broker_id == broker_id, Carrier.id == prior_event.carrier_id
+                )
+            )
+            if prior_carrier is None:
+                raise HTTPException(status_code=409, detail="assignment result is unavailable")
+            return _assignment_event_response(prior_event, prior_carrier)
     if load.status != LoadStatus.ACTIVE or load.carrier_id is not None:
         raise HTTPException(
             status_code=409, detail="load is not an active canonical uncovered target"
@@ -484,7 +521,7 @@ def assign_load(
         assignment.carrier_id = carrier.id
         assignment.candidate_id = candidate_id
         assignment.assignment_version += 1
-        assignment.demo_actor = request.demo_actor
+        assignment.demo_actor = actor
         assignment.updated_at = now
     else:
         assignment = PlatformAssignment(
@@ -510,12 +547,32 @@ def assign_load(
             load_id=load_id,
             carrier_id=carrier.id,
             candidate_id=candidate_id,
+            idempotency_key=request.idempotency_key,
             assignment_version=assignment.assignment_version,
             demo_actor=actor,
             created_at=now,
         )
     )
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        if request.idempotency_key:
+            prior_event = db.scalar(
+                select(PlatformAssignmentEvent).where(
+                    PlatformAssignmentEvent.broker_id == broker_id,
+                    PlatformAssignmentEvent.idempotency_key == request.idempotency_key,
+                )
+            )
+            if prior_event is not None and prior_event.load_id == load_id:
+                prior_carrier = db.scalar(
+                    select(Carrier).where(
+                        Carrier.broker_id == broker_id, Carrier.id == prior_event.carrier_id
+                    )
+                )
+                if prior_carrier is not None:
+                    return _assignment_event_response(prior_event, prior_carrier)
+        raise HTTPException(status_code=409, detail="assignment idempotency conflict")
     return AssignmentResponse(
         broker_id=broker_id, load_id=load_id, **_assignment(assignment, carrier).model_dump()
     )

@@ -513,6 +513,7 @@ class PlatformAssignmentEvent(Base):
     load_id: Mapped[str] = mapped_column(String(36), nullable=False)
     carrier_id: Mapped[str] = mapped_column(String(36), nullable=False)
     candidate_id: Mapped[Optional[str]] = mapped_column(String(255))
+    idempotency_key: Mapped[Optional[str]] = mapped_column(String(128))
     assignment_version: Mapped[int] = mapped_column(nullable=False)
     demo_actor: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -539,6 +540,9 @@ class PlatformAssignmentEvent(Base):
             "assignment_version > 0", name="ck_platform_assignment_events_version_positive"
         ),
         UniqueConstraint("broker_id", "id", name="uq_platform_assignment_events_broker_id_id"),
+        UniqueConstraint(
+            "broker_id", "idempotency_key", name="uq_platform_assignment_events_idempotency"
+        ),
         Index("ix_platform_assignment_events_assignment_created", "assignment_id", "created_at"),
     )
 
