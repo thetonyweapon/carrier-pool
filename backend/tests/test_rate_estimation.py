@@ -24,6 +24,7 @@ from app.models import (
     TmsType,
 )
 from app.rate_estimation import estimate_carrier_rate
+from tests.auth_helpers import auth_headers
 
 NOW = datetime(2026, 7, 16, tzinfo=timezone.utc)
 
@@ -564,6 +565,7 @@ def test_api_returns_estimated_unavailable_and_version_errors(db_session: Sessio
 
     application.dependency_overrides[get_db] = override_db
     with TestClient(application) as client:
+        client.headers.update(auth_headers())
         response = client.get("/brokers/broker-a/loads/target/carrier-rate-estimate")
         unsupported = client.get(
             "/brokers/broker-a/loads/target/carrier-rate-estimate",
