@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     database_url: str = Field(validation_alias="DATABASE_URL")
     demo_mode: bool = Field(False, validation_alias="DEMO_MODE")
     auth_mode: str = Field("mock", validation_alias="AUTH_MODE")
+    allow_mock_auth: bool = Field(False, validation_alias="ALLOW_MOCK_AUTH")
     auth_secret: Optional[str] = Field(None, validation_alias="AUTH_SECRET")
     auth_issuer: str = Field("carrier-pool-mock", validation_alias="AUTH_ISSUER")
     auth_audience: str = Field("carrier-pool-api", validation_alias="AUTH_AUDIENCE")

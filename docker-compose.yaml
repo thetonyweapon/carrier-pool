@@ -21,6 +21,8 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://carrier_pool:carrier_pool@db:5432/carrier_pool
       DEMO_MODE: "true"
+      AUTH_MODE: "mock"
+      ALLOW_MOCK_AUTH: "true"
       AUTH_SECRET: ${AUTH_SECRET:-carrier-pool-compose-demo-auth-secret}
       SHARED_POOL_READ_ENABLED: "true"
       SHARED_POOL_ID_SECRET: ${SHARED_POOL_ID_SECRET:-carrier-pool-compose-demo-shared-secret}
@@ -39,11 +41,11 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "3000:80"
+      - "3000:8080"
     depends_on:
       - backend
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/"]
       interval: 5s
       retries: 3
 

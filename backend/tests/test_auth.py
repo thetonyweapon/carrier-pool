@@ -46,3 +46,13 @@ def test_mock_token_requires_matching_issuer_audience_and_subject(monkeypatch) -
     with pytest.raises(HTTPException) as error:
         get_current_principal(credentials)
     assert error.value.status_code == 401
+
+
+def test_mock_auth_is_unavailable_outside_explicit_mock_profile(monkeypatch) -> None:
+    token = issue_demo_token("broker-a")
+    credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+    monkeypatch.setattr("app.auth.settings.allow_mock_auth", False)
+
+    with pytest.raises(HTTPException) as error:
+        get_current_principal(credentials)
+    assert error.value.status_code == 503
