@@ -77,6 +77,8 @@ export const lane: Lane = {
     selected_scope: "exact",
     data_sufficiency: "sufficient",
     fallback_reason: null,
+    history_limit: 500,
+    history_truncated: false,
   },
 };
 

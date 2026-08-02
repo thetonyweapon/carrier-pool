@@ -56,6 +56,8 @@ class LaneHistory:
     selected_scope: str
     data_sufficiency: str
     fallback_reason: Optional[str]
+    history_limit: int
+    history_truncated: bool
 
 
 @dataclass(frozen=True)
@@ -153,8 +155,10 @@ def get_lane_intelligence(
             Load.id != load_id,
         )
         .order_by(Load.last_synced_at.desc(), Load.id.desc())
-        .limit(HISTORY_LOAD_LIMIT)
+        .limit(HISTORY_LOAD_LIMIT + 1)
     ).all()
+    history_truncated = len(history_loads) > HISTORY_LOAD_LIMIT
+    history_loads = history_loads[:HISTORY_LOAD_LIMIT]
     stops_by_load = load_stops(
         session, broker_id, [target.id, *(load.id for load in history_loads)]
     )
@@ -192,5 +196,7 @@ def get_lane_intelligence(
             selected_scope=selected_scope,
             data_sufficiency=data_sufficiency,
             fallback_reason=fallback_reason,
+            history_limit=HISTORY_LOAD_LIMIT,
+            history_truncated=history_truncated,
         ),
     )

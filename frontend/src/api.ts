@@ -73,6 +73,8 @@ export type Lane = {
     selected_scope: string;
     data_sufficiency: string;
     fallback_reason?: string | null;
+    history_limit: number;
+    history_truncated: boolean;
   };
 };
 export type Rate = {
