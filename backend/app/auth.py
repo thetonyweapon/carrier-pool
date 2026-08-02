@@ -72,7 +72,7 @@ def get_current_principal(
         or not subject
         or subject != actor
     ):
-        raise HTTPException(status_code=401, detail="expired bearer token")
+        raise HTTPException(status_code=401, detail="invalid bearer token")
     return BrokerPrincipal(broker_id=broker_id, actor=actor, subject=subject)
 
 
