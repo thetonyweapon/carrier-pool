@@ -367,6 +367,13 @@ def test_assignment_overlay_lifecycle_and_downstream_gating(
     assert latest_event.demo_actor == "test-user"
 
 
+def test_assignment_request_schema_does_not_expose_client_actor() -> None:
+    schema = create_app().openapi()
+    request_schema = schema["components"]["schemas"]["AssignmentRequest"]
+
+    assert "demo_actor" not in request_schema.get("properties", {})
+
+
 def test_assignment_rejects_noncanonical_candidate_resolution(
     client: TestClient, db_session: Session, monkeypatch
 ) -> None:

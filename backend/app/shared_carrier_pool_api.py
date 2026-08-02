@@ -79,7 +79,7 @@ def shared_pool_policy(
     db: Session = Depends(get_db),
     principal: BrokerPrincipal = Depends(require_broker_principal),
 ) -> SharedPoolPolicyResponse:
-    del principal
+    broker_id = principal.broker_id
     policy = db.scalar(select(SharedPoolPolicy).where(SharedPoolPolicy.broker_id == broker_id))
     if policy is None:
         return SharedPoolPolicyResponse(broker_id=broker_id, enabled=False, policy_revision=0)
@@ -98,6 +98,7 @@ def update_shared_pool_policy(
     db: Session = Depends(get_db),
     principal: BrokerPrincipal = Depends(require_broker_principal),
 ) -> SharedPoolPolicyResponse:
+    broker_id = principal.broker_id
     policy = set_shared_pool_policy(
         db,
         broker_id,
@@ -124,7 +125,7 @@ def shared_carrier_rate_estimate(
     db: Session = Depends(get_db),
     principal: BrokerPrincipal = Depends(require_broker_principal),
 ) -> SharedRateEstimateResponse:
-    del principal
+    broker_id = principal.broker_id
     if not settings.shared_pool_read_enabled:
         raise HTTPException(status_code=404, detail="not found")
     # Rate estimates omit opaque candidate IDs, so the shared-pool ID secret is
@@ -175,7 +176,7 @@ def shared_carrier_recommendations(
     db: Session = Depends(get_db),
     principal: BrokerPrincipal = Depends(require_broker_principal),
 ) -> SharedCarrierRecommendationsResponse:
-    del principal
+    broker_id = principal.broker_id
     # Shared reads are disabled by default and require the authenticated broker
     # identity boundary and an opaque-ID secret for HMAC candidate IDs.
     if not settings.shared_pool_read_enabled:

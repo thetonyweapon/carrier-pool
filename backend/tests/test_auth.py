@@ -4,6 +4,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.testclient import TestClient
 
 from app.auth import get_current_principal, issue_demo_token
+from app.config import settings
 from app.main import create_app
 
 
@@ -46,6 +47,26 @@ def test_mock_token_requires_matching_issuer_audience_and_subject(monkeypatch) -
     with pytest.raises(HTTPException) as error:
         get_current_principal(credentials)
     assert error.value.status_code == 401
+    assert error.value.detail == "invalid bearer token"
+
+
+def test_mock_token_issuer_and_expiration_failures_use_invalid_token(monkeypatch) -> None:
+    token = issue_demo_token("broker-a", actor="operator-a")
+    credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
+
+    original_issuer = settings.auth_issuer
+    monkeypatch.setattr("app.auth.settings.auth_issuer", "wrong-issuer")
+    with pytest.raises(HTTPException) as issuer_error:
+        get_current_principal(credentials)
+    assert issuer_error.value.detail == "invalid bearer token"
+
+    monkeypatch.setattr("app.auth.settings.auth_issuer", original_issuer)
+    monkeypatch.setattr("app.auth.settings.auth_token_ttl_seconds", -1)
+    expired_token = issue_demo_token("broker-a", actor="operator-a")
+    expired_credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=expired_token)
+    with pytest.raises(HTTPException) as expiry_error:
+        get_current_principal(expired_credentials)
+    assert expiry_error.value.detail == "invalid bearer token"
 
 
 def test_mock_auth_is_unavailable_outside_explicit_mock_profile(monkeypatch) -> None:

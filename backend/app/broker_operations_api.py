@@ -104,7 +104,6 @@ class AssignmentRequest(BaseModel):
     candidate_id: Optional[str] = None
     idempotency_key: Optional[str] = Field(default=None, min_length=1, max_length=128)
     expected_assignment_version: int = 0
-    demo_actor: str = "demo-user"
 
 
 class AssignmentResponse(AssignmentSummary):
