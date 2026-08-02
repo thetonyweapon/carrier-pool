@@ -13,7 +13,13 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.ingestion.common import CarrierIdentityConflictError, upsert_carrier_identity
+from app.ingestion.common import (
+    CarrierIdentityConflictError,
+    IngestionLimitError,
+    enforce_ingestion_file_size,
+    enforce_ingestion_limits,
+    upsert_carrier_identity,
+)
 from app.models import (
     BrokerSource,
     Carrier,
@@ -121,6 +127,10 @@ BOOKED_STATUSES = {
 
 
 def ingest_file(session: Session, broker_source_id: str, path: Path) -> IngestionResult:
+    try:
+        enforce_ingestion_file_size(path)
+    except IngestionLimitError as exc:
+        raise InvalidFreightFlowPayloadError("Invalid FreightFlow sync payload") from exc
     raw_contents = path.read_bytes()
     return ingest_contents(session, broker_source_id, path.name, raw_contents)
 
@@ -133,8 +143,9 @@ def ingest_contents(
 ) -> IngestionResult:
     try:
         raw_payload = json.loads(raw_contents)
+        enforce_ingestion_limits(raw_contents, raw_payload)
         sync = FreightFlowSync.model_validate(raw_payload)
-    except (json.JSONDecodeError, ValidationError) as exc:
+    except (json.JSONDecodeError, ValidationError, IngestionLimitError) as exc:
         raise InvalidFreightFlowPayloadError("Invalid FreightFlow sync payload") from exc
 
     _require_timezone(sync.syncedAt, "syncedAt")
@@ -202,8 +213,6 @@ def ingest_contents(
         ) from exc
 
     return IngestionResult(filename=filename, processed_loads=len(sync.loads), duplicate=False)
-
-
 def _ingest_load(
     session: Session,
     source: BrokerSource,

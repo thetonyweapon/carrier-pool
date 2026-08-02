@@ -13,6 +13,11 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
+from app.ingestion.common import (
+    IngestionLimitError,
+    enforce_ingestion_file_size,
+    enforce_ingestion_limits,
+)
 from app.models import (
     BrokerSource,
     Carrier,
@@ -125,6 +130,10 @@ class IngestionResult:
 
 
 def ingest_file(session: Session, broker_source_id: str, path: Path) -> IngestionResult:
+    try:
+        enforce_ingestion_file_size(path)
+    except IngestionLimitError as exc:
+        raise InvalidBrokerOSPayloadError("Invalid BrokerOS sync payload") from exc
     return ingest_contents(session, broker_source_id, path.name, path.read_bytes())
 
 
@@ -213,9 +222,10 @@ def ingest_contents(
 def _parse_payload(raw_contents: bytes) -> Tuple[dict, BrokerOSSync]:
     try:
         raw_payload = json.loads(raw_contents)
+        enforce_ingestion_limits(raw_contents, raw_payload)
         validation_payload = json.loads(raw_contents, parse_float=Decimal)
         return raw_payload, BrokerOSSync.model_validate(validation_payload)
-    except (UnicodeDecodeError, json.JSONDecodeError, ValidationError) as exc:
+    except (UnicodeDecodeError, json.JSONDecodeError, ValidationError, IngestionLimitError) as exc:
         raise InvalidBrokerOSPayloadError("Invalid BrokerOS sync payload") from exc
 
 
