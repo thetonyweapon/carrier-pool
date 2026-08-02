@@ -1,27 +1,34 @@
 import os
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
+from threading import Barrier
 from urllib.parse import quote
 from uuid import uuid4
 
 import pytest
 from alembic.config import Config
-from sqlalchemy import create_engine, text, update
+from sqlalchemy import create_engine, delete, text, update
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
 from alembic import command
+from app.auth import BrokerPrincipal
+from app.broker_operations_api import AssignmentRequest, assign_load
 from app.config import settings
 from app.models import (
     Broker,
     BrokerSource,
+    Carrier,
     Customer,
     IngestionFile,
     IngestionStatus,
     Load,
     LoadRateObservation,
     LoadStatus,
+    PlatformAssignment,
+    PlatformAssignmentEvent,
     RateLineItem,
     RateSide,
     SharedPoolPolicyEvent,
@@ -80,6 +87,17 @@ def seed_append_only_rows(session: Session) -> dict[str, str]:
             broker_source_id="pg-source",
             source_customer_id="PG-CUSTOMER",
             name="PostgreSQL Customer",
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    session.add(
+        Carrier(
+            id="pg-carrier",
+            broker_id="pg-broker",
+            broker_source_id="pg-source",
+            source_carrier_id="PG-CARRIER",
+            name="PostgreSQL Carrier",
             created_at=now,
             updated_at=now,
         )
@@ -166,6 +184,29 @@ def seed_append_only_rows(session: Session) -> dict[str, str]:
             result_count=0,
             created_at=now,
         ),
+        "assignment": PlatformAssignment(
+            id="pg-assignment",
+            broker_id="pg-broker",
+            load_id="pg-load",
+            carrier_id="pg-carrier",
+            candidate_id="carrier:pg-carrier",
+            assignment_version=1,
+            demo_actor="test",
+            created_at=now,
+            updated_at=now,
+        ),
+        "assignment_event": PlatformAssignmentEvent(
+            id="pg-assignment-event",
+            broker_id="pg-broker",
+            assignment_id="pg-assignment",
+            load_id="pg-load",
+            carrier_id="pg-carrier",
+            candidate_id="carrier:pg-carrier",
+            idempotency_key="pg-assignment-key",
+            assignment_version=1,
+            demo_actor="test",
+            created_at=now,
+        ),
     }
     session.add_all(rows.values())
     session.commit()
@@ -194,12 +235,161 @@ def test_postgres_schema_is_migrated_and_append_only_triggers_are_live(migrated_
                 row_ids["query_audit"],
                 {"result_count": 1},
             ),
+            (
+                PlatformAssignmentEvent,
+                row_ids["assignment_event"],
+                {"demo_actor": "mutated"},
+            ),
         )
         for model, row_id, values in mutation_targets:
             with pytest.raises(DBAPIError):
                 session.execute(update(model).where(model.id == row_id).values(**values))
                 session.flush()
             session.rollback()
+
+
+def test_postgres_delete_triggers_and_composite_tenant_constraints(migrated_postgres) -> None:
+    engine, _ = migrated_postgres
+    with Session(engine) as session:
+        row_ids = seed_append_only_rows(session)
+        delete_targets = (
+            (RateLineItem, row_ids["rate_line_item"]),
+            (LoadRateObservation, row_ids["rate_observation"]),
+            (SharedPoolPolicyEvent, row_ids["policy_event"]),
+            (SharedPoolQueryAudit, row_ids["query_audit"]),
+            (PlatformAssignmentEvent, row_ids["assignment_event"]),
+        )
+        for model, row_id in delete_targets:
+            with pytest.raises(DBAPIError):
+                session.execute(delete(model).where(model.id == row_id))
+                session.flush()
+            session.rollback()
+
+        now = datetime.now(timezone.utc)
+        session.add(Broker(id="pg-other", name="Other Broker", created_at=now))
+        session.add(
+            BrokerSource(
+                id="pg-other-source",
+                broker_id="pg-other",
+                tms_type=TmsType.HAULDESK,
+                source_name="Other Source",
+                created_at=now,
+            )
+        )
+        session.commit()
+
+        session.add(
+            Load(
+                id="pg-invalid-source-load",
+                broker_id="pg-other",
+                broker_source_id="pg-source",
+                source_load_id="INVALID-SOURCE",
+                display_number="INVALID-SOURCE",
+                status=LoadStatus.ACTIVE,
+                customer_id="pg-customer",
+                equipment_type="dry_van",
+                first_seen_at=now,
+                last_synced_at=now,
+            )
+        )
+        with pytest.raises(DBAPIError):
+            session.flush()
+        session.rollback()
+
+        session.add(
+            Load(
+                id="pg-invalid-customer-load",
+                broker_id="pg-other",
+                broker_source_id="pg-other-source",
+                source_load_id="INVALID-CUSTOMER",
+                display_number="INVALID-CUSTOMER",
+                status=LoadStatus.ACTIVE,
+                customer_id="pg-customer",
+                equipment_type="dry_van",
+                first_seen_at=now,
+                last_synced_at=now,
+            )
+        )
+        with pytest.raises(DBAPIError):
+            session.flush()
+        session.rollback()
+
+
+def test_postgres_assignment_idempotency_race_returns_one_event(migrated_postgres) -> None:
+    engine, _ = migrated_postgres
+    with Session(engine) as session:
+        now = datetime.now(timezone.utc)
+        session.add(Broker(id="race-broker", name="Race Broker", created_at=now))
+        session.add(
+            BrokerSource(
+                id="race-source",
+                broker_id="race-broker",
+                tms_type=TmsType.FREIGHTFLOW,
+                source_name="Race Source",
+                created_at=now,
+            )
+        )
+        session.add(
+            Customer(
+                id="race-customer",
+                broker_id="race-broker",
+                broker_source_id="race-source",
+                source_customer_id="RACE-CUSTOMER",
+                name="Race Customer",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.add(
+            Carrier(
+                id="race-carrier",
+                broker_id="race-broker",
+                broker_source_id="race-source",
+                source_carrier_id="RACE-CARRIER",
+                name="Race Carrier",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.add(
+            Load(
+                id="race-load",
+                broker_id="race-broker",
+                broker_source_id="race-source",
+                source_load_id="RACE-LOAD",
+                display_number="RACE-LOAD",
+                status=LoadStatus.ACTIVE,
+                customer_id="race-customer",
+                equipment_type="dry_van",
+                first_seen_at=now,
+                last_synced_at=now,
+            )
+        )
+        session.commit()
+
+    previous_demo_mode = settings.demo_mode
+    settings.demo_mode = True
+    barrier = Barrier(2)
+    principal = BrokerPrincipal(broker_id="race-broker", actor="race-actor", subject="race-subject")
+    request = AssignmentRequest(
+        carrier_id="race-carrier", idempotency_key="race-key", expected_assignment_version=0
+    )
+
+    def assign_once():
+        barrier.wait()
+        with Session(engine) as session:
+            return assign_load("race-broker", "race-load", request, principal, session)
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            responses = list(executor.map(lambda _: assign_once(), range(2)))
+    finally:
+        settings.demo_mode = previous_demo_mode
+
+    assert [response.load_id for response in responses] == ["race-load", "race-load"]
+    with Session(engine) as session:
+        assert session.query(PlatformAssignment).count() == 1
+        assert session.query(PlatformAssignmentEvent).count() == 1
 
 
 def test_postgres_migration_rollback_isolation_leaves_no_partial_rows(migrated_postgres) -> None:
