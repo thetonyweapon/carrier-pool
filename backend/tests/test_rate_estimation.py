@@ -624,6 +624,7 @@ def test_api_returns_estimated_unavailable_and_version_errors(db_session: Sessio
     assert response.json()["status"] == "estimated"
     assert response.json()["estimate"]["amount"] == "2000.00"
     assert response.json()["method"]["currency"] == "USD"
+    assert response.json()["method"]["correction_policy"] == "one_current_effective_total_per_load"
     assert unsupported.status_code == 422
     assert unsupported_normalization.status_code == 422
     assert unavailable.status_code == 200

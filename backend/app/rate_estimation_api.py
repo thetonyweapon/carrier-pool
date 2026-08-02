@@ -12,6 +12,7 @@ from app.lane_geography import NORMALIZATION_VERSION
 from app.lane_intelligence import LaneNotDerivable, UnsupportedNormalizationVersion
 from app.rate_estimation import (
     ESTIMATION_VERSION,
+    RATE_CORRECTION_POLICY,
     RateEstimationNotEligible,
     UnsupportedEstimationVersion,
     estimate_carrier_rate,
@@ -168,6 +169,6 @@ def carrier_rate_estimate(
             normalization_version=result.normalization_version,
             currency=result.currency,
             historical_statuses=[status.value for status in result.historical_statuses],
-            correction_policy="one_current_effective_total_per_load",
+            correction_policy=RATE_CORRECTION_POLICY,
         ),
     )

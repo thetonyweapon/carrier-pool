@@ -25,6 +25,7 @@ from app.models import (
 )
 
 ESTIMATION_VERSION = "carrier-rate-estimation-v1"
+RATE_CORRECTION_POLICY = "one_current_effective_total_per_load"
 HISTORY_STATUSES = (LoadStatus.COMPLETED,)
 PRIMARY_LOOKBACK_DAYS = 180
 EXTENDED_LOOKBACK_DAYS = 365
@@ -209,7 +210,7 @@ def _confidence_reasons(
     tier: _Tier, sample_size: int, lookback_days: int, target_equipment: EquipmentType
 ) -> tuple[str, ...]:
     reasons: list[str] = []
-    if tier.lane_scope not in {"exact"}:
+    if tier.lane_scope != "exact":
         reasons.append("Used broader-than-exact directional lane history")
     if tier.equipment_scope != "equipment":
         reasons.append("Used history across known equipment types")
