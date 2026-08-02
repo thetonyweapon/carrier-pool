@@ -4,7 +4,7 @@ from typing import Optional
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
@@ -179,6 +179,47 @@ def test_exact_lane_equipment_uses_median_rpm_and_decimal_range(db_session: Sess
     assert result.low_amount == Decimal("1900.00")
     assert result.high_amount == Decimal("2100.00")
     assert result.sample_size == 3
+
+
+def test_estimation_batches_target_and_history_reads(db_session: Session) -> None:
+    carrier = setup_broker(db_session)
+    add_load(
+        db_session,
+        "broker-a",
+        "target",
+        LoadStatus.ACTIVE,
+        ("Dallas", "TX", "75201"),
+        ("Houston", "TX", "77002"),
+    )
+    for index in range(3):
+        add_load(
+            db_session,
+            "broker-a",
+            f"history-{index}",
+            LoadStatus.COMPLETED,
+            ("Dallas", "TX", "75201"),
+            ("Houston", "TX", "77002"),
+            carrier_id=carrier.id,
+            carrier_rate=Decimal("2000"),
+            last_synced_at=NOW - timedelta(days=index),
+        )
+    db_session.commit()
+
+    statements: list[str] = []
+
+    def record_select(connection, cursor, statement, parameters, context, executemany):
+        del connection, cursor, parameters, context, executemany
+        if statement.lstrip().upper().startswith("SELECT"):
+            statements.append(statement)
+
+    event.listen(db_session.bind, "before_cursor_execute", record_select)
+    try:
+        result = estimate_carrier_rate(db_session, "broker-a", "target")
+    finally:
+        event.remove(db_session.bind, "before_cursor_execute", record_select)
+
+    assert result is not None
+    assert len(statements) == 3
 
 
 def test_thin_exact_history_falls_back_to_metro_equipment(db_session: Session) -> None:
