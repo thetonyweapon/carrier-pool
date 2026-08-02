@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Optional, Sequence
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, exists, select
 from sqlalchemy.orm import Session
 
 from app.lane_geography import NORMALIZATION_VERSION
@@ -14,7 +14,15 @@ from app.lane_intelligence import (
     validate_normalization_version,
 )
 from app.load_stops import load_stops
-from app.models import BrokerSource, EquipmentType, Load, LoadStatus, PlatformAssignment, TmsType
+from app.models import (
+    BrokerSource,
+    EquipmentType,
+    Load,
+    LoadStatus,
+    LoadStop,
+    PlatformAssignment,
+    TmsType,
+)
 
 ESTIMATION_VERSION = "carrier-rate-estimation-v1"
 HISTORY_STATUSES = (LoadStatus.COMPLETED,)
@@ -247,8 +255,10 @@ def _build_observations(
     broker_id: str,
     rows: Sequence[tuple[Load, BrokerSource]],
     as_of: datetime,
+    stops_by_load: Optional[dict[str, list[LoadStop]]] = None,
 ) -> tuple[list[RateObservation], dict[str, int]]:
-    stops_by_load = load_stops(session, broker_id, [load.id for load, _ in rows])
+    if stops_by_load is None:
+        stops_by_load = load_stops(session, broker_id, [load.id for load, _ in rows])
     excluded = {
         "null_rate": 0,
         "nonpositive_rate": 0,
@@ -303,27 +313,28 @@ def estimate_carrier_rate(
     """
     validate_estimation_version(estimation_version)
     validate_normalization_version(normalization_version)
-    target = session.scalar(select(Load).where(Load.broker_id == broker_id, Load.id == load_id))
-    if target is None:
-        return None
-    if (
-        target.status != LoadStatus.ACTIVE
-        or target.carrier_id is not None
-        or session.scalar(
-            select(PlatformAssignment.id).where(
-                PlatformAssignment.broker_id == broker_id,
-                PlatformAssignment.load_id == load_id,
-            )
+    assignment_exists = exists(
+        select(PlatformAssignment.id).where(
+            PlatformAssignment.broker_id == broker_id,
+            PlatformAssignment.load_id == load_id,
         )
-        is not None
-    ):
+    )
+    target_row = session.execute(
+        select(Load, assignment_exists.label("has_assignment")).where(
+            Load.broker_id == broker_id, Load.id == load_id
+        )
+    ).one_or_none()
+    if target_row is None:
+        return None
+    target, has_assignment = target_row
+    if target.status != LoadStatus.ACTIVE or target.carrier_id is not None or has_assignment:
         raise RateEstimationNotEligible("load must be active and uncovered")
 
     as_of = _as_utc(target.last_synced_at)
-    target_stops = load_stops(session, broker_id, [target.id])
-    target_lane = derive_primary_lane(target_stops.get(target.id, []))
     rows, candidate_count = _load_observations(session, broker_id, target.id, as_of)
-    observations, excluded = _build_observations(session, broker_id, rows, as_of)
+    stops_by_load = load_stops(session, broker_id, [target.id, *(load.id for load, _ in rows)])
+    target_lane = derive_primary_lane(stops_by_load.get(target.id, []))
+    observations, excluded = _build_observations(session, broker_id, rows, as_of, stops_by_load)
     attempts: list[EstimateTierAttempt] = []
 
     for lookback_days in (PRIMARY_LOOKBACK_DAYS, EXTENDED_LOOKBACK_DAYS):
