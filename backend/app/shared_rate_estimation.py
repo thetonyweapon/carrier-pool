@@ -17,6 +17,7 @@ from app.models import (
     SharedPoolPolicy,
     SharedPoolQueryAudit,
 )
+from app.observability import increment
 from app.shared_carrier_pool import (
     MIN_SHARED_CONTRIBUTING_BROKERS,
     SHARED_POOL_POLICY_VERSION,
@@ -246,6 +247,7 @@ def _observations(
         try:
             lane = derive_primary_lane(stops_by_load.get((load.broker_id, load.id), []))
         except ValueError:
+            increment("carrier_pool_skipped_observations_total", {"reason": "lane_not_derivable"})
             continue
         observations.append(
             _Observation(
