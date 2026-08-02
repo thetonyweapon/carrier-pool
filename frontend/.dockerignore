@@ -1,7 +1,5 @@
+.git
 node_modules
 dist
-*.tsbuildinfo
-coverage
 test-results
-.git
-.DS_Store
+playwright-report
