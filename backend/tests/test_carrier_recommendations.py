@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Generator, Optional
 
 import pytest
 from fastapi.testclient import TestClient
@@ -33,7 +33,7 @@ NOW = datetime(2026, 7, 16, tzinfo=timezone.utc)
 
 
 @pytest.fixture
-def db_session():
+def db_session() -> Generator[Session, None, None]:
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -471,7 +471,7 @@ def test_recommendation_api_returns_metadata_and_errors(db_session: Session) -> 
 
     application = create_app()
 
-    def override_db():
+    def override_db() -> Generator[Session, None, None]:
         yield db_session
 
     application.dependency_overrides[get_db] = override_db
@@ -531,7 +531,7 @@ def test_recommendation_api_returns_422_for_non_derivable_target(db_session: Ses
 
     application = create_app()
 
-    def override_db():
+    def override_db() -> Generator[Session, None, None]:
         yield db_session
 
     application.dependency_overrides[get_db] = override_db
