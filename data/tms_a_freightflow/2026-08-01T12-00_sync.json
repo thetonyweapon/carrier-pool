@@ -1,0 +1,77 @@
+{
+  "loads": [
+    {
+      "carrier": null,
+      "createdDate": "2026-08-01T06:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-TODAY",
+        "name": "Today Demo Shipper"
+      },
+      "equipment": "Flatbed",
+      "lastModifiedDate": "2026-08-01T12:00:00-05:00",
+      "mileage": "275.0",
+      "shipmentId": "FF-303",
+      "status": "Booking",
+      "stops": [
+        {
+          "actualDepartureDateTime": null,
+          "city": "Dallas",
+          "estimatedCloseDateTime": "2026-08-02T02:00:00-05:00",
+          "estimatedReadyDateTime": "2026-08-01T18:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "75201"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "San Antonio",
+          "estimatedCloseDateTime": "2026-08-02T14:00:00-05:00",
+          "estimatedReadyDateTime": "2026-08-02T06:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "78205"
+        }
+      ],
+      "totalBuy": null,
+      "totalSell": "2765.00",
+      "weightTotal": "38000.0"
+    },
+    {
+      "carrier": null,
+      "createdDate": "2026-08-01T12:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-FUTURE",
+        "name": "September Demo Shipper"
+      },
+      "equipment": "Flatbed",
+      "lastModifiedDate": "2026-08-01T12:00:00-05:00",
+      "mileage": "195.0",
+      "shipmentId": "FF-403",
+      "status": "Quoting",
+      "stops": [
+        {
+          "actualDepartureDateTime": null,
+          "city": "Houston",
+          "estimatedCloseDateTime": "2026-09-20T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-09-20T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "77002"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "Round Rock",
+          "estimatedCloseDateTime": "2026-09-20T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-09-20T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "78664"
+        }
+      ],
+      "totalBuy": null,
+      "totalSell": "2350.00",
+      "weightTotal": "32000.0"
+    }
+  ],
+  "syncedAt": "2026-08-01T12:00:00-05:00"
+}

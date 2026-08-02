@@ -1,0 +1,89 @@
+{
+  "loads": [
+    {
+      "carrier": {
+        "carrierMasterId": "CARR-CHARLIE",
+        "dotNumber": "DOT-310003",
+        "mcNumber": "MC-120003",
+        "name": "Triangle Heavy Haul",
+        "phoneNumber": "214-555-1014"
+      },
+      "createdDate": "2026-07-29T12:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-RECENT",
+        "name": "Recent Demo Shipper"
+      },
+      "equipment": "Reefer",
+      "lastModifiedDate": "2026-07-30T18:00:00-05:00",
+      "mileage": "210.0",
+      "shipmentId": "FF-202",
+      "status": "Completed",
+      "stops": [
+        {
+          "actualDepartureDateTime": "2026-07-30T18:00:00-05:00",
+          "city": "Sugar Land",
+          "estimatedCloseDateTime": "2026-07-30T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-30T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "77478"
+        },
+        {
+          "actualDepartureDateTime": "2026-07-30T18:00:00-05:00",
+          "city": "San Antonio",
+          "estimatedCloseDateTime": "2026-07-30T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-30T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "78205"
+        }
+      ],
+      "totalBuy": "1810.00",
+      "totalSell": "2420.00",
+      "weightTotal": "30000.0"
+    },
+    {
+      "carrier": {
+        "carrierMasterId": "CARR-DELTA",
+        "dotNumber": "DOT-310004",
+        "mcNumber": "MC-120004",
+        "name": "Hill Country Carriers",
+        "phoneNumber": "214-555-1010"
+      },
+      "createdDate": "2026-07-30T00:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-RECENT",
+        "name": "Recent Demo Shipper"
+      },
+      "equipment": "Flatbed",
+      "lastModifiedDate": "2026-07-30T18:00:00-05:00",
+      "mileage": "230.0",
+      "shipmentId": "FF-203",
+      "status": "En Route",
+      "stops": [
+        {
+          "actualDepartureDateTime": "2026-07-30T18:00:00-05:00",
+          "city": "Georgetown",
+          "estimatedCloseDateTime": "2026-07-30T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-30T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "78626"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "Irving",
+          "estimatedCloseDateTime": "2026-07-31T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-31T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "75039"
+        }
+      ],
+      "totalBuy": "1850.00",
+      "totalSell": "2480.00",
+      "weightTotal": "35000.0"
+    }
+  ],
+  "syncedAt": "2026-07-30T18:00:00-05:00"
+}

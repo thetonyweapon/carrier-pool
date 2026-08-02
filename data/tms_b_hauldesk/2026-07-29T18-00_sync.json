@@ -1,0 +1,78 @@
+{
+  "carriers": [
+    {
+      "carrier_id": "CARR-BRAVO",
+      "carrier_name": "Prairie State Freight",
+      "dot_no": "DOT-310002",
+      "home_city": "Plano",
+      "home_state": "TX",
+      "mc_no": "MC-120002",
+      "phone": "214-555-1024"
+    }
+  ],
+  "loads": [
+    {
+      "carrier_ref": "CARR-BRAVO",
+      "customer_code": "CUST-RECENT",
+      "customer_name": "Recent Demo Shipper",
+      "del_arrived_at": null,
+      "del_city": "Houston",
+      "del_date": "2026-07-30",
+      "del_state": "TX",
+      "del_zip": "77002",
+      "dist_km": "402.34",
+      "entered_at": "2026-07-29 00:00:00",
+      "equip": "V",
+      "load_num": "HD-201",
+      "pu_city": "Dallas",
+      "pu_date": "2026-07-29",
+      "pu_departed_at": "2026-07-29 18:00:00",
+      "pu_state": "TX",
+      "pu_zip": "75201",
+      "status_code": 40,
+      "updated_at": "2026-07-29 18:00:00",
+      "weight_kg": "15422.14"
+    },
+    {
+      "carrier_ref": null,
+      "customer_code": "CUST-RECENT",
+      "customer_name": "Recent Demo Shipper",
+      "del_arrived_at": null,
+      "del_city": "San Antonio",
+      "del_date": "2026-07-30",
+      "del_state": "TX",
+      "del_zip": "78205",
+      "dist_km": "337.96",
+      "entered_at": "2026-07-29 12:00:00",
+      "equip": "R",
+      "load_num": "HD-202",
+      "pu_city": "Sugar Land",
+      "pu_date": "2026-07-30",
+      "pu_departed_at": null,
+      "pu_state": "TX",
+      "pu_zip": "77478",
+      "status_code": 20,
+      "updated_at": "2026-07-29 18:00:00",
+      "weight_kg": "13607.77"
+    }
+  ],
+  "rates": [
+    {
+      "amount_usd": "50.00",
+      "code": "ADJUSTMENT",
+      "created_at": "2026-07-29 18:00:00",
+      "load_num": "HD-201",
+      "rate_id": "RATE-0027",
+      "side": "bill"
+    },
+    {
+      "amount_usd": "80.00",
+      "code": "ADJUSTMENT",
+      "created_at": "2026-07-29 18:00:00",
+      "load_num": "HD-201",
+      "rate_id": "RATE-0028",
+      "side": "pay"
+    }
+  ],
+  "synced_at": "2026-07-29 18:00:00"
+}

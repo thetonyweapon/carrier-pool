@@ -105,6 +105,7 @@ The `example_sync.jsonc` files are the schema documentation (comments included).
   2. **Corrections** — loads whose *already-recorded* amount or detail changes to a new value in a later sync.
   3. **Contrast**: lanes with rich history next to lanes with thin history; carriers with lots of experience next to carriers with almost none.
 - **Day 11** brings fresh loads that are still looking for a carrier — the ones your system must answer for, using days 1–10 as history. We should be able to look at your data and trace *why* your system gave each day-11 answer.
+- The checked-in demo dataset also includes a deterministic operational window for July 29-August 1, 2026: recent lifecycle examples, active uncovered loads for recommendation/rate/assignment demos, and planned unassigned loads with September pickup dates.
 - **Ingestion processes one sync file at a time, in chronological order** — like the real scheduled syncs would have. No loading everything in one shot.
 
 **Platform**

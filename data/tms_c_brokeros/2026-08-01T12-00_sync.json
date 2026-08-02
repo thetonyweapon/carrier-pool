@@ -1,0 +1,123 @@
+{
+  "records": [
+    {
+      "CreatedDate": "2026-08-01T11:00:00.000+0000",
+      "Id": "BROKEROS-303",
+      "LastModifiedDate": "2026-08-01T17:00:00.000+0000",
+      "Name": "BOS000303",
+      "bos__Carrier_Rate__c": null,
+      "bos__Carrier__c": null,
+      "bos__Customer_Rate__c": "2765.00",
+      "bos__Customer__c": "CUST-303",
+      "bos__Distance_Miles__c": "275.0",
+      "bos__Equipment_Type__c": "Flatbed",
+      "bos__Line_Items__r": [
+        {
+          "bos__Commodity__c": "General freight",
+          "bos__Pallet_Count__c": "20",
+          "bos__Weight_Units__c": "pounds",
+          "bos__Weight__c": "38000.0"
+        }
+      ],
+      "bos__Load_Status__c": "Ready to Book",
+      "bos__Stops__r": [
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": false,
+          "bos__Is_Pickup__c": true,
+          "bos__Location__c": "LOC-303-P",
+          "bos__Number__c": "1",
+          "bos__Scheduled_Date__c": "2026-08-01"
+        },
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": true,
+          "bos__Is_Pickup__c": false,
+          "bos__Location__c": "LOC-303-D",
+          "bos__Number__c": "2",
+          "bos__Scheduled_Date__c": "2026-08-02"
+        }
+      ]
+    },
+    {
+      "CreatedDate": "2026-08-01T17:00:00.000+0000",
+      "Id": "BROKEROS-403",
+      "LastModifiedDate": "2026-08-01T17:00:00.000+0000",
+      "Name": "BOS000403",
+      "bos__Carrier_Rate__c": null,
+      "bos__Carrier__c": null,
+      "bos__Customer_Rate__c": "2350.00",
+      "bos__Customer__c": "CUST-403",
+      "bos__Distance_Miles__c": "195.0",
+      "bos__Equipment_Type__c": "Flatbed",
+      "bos__Line_Items__r": [
+        {
+          "bos__Commodity__c": "General freight",
+          "bos__Pallet_Count__c": "20",
+          "bos__Weight_Units__c": "pounds",
+          "bos__Weight__c": "32000.0"
+        }
+      ],
+      "bos__Load_Status__c": "Quotes Requested",
+      "bos__Stops__r": [
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": false,
+          "bos__Is_Pickup__c": true,
+          "bos__Location__c": "LOC-403-P",
+          "bos__Number__c": "1",
+          "bos__Scheduled_Date__c": "2026-09-20"
+        },
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": true,
+          "bos__Is_Pickup__c": false,
+          "bos__Location__c": "LOC-403-D",
+          "bos__Number__c": "2",
+          "bos__Scheduled_Date__c": "2026-09-20"
+        }
+      ]
+    }
+  ],
+  "referenced_records": {
+    "CUST-303": {
+      "Name": "Today Demo Shipper",
+      "record_type": "Customer",
+      "type": "Account"
+    },
+    "CUST-403": {
+      "Name": "September Demo Shipper",
+      "record_type": "Customer",
+      "type": "Account"
+    },
+    "LOC-303-D": {
+      "Name": "San Antonio Distribution",
+      "bos__City__c": "San Antonio",
+      "bos__Postal_Code__c": "78205",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-303-P": {
+      "Name": "Dallas Crossdock",
+      "bos__City__c": "Dallas",
+      "bos__Postal_Code__c": "75201",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-403-D": {
+      "Name": "Round Rock Distribution",
+      "bos__City__c": "Round Rock",
+      "bos__Postal_Code__c": "78664",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-403-P": {
+      "Name": "Houston Crossdock",
+      "bos__City__c": "Houston",
+      "bos__Postal_Code__c": "77002",
+      "bos__State__c": "TX",
+      "type": "Location"
+    }
+  },
+  "synced_at": "2026-08-01T17:00:00.000+0000"
+}

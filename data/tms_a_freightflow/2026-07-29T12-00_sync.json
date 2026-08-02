@@ -1,0 +1,83 @@
+{
+  "loads": [
+    {
+      "carrier": {
+        "carrierMasterId": "CARR-BRAVO",
+        "dotNumber": "DOT-310002",
+        "mcNumber": "MC-120002",
+        "name": "Prairie State Freight",
+        "phoneNumber": "214-555-1024"
+      },
+      "createdDate": "2026-07-29T00:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-RECENT",
+        "name": "Recent Demo Shipper"
+      },
+      "equipment": "Dry Van",
+      "lastModifiedDate": "2026-07-29T12:00:00-05:00",
+      "mileage": "250.0",
+      "shipmentId": "FF-201",
+      "status": "Dispatched",
+      "stops": [
+        {
+          "actualDepartureDateTime": null,
+          "city": "Dallas",
+          "estimatedCloseDateTime": "2026-07-29T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-29T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "75201"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "Houston",
+          "estimatedCloseDateTime": "2026-07-30T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-30T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "77002"
+        }
+      ],
+      "totalBuy": "2000.00",
+      "totalSell": "2550.00",
+      "weightTotal": "34000.0"
+    },
+    {
+      "carrier": null,
+      "createdDate": "2026-07-29T12:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-RECENT",
+        "name": "Recent Demo Shipper"
+      },
+      "equipment": "Reefer",
+      "lastModifiedDate": "2026-07-29T12:00:00-05:00",
+      "mileage": "210.0",
+      "shipmentId": "FF-202",
+      "status": "Quoting",
+      "stops": [
+        {
+          "actualDepartureDateTime": null,
+          "city": "Sugar Land",
+          "estimatedCloseDateTime": "2026-07-30T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-30T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "77478"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "San Antonio",
+          "estimatedCloseDateTime": "2026-07-30T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-30T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "78205"
+        }
+      ],
+      "totalBuy": null,
+      "totalSell": "2420.00",
+      "weightTotal": "30000.0"
+    }
+  ],
+  "syncedAt": "2026-07-29T12:00:00-05:00"
+}

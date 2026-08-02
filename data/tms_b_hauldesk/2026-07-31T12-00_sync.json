@@ -1,0 +1,39 @@
+{
+  "carriers": [
+    {
+      "carrier_id": "CARR-DELTA",
+      "carrier_name": "Hill Country Carriers",
+      "dot_no": "DOT-310004",
+      "home_city": "New Braunfels",
+      "home_state": "TX",
+      "mc_no": "MC-120004",
+      "phone": "214-555-1010"
+    }
+  ],
+  "loads": [
+    {
+      "carrier_ref": "CARR-DELTA",
+      "customer_code": "CUST-RECENT",
+      "customer_name": "Recent Demo Shipper",
+      "del_arrived_at": "2026-07-31 12:00:00",
+      "del_city": "Irving",
+      "del_date": "2026-07-31",
+      "del_state": "TX",
+      "del_zip": "75039",
+      "dist_km": "370.15",
+      "entered_at": "2026-07-30 00:00:00",
+      "equip": "F",
+      "load_num": "HD-203",
+      "pu_city": "Georgetown",
+      "pu_date": "2026-07-30",
+      "pu_departed_at": "2026-07-31 12:00:00",
+      "pu_state": "TX",
+      "pu_zip": "78626",
+      "status_code": 90,
+      "updated_at": "2026-07-31 12:00:00",
+      "weight_kg": "15875.73"
+    }
+  ],
+  "rates": [],
+  "synced_at": "2026-07-31 12:00:00"
+}

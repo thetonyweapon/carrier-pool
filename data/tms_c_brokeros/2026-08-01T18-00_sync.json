@@ -1,0 +1,196 @@
+{
+  "records": [
+    {
+      "CreatedDate": "2026-07-31T23:00:00.000+0000",
+      "Id": "BROKEROS-301",
+      "LastModifiedDate": "2026-08-01T23:00:00.000+0000",
+      "Name": "BOS000301",
+      "bos__Carrier_Rate__c": null,
+      "bos__Carrier__c": null,
+      "bos__Customer_Rate__c": "2585.00",
+      "bos__Customer__c": "CUST-301",
+      "bos__Distance_Miles__c": "248.0",
+      "bos__Equipment_Type__c": "Dry Van",
+      "bos__Line_Items__r": [
+        {
+          "bos__Commodity__c": "General freight",
+          "bos__Pallet_Count__c": "20",
+          "bos__Weight_Units__c": "pounds",
+          "bos__Weight__c": "36000.0"
+        }
+      ],
+      "bos__Load_Status__c": "Ready to Book",
+      "bos__Stops__r": [
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": false,
+          "bos__Is_Pickup__c": true,
+          "bos__Location__c": "LOC-301-P",
+          "bos__Number__c": "1",
+          "bos__Scheduled_Date__c": "2026-08-01"
+        },
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": true,
+          "bos__Is_Pickup__c": false,
+          "bos__Location__c": "LOC-301-D",
+          "bos__Number__c": "2",
+          "bos__Scheduled_Date__c": "2026-08-01"
+        }
+      ]
+    },
+    {
+      "CreatedDate": "2026-08-01T05:00:00.000+0000",
+      "Id": "BROKEROS-302",
+      "LastModifiedDate": "2026-08-01T23:00:00.000+0000",
+      "Name": "BOS000302",
+      "bos__Carrier_Rate__c": null,
+      "bos__Carrier__c": null,
+      "bos__Customer_Rate__c": "2860.00",
+      "bos__Customer__c": "CUST-302",
+      "bos__Distance_Miles__c": "265.0",
+      "bos__Equipment_Type__c": "Reefer",
+      "bos__Line_Items__r": [
+        {
+          "bos__Commodity__c": "General freight",
+          "bos__Pallet_Count__c": "20",
+          "bos__Weight_Units__c": "pounds",
+          "bos__Weight__c": "40000.0"
+        }
+      ],
+      "bos__Load_Status__c": "Ready to Book",
+      "bos__Stops__r": [
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": false,
+          "bos__Is_Pickup__c": true,
+          "bos__Location__c": "LOC-302-P",
+          "bos__Number__c": "1",
+          "bos__Scheduled_Date__c": "2026-08-01"
+        },
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": true,
+          "bos__Is_Pickup__c": false,
+          "bos__Location__c": "LOC-302-D",
+          "bos__Number__c": "2",
+          "bos__Scheduled_Date__c": "2026-08-02"
+        }
+      ]
+    },
+    {
+      "CreatedDate": "2026-08-01T11:00:00.000+0000",
+      "Id": "BROKEROS-303",
+      "LastModifiedDate": "2026-08-01T23:00:00.000+0000",
+      "Name": "BOS000303",
+      "bos__Carrier_Rate__c": null,
+      "bos__Carrier__c": null,
+      "bos__Customer_Rate__c": "2765.00",
+      "bos__Customer__c": "CUST-303",
+      "bos__Distance_Miles__c": "275.0",
+      "bos__Equipment_Type__c": "Flatbed",
+      "bos__Line_Items__r": [
+        {
+          "bos__Commodity__c": "General freight",
+          "bos__Pallet_Count__c": "20",
+          "bos__Weight_Units__c": "pounds",
+          "bos__Weight__c": "38000.0"
+        }
+      ],
+      "bos__Load_Status__c": "Ready to Book",
+      "bos__Stops__r": [
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": false,
+          "bos__Is_Pickup__c": true,
+          "bos__Location__c": "LOC-303-P",
+          "bos__Number__c": "1",
+          "bos__Scheduled_Date__c": "2026-08-01"
+        },
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": true,
+          "bos__Is_Pickup__c": false,
+          "bos__Location__c": "LOC-303-D",
+          "bos__Number__c": "2",
+          "bos__Scheduled_Date__c": "2026-08-02"
+        }
+      ]
+    }
+  ],
+  "referenced_records": {
+    "CARRIER-301": {
+      "Name": "Bluebonnet Transport",
+      "record_type": "Carrier",
+      "type": "Account"
+    },
+    "CARRIER-302": {
+      "Name": "Lone Star Logistics",
+      "record_type": "Carrier",
+      "type": "Account"
+    },
+    "CARRIER-303": {
+      "Name": "Triangle Heavy Haul",
+      "record_type": "Carrier",
+      "type": "Account"
+    },
+    "CUST-301": {
+      "Name": "Today Demo Shipper",
+      "record_type": "Customer",
+      "type": "Account"
+    },
+    "CUST-302": {
+      "Name": "Today Demo Shipper",
+      "record_type": "Customer",
+      "type": "Account"
+    },
+    "CUST-303": {
+      "Name": "Today Demo Shipper",
+      "record_type": "Customer",
+      "type": "Account"
+    },
+    "LOC-301-D": {
+      "Name": "Houston Distribution",
+      "bos__City__c": "Houston",
+      "bos__Postal_Code__c": "77002",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-301-P": {
+      "Name": "Dallas Crossdock",
+      "bos__City__c": "Dallas",
+      "bos__Postal_Code__c": "75201",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-302-D": {
+      "Name": "Katy Distribution",
+      "bos__City__c": "Katy",
+      "bos__Postal_Code__c": "77494",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-302-P": {
+      "Name": "Arlington Crossdock",
+      "bos__City__c": "Arlington",
+      "bos__Postal_Code__c": "76011",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-303-D": {
+      "Name": "San Antonio Distribution",
+      "bos__City__c": "San Antonio",
+      "bos__Postal_Code__c": "78205",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-303-P": {
+      "Name": "Dallas Crossdock",
+      "bos__City__c": "Dallas",
+      "bos__Postal_Code__c": "75201",
+      "bos__State__c": "TX",
+      "type": "Location"
+    }
+  },
+  "synced_at": "2026-08-01T23:00:00.000+0000"
+}
