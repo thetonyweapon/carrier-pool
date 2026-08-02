@@ -473,6 +473,16 @@ evaluation; never reuse the documented fallback values.
 Open <http://localhost:3000>. The frontend nginx container proxies `/api/` to
 the backend on port 8000.
 
+### Resource controls
+
+The backend uses bounded PostgreSQL connection pools and applies statement and
+idle-transaction timeouts to each PostgreSQL connection. Ingestion rejects files
+larger than `INGESTION_MAX_FILE_BYTES` or payloads with more than
+`INGESTION_MAX_RECORDS`; these default to 10 MiB and 1,000 records. Tune the
+`DB_*` and `INGESTION_*` settings for workload capacity while keeping the p95
+targets documented in `openspec/specs/platform-hardening/spec.md` as acceptance
+criteria.
+
 ### Option B: Standalone backend + frontend
 
 Start a Postgres instance and point `DATABASE_URL` at it, then run the backend

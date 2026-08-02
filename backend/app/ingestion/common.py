@@ -1,15 +1,42 @@
 import re
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.models import Broker, Carrier, CarrierIdentity
 
 
 class CarrierIdentityConflictError(ValueError):
     """Carrier identifiers disagree with an existing broker-scoped identity."""
+
+
+class IngestionLimitError(ValueError):
+    """A source file exceeds configured resource limits."""
+
+
+def enforce_ingestion_file_size(path: Path) -> None:
+    if path.stat().st_size > settings.ingestion_max_file_bytes:
+        raise IngestionLimitError(
+            f"sync file exceeds {settings.ingestion_max_file_bytes} byte limit"
+        )
+
+
+def enforce_ingestion_limits(raw_contents: bytes, payload: object) -> None:
+    if len(raw_contents) > settings.ingestion_max_file_bytes:
+        raise IngestionLimitError(
+            f"sync file exceeds {settings.ingestion_max_file_bytes} byte limit"
+        )
+    if not isinstance(payload, dict):
+        return
+    records = payload.get("loads", payload.get("records", []))
+    if isinstance(records, list) and len(records) > settings.ingestion_max_records:
+        raise IngestionLimitError(
+            f"sync file exceeds {settings.ingestion_max_records} record limit"
+        )
 
 
 def normalize_carrier_identifier(value: Optional[str]) -> Optional[str]:
