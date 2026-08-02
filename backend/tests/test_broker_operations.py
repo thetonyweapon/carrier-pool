@@ -27,6 +27,7 @@ from app.models import (
     StopType,
     TmsType,
 )
+from tests.auth_helpers import auth_headers
 
 NOW = datetime(2026, 7, 16, 12, tzinfo=timezone.utc)
 
@@ -53,6 +54,7 @@ def client(db_session: Session):
 
     application.dependency_overrides[get_db] = override_db
     with TestClient(application) as test_client:
+        test_client.headers.update(auth_headers())
         yield test_client
 
 
@@ -256,7 +258,7 @@ def test_load_list_detail_and_filters_are_broker_scoped(
         == 4
     )
     assert client.get("/brokers/broker-a/loads/foreign-load").status_code == 404
-    assert client.get("/brokers/broker-b/loads/target").status_code == 404
+    assert client.get("/brokers/broker-b/loads/target").status_code == 403
 
 
 @pytest.mark.parametrize("field", ["status", "equipment", "assignment_state"])
@@ -357,6 +359,12 @@ def test_assignment_overlay_lifecycle_and_downstream_gating(
         )
         == 2
     )
+    latest_event = db_session.scalars(
+        select(PlatformAssignmentEvent)
+        .where(PlatformAssignmentEvent.load_id == target_id)
+        .order_by(PlatformAssignmentEvent.assignment_version.desc())
+    ).first()
+    assert latest_event.demo_actor == "test-user"
 
 
 def test_assignment_rejects_noncanonical_candidate_resolution(

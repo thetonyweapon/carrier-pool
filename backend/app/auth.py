@@ -21,16 +21,22 @@ _bearer = HTTPBearer(auto_error=False)
 class BrokerPrincipal:
     broker_id: str
     actor: str
+    subject: str
 
 
 def issue_demo_token(broker_id: str, actor: str = "demo-user") -> str:
+    if settings.auth_mode != "mock":
+        raise ValueError("mock authentication is not enabled")
     if not settings.auth_secret:
         raise ValueError("AUTH_SECRET is not configured")
     payload = _encode_payload(
         {
+            "aud": settings.auth_audience,
             "broker_id": broker_id,
             "actor": actor,
             "expires_at": int(time.time()) + settings.auth_token_ttl_seconds,
+            "iss": settings.auth_issuer,
+            "sub": actor,
         }
     )
     return f"{payload}.{_signature(payload)}"
@@ -41,7 +47,7 @@ def get_current_principal(
 ) -> BrokerPrincipal:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=401, detail="bearer authentication required")
-    if not settings.auth_secret:
+    if settings.auth_mode != "mock" or not settings.auth_secret:
         raise HTTPException(status_code=503, detail="authentication is not configured")
     try:
         payload, signature = credentials.credentials.split(".", 1)
@@ -49,14 +55,25 @@ def get_current_principal(
         if not hmac.compare_digest(signature, expected):
             raise ValueError("invalid signature")
         decoded = json.loads(_decode_payload(payload))
+        audience = str(decoded["aud"])
         broker_id = str(decoded["broker_id"])
         actor = str(decoded["actor"])
         expires_at = int(decoded["expires_at"])
+        issuer = str(decoded["iss"])
+        subject = str(decoded["sub"])
     except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
         raise HTTPException(status_code=401, detail="invalid bearer token") from exc
-    if expires_at <= int(time.time()) or not broker_id or not actor:
+    if (
+        expires_at <= int(time.time())
+        or audience != settings.auth_audience
+        or issuer != settings.auth_issuer
+        or not broker_id
+        or not actor
+        or not subject
+        or subject != actor
+    ):
         raise HTTPException(status_code=401, detail="expired bearer token")
-    return BrokerPrincipal(broker_id=broker_id, actor=actor)
+    return BrokerPrincipal(broker_id=broker_id, actor=actor, subject=subject)
 
 
 def require_broker_principal(

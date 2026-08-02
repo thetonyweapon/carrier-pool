@@ -22,6 +22,7 @@ from app.models import (
     StopType,
     TmsType,
 )
+from tests.auth_helpers import auth_headers
 
 NOW = datetime(2026, 7, 16, tzinfo=timezone.utc)
 
@@ -388,6 +389,7 @@ def test_lane_api_returns_metadata_and_enforces_errors(db_session: Session) -> N
 
     application.dependency_overrides[get_db] = override_db
     with TestClient(application) as client:
+        client.headers.update(auth_headers())
         response = client.get("/brokers/broker-a/loads/target/lane-intelligence")
         missing = client.get("/brokers/broker-a/loads/missing/lane-intelligence")
         unsupported = client.get(
@@ -424,6 +426,7 @@ def test_lane_api_returns_422_for_non_derivable_load(db_session: Session) -> Non
 
     application.dependency_overrides[get_db] = override_db
     with TestClient(application) as client:
+        client.headers.update(auth_headers())
         response = client.get("/brokers/broker-a/loads/invalid/lane-intelligence")
 
     assert response.status_code == 422

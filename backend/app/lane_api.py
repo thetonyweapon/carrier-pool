@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.auth import BrokerPrincipal, require_broker_principal
 from app.database import get_db
 from app.lane_geography import NORMALIZATION_VERSION
 from app.lane_intelligence import (
@@ -57,8 +58,10 @@ def lane_intelligence(
     broker_id: str,
     load_id: str,
     normalization_version: str = NORMALIZATION_VERSION,
+    principal: BrokerPrincipal = Depends(require_broker_principal),
     db: Session = Depends(get_db),
 ) -> LaneIntelligenceResponse:
+    del principal
     try:
         result = get_lane_intelligence(db, broker_id, load_id, normalization_version)
     except UnsupportedNormalizationVersion as exc:

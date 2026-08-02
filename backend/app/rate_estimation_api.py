@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.auth import BrokerPrincipal, require_broker_principal
 from app.database import get_db
 from app.lane_geography import NORMALIZATION_VERSION
 from app.lane_intelligence import LaneNotDerivable, UnsupportedNormalizationVersion
@@ -95,8 +96,10 @@ def carrier_rate_estimate(
     load_id: str,
     estimation_version: str = ESTIMATION_VERSION,
     normalization_version: str = NORMALIZATION_VERSION,
+    principal: BrokerPrincipal = Depends(require_broker_principal),
     db: Session = Depends(get_db),
 ) -> RateEstimateResponse:
+    del principal
     try:
         result = estimate_carrier_rate(
             db,

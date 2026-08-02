@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.auth import BrokerPrincipal, require_broker_principal
 from app.carrier_recommendations import (
     MAX_RECOMMENDATIONS,
     SCORING_VERSION,
@@ -75,8 +76,10 @@ def carrier_recommendations(
     scoring_version: str = SCORING_VERSION,
     normalization_version: str = NORMALIZATION_VERSION,
     limit: int = Query(MAX_RECOMMENDATIONS, ge=1, le=MAX_RECOMMENDATIONS),
+    principal: BrokerPrincipal = Depends(require_broker_principal),
     db: Session = Depends(get_db),
 ) -> CarrierRecommendationsResponse:
+    del principal
     try:
         result = get_carrier_recommendations(
             db,

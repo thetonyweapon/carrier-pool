@@ -35,6 +35,7 @@ from app.shared_carrier_pool import (
     set_shared_pool_policy,
 )
 from app.shared_rate_estimation import get_shared_rate_estimate
+from tests.auth_helpers import auth_headers
 
 NOW = datetime(2026, 7, 16, 12, tzinfo=timezone.utc)
 
@@ -64,6 +65,7 @@ def client(db_session: Session, monkeypatch):
 
     application.dependency_overrides[get_db] = override_db
     with TestClient(application) as test_client:
+        test_client.headers.update(auth_headers())
         yield test_client
 
 

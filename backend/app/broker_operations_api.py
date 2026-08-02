@@ -8,6 +8,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.auth import BrokerPrincipal, require_broker_principal
 from app.config import settings
 from app.database import get_db
 from app.models import (
@@ -285,8 +286,10 @@ def loads(
     equipment: Optional[EquipmentType] = None,
     assignment_state: Optional[str] = Query(None, pattern="^(assigned|unassigned)$"),
     search: Optional[str] = None,
+    principal: BrokerPrincipal = Depends(require_broker_principal),
     db: Session = Depends(get_db),
 ) -> LoadListResponse:
+    del principal
     pickup_schedule = (
         select(func.min(LoadStop.scheduled_start_at))
         .where(LoadStop.broker_id == broker_id, LoadStop.load_id == Load.id)
@@ -395,7 +398,13 @@ def loads(
 
 
 @router.get("/brokers/{broker_id}/loads/{load_id}", response_model=LoadDetailResponse)
-def load_detail(broker_id: str, load_id: str, db: Session = Depends(get_db)) -> LoadDetailResponse:
+def load_detail(
+    broker_id: str,
+    load_id: str,
+    principal: BrokerPrincipal = Depends(require_broker_principal),
+    db: Session = Depends(get_db),
+) -> LoadDetailResponse:
+    del principal
     load = _load_or_404(db, broker_id, load_id)
     customer, source_name, source_id, stops, assignment, assigned_carrier, canonical_carrier = (
         _related(db, load)
@@ -418,8 +427,13 @@ def load_detail(broker_id: str, load_id: str, db: Session = Depends(get_db)) -> 
 
 @router.post("/brokers/{broker_id}/loads/{load_id}/assignments", response_model=AssignmentResponse)
 def assign_load(
-    broker_id: str, load_id: str, request: AssignmentRequest, db: Session = Depends(get_db)
+    broker_id: str,
+    load_id: str,
+    request: AssignmentRequest,
+    principal: BrokerPrincipal = Depends(require_broker_principal),
+    db: Session = Depends(get_db),
 ) -> AssignmentResponse:
+    actor = principal.actor
     if not settings.demo_mode:
         raise HTTPException(status_code=404, detail="not found")
     load = _load_or_404(db, broker_id, load_id)
@@ -478,7 +492,7 @@ def assign_load(
             load_id=load_id,
             carrier_id=carrier.id,
             candidate_id=candidate_id,
-            demo_actor=request.demo_actor,
+            demo_actor=actor,
             assignment_version=1,
             created_at=now,
             updated_at=now,
@@ -497,7 +511,7 @@ def assign_load(
             carrier_id=carrier.id,
             candidate_id=candidate_id,
             assignment_version=assignment.assignment_version,
-            demo_actor=request.demo_actor,
+            demo_actor=actor,
             created_at=now,
         )
     )
@@ -511,8 +525,12 @@ def assign_load(
     "/brokers/{broker_id}/carrier-candidates/{candidate_id}", response_model=CandidateDetailResponse
 )
 def carrier_candidate(
-    broker_id: str, candidate_id: str, db: Session = Depends(get_db)
+    broker_id: str,
+    candidate_id: str,
+    principal: BrokerPrincipal = Depends(require_broker_principal),
+    db: Session = Depends(get_db),
 ) -> CandidateDetailResponse:
+    del principal
     if candidate_id.startswith("identity:"):
         identity_id = candidate_id.split(":", 1)[1]
         identity = db.scalar(
