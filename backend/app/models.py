@@ -100,6 +100,14 @@ class IngestionStatus(str, Enum):
     FAILED = "failed"
 
 
+class IngestionJobStatus(str, Enum):
+    QUEUED = "queued"
+    PROCESSING = "processing"
+    SUCCEEDED = "succeeded"
+    RETRY_WAIT = "retry_wait"
+    DEAD_LETTER = "dead_letter"
+
+
 TMS_TYPE = SqlEnum(
     TmsType,
     name="tms_type",
@@ -138,6 +146,13 @@ RATE_SIDE = SqlEnum(
 INGESTION_STATUS = SqlEnum(
     IngestionStatus,
     name="ingestion_status",
+    native_enum=False,
+    create_constraint=True,
+    values_callable=enum_values,
+)
+INGESTION_JOB_STATUS = SqlEnum(
+    IngestionJobStatus,
+    name="ingestion_job_status",
     native_enum=False,
     create_constraint=True,
     values_callable=enum_values,
@@ -678,4 +693,42 @@ class IngestionFile(Base):
             "broker_id", "broker_source_id", "id", name="uq_ingestion_files_broker_source_id_id"
         ),
         UniqueConstraint("broker_source_id", "filename", name="uq_ingestion_files_source_filename"),
+    )
+
+
+class IngestionJob(Base):
+    """Durable scheduling and failure state around one source file."""
+
+    __tablename__ = "ingestion_jobs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    broker_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    broker_source_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_path: Mapped[str] = mapped_column(String(2048), nullable=False)
+    checksum: Mapped[str] = mapped_column(String(64), nullable=False)
+    synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[IngestionJobStatus] = mapped_column(
+        INGESTION_JOB_STATUS, nullable=False, default=IngestionJobStatus.QUEUED
+    )
+    attempt_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    lease_owner: Mapped[Optional[str]] = mapped_column(String(255))
+    lease_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    failure_class: Mapped[Optional[str]] = mapped_column(String(255))
+    error_message: Mapped[Optional[str]] = mapped_column(String(2000))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["broker_id", "broker_source_id"],
+            ["broker_sources.broker_id", "broker_sources.id"],
+            name="fk_ingestion_jobs_source",
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("attempt_count >= 0", name="ck_ingestion_jobs_attempt_nonnegative"),
+        UniqueConstraint("broker_source_id", "filename", name="uq_ingestion_jobs_source_filename"),
+        Index("ix_ingestion_jobs_status_available", "status", "available_at", "id"),
     )
