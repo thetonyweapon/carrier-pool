@@ -1,5 +1,26 @@
 # Decisions
 
+## Platform Hardening Contract
+
+**Hardening is delivered as sequential, independently reviewed pull requests
+on the fork, with medium-or-higher review findings fixed before merge.**
+
+- The hardening sequence starts with the planning contract, then covers mock
+  authentication and tenant authorization, deployment safety, PostgreSQL
+  integration coverage, durable ingestion, observability, assignment
+  concurrency, scale controls, property-based tests, CI/supply-chain controls,
+  and production runbooks.
+- Authentication is provider-neutral in this program. Tests use deterministic
+  mock issuer and JWKS responses; no external identity provider is contacted.
+- Production assumes managed PostgreSQL, a separate non-demo deployment
+  profile, a filesystem-polling ingestion worker behind a storage abstraction,
+  JSON logs, Prometheus metrics, and OpenTelemetry traces.
+- The initial targets are Python 3.12, PostgreSQL 16, p95 under 500 ms for
+  paginated load list/detail requests, p95 under 2 seconds for broker-scoped
+  analytics at 100,000 loads per tenant, RPO 15 minutes, and RTO 1 hour.
+- Lower-severity findings discovered during milestone reviews are filed as
+  GitHub issues on the fork rather than silently expanding milestone scope.
+
 ## Project Structure & Stack
 
 **Python backend (FastAPI + SQLAlchemy 2.0 + Pydantic v2) with PostgreSQL 16, Docker Compose.**
