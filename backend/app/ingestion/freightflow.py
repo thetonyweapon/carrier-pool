@@ -213,6 +213,8 @@ def ingest_contents(
         ) from exc
 
     return IngestionResult(filename=filename, processed_loads=len(sync.loads), duplicate=False)
+
+
 def _ingest_load(
     session: Session,
     source: BrokerSource,
