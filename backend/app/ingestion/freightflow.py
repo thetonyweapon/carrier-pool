@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import func, select
@@ -141,12 +141,7 @@ def ingest_contents(
     filename: str,
     raw_contents: bytes,
 ) -> IngestionResult:
-    try:
-        raw_payload = json.loads(raw_contents)
-        enforce_ingestion_limits(raw_contents, raw_payload)
-        sync = FreightFlowSync.model_validate(raw_payload)
-    except (json.JSONDecodeError, ValidationError, IngestionLimitError) as exc:
-        raise InvalidFreightFlowPayloadError("Invalid FreightFlow sync payload") from exc
+    raw_payload, sync = _parse_payload(raw_contents)
 
     _require_timezone(sync.syncedAt, "syncedAt")
     synced_at = _to_utc(sync.syncedAt)
@@ -213,6 +208,15 @@ def ingest_contents(
         ) from exc
 
     return IngestionResult(filename=filename, processed_loads=len(sync.loads), duplicate=False)
+
+
+def _parse_payload(raw_contents: bytes) -> Tuple[dict, FreightFlowSync]:
+    try:
+        raw_payload = json.loads(raw_contents)
+        enforce_ingestion_limits(raw_contents, raw_payload)
+        return raw_payload, FreightFlowSync.model_validate(raw_payload)
+    except (UnicodeDecodeError, json.JSONDecodeError, ValidationError, IngestionLimitError) as exc:
+        raise InvalidFreightFlowPayloadError("Invalid FreightFlow sync payload") from exc
 
 
 def _ingest_load(
