@@ -109,6 +109,54 @@ export type Recs = {
   recommendations: Recommendation[];
   unscored_carriers: UnscoredCarrier[];
 };
+export type SharedRecommendation = {
+  scope: "shared";
+  rank: number;
+  candidate_id: string;
+  name: string;
+  match_quality: string;
+  equipment_type: string;
+  evidence_count_bucket: string;
+  contributing_broker_count_bucket: string;
+};
+export type SharedRecs = {
+  broker_id: string;
+  load_id: string;
+  policy_version: string;
+  policy_revision: number;
+  scoring_version: string;
+  normalization_version: string;
+  recommendations: SharedRecommendation[];
+};
+export type SharedRate = {
+  scope: "shared";
+  broker_id: string;
+  load_id: string;
+  policy_version: string;
+  policy_revision: number;
+  estimation_version: string;
+  normalization_version: string;
+  status: string;
+  estimate: {
+    amount?: string | null;
+    low?: string | null;
+    high?: string | null;
+    calculation_mode?: string | null;
+  };
+  confidence: string;
+  match_scope?: string | null;
+  equipment_scope?: string | null;
+  sample_count_bucket: string;
+  contributing_broker_count_bucket: string;
+  selected_tier?: string | null;
+  lookback_days?: number | null;
+};
+export type SharedPolicy = {
+  broker_id: string;
+  enabled: boolean;
+  policy_revision: number;
+  attribute_profile?: string | null;
+};
 export type CandidateMember = Carrier & {
   source_id: string;
   home_city?: string | null;
@@ -125,6 +173,7 @@ export type Candidate = {
 const base =
   import.meta.env.VITE_API_BASE_URL ||
   (typeof window !== "undefined" ? `${window.location.origin}/api` : "/api");
+const authStorageKey = "carrier-pool.demo-token";
 
 export class ApiError extends Error {
   status?: number;
@@ -153,6 +202,8 @@ function errorMessage(detail: unknown): string {
 
 export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
+  const token = typeof window !== "undefined" ? window.sessionStorage.getItem(authStorageKey) : null;
+  if (token && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
   if (typeof options.body === "string" && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
@@ -170,10 +221,31 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
   return response.json() as Promise<T>;
 }
 
+export function setAuthToken(token: string): void {
+  if (typeof window !== "undefined") window.sessionStorage.setItem(authStorageKey, token);
+}
+
+export function clearAuthToken(): void {
+  if (typeof window !== "undefined") window.sessionStorage.removeItem(authStorageKey);
+}
+
 const segment = (value: string) => encodeURIComponent(value);
 
 export const api = {
   brokers: (signal?: AbortSignal) => request<Summary[]>("/demo/brokers", { signal }),
+  demoAuth: (broker: string, signal?: AbortSignal) =>
+    request<{ access_token: string; token_type: string; broker_id: string }>("/demo/auth", {
+      method: "POST",
+      body: JSON.stringify({ broker_id: broker }),
+      signal,
+    }),
+  sharedPolicy: (broker: string, signal?: AbortSignal) =>
+    request<SharedPolicy>(`/brokers/${segment(broker)}/shared-pool-policy`, { signal }),
+  updateSharedPolicy: (broker: string, enabled: boolean) =>
+    request<SharedPolicy>(`/brokers/${segment(broker)}/shared-pool-policy`, {
+      method: "PUT",
+      body: JSON.stringify({ enabled }),
+    }),
   loads: (broker: string, query: string, signal?: AbortSignal) =>
     request<LoadListResponse>(`/brokers/${segment(broker)}/loads?${query}`, { signal }),
   detail: (broker: string, load: string, signal?: AbortSignal) =>
@@ -189,6 +261,16 @@ export const api = {
   recs: (broker: string, load: string, signal?: AbortSignal) =>
     request<Recs>(
       `/brokers/${segment(broker)}/loads/${segment(load)}/carrier-recommendations?limit=20`,
+      { signal },
+    ),
+  sharedRecs: (broker: string, load: string, signal?: AbortSignal) =>
+    request<SharedRecs>(
+      `/brokers/${segment(broker)}/loads/${segment(load)}/shared-carrier-recommendations`,
+      { signal },
+    ),
+  sharedRate: (broker: string, load: string, signal?: AbortSignal) =>
+    request<SharedRate>(
+      `/brokers/${segment(broker)}/loads/${segment(load)}/shared-carrier-rate-estimate`,
       { signal },
     ),
   candidate: (broker: string, candidate: string, signal?: AbortSignal) =>

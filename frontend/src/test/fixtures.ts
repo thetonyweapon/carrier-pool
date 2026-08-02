@@ -1,4 +1,4 @@
-import type { Candidate, Detail, Lane, Load, LoadListResponse, Rate, Recs, Summary } from "../api";
+import type { Candidate, Detail, Lane, Load, LoadListResponse, Rate, Recs, SharedRate, SharedRecs, Summary } from "../api";
 
 export const demoBrokers: Summary[] = [
   { id: "broker-a", name: "Ithaca Freight Partners" },
@@ -88,6 +88,46 @@ export const rate: Rate = {
 };
 
 export const recs: Recs = { recommendations: [], unscored_carriers: [] };
+
+export const sharedRecs: SharedRecs = {
+  broker_id: "broker-a",
+  load_id: "load-1",
+  policy_version: "shared-carrier-pool-v1",
+  policy_revision: 1,
+  scoring_version: "shared-carrier-recommendations-v1",
+  normalization_version: "tx-metro-v1",
+  recommendations: [
+    {
+      scope: "shared",
+      rank: 1,
+      candidate_id: "shared:opaque-candidate",
+      name: "Lone Star Transport",
+      match_quality: "exact",
+      equipment_type: "dry_van",
+      evidence_count_bucket: "3-5",
+      contributing_broker_count_bucket: "3-5",
+    },
+  ],
+};
+
+export const sharedRate: SharedRate = {
+  scope: "shared",
+  broker_id: "broker-a",
+  load_id: "load-1",
+  policy_version: "shared-carrier-pool-v1",
+  policy_revision: 1,
+  estimation_version: "shared-carrier-rate-estimation-v1",
+  normalization_version: "tx-metro-v1",
+  status: "estimated",
+  estimate: { amount: "1850.00", low: "1750.00", high: "1950.00", calculation_mode: "median_rate_per_mile" },
+  confidence: "medium",
+  match_scope: "exact",
+  equipment_scope: "equipment",
+  sample_count_bucket: "3-5",
+  contributing_broker_count_bucket: "3-5",
+  selected_tier: "exact_lane_equipment",
+  lookback_days: 180,
+};
 
 export const candidate: Candidate = {
   candidate_id: "carrier:carrier-1",

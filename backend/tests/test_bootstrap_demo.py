@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.models import Base, Broker, BrokerSource, TmsType
 from scripts import bootstrap_demo
@@ -12,7 +12,12 @@ from scripts import bootstrap_demo
 def bootstrap_db(tmp_path, monkeypatch):
     engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'demo.sqlite'}")
     Base.metadata.create_all(engine)
-    monkeypatch.setattr(bootstrap_demo, "SessionLocal", lambda: Session(engine))
+    # Mirror app.database.SessionLocal: autoflush=False so the bootstrap path is
+    # exercised exactly as it runs under docker compose (regression for the
+    # "broker not found" failure when set_shared_pool_policy could not see
+    # freshly-added, unflushed brokers).
+    session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+    monkeypatch.setattr(bootstrap_demo, "SessionLocal", session_factory)
     yield engine
     engine.dispose()
 

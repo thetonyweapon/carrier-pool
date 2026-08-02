@@ -21,6 +21,11 @@ import {
   Rate,
   Recommendation,
   Recs,
+  clearAuthToken,
+  setAuthToken,
+  SharedPolicy,
+  SharedRate,
+  SharedRecs,
 } from "./api";
 import { date, day, location, money, percentage } from "./formatters";
 import {
@@ -98,6 +103,11 @@ type ShellContext = {
   brokerLoading: boolean;
   brokerError: unknown;
   retryBrokers: () => void;
+  authBrokerId?: string;
+  authError: unknown;
+  sharedPolicy?: SharedPolicy;
+  sharedPolicyUpdating: boolean;
+  toggleSharedPolicy: () => void;
 };
 
 function Shell() {
@@ -105,6 +115,10 @@ function Shell() {
   const [brokerLoading, setBrokerLoading] = useState(true);
   const [brokerError, setBrokerError] = useState<unknown>();
   const [brokerAttempt, setBrokerAttempt] = useState(0);
+  const [authBrokerId, setAuthBrokerId] = useState<string>();
+  const [authError, setAuthError] = useState<unknown>();
+  const [sharedPolicy, setSharedPolicy] = useState<SharedPolicy>();
+  const [sharedPolicyUpdating, setSharedPolicyUpdating] = useState(false);
   const p = useParams();
   const nav = useNavigate();
   const retryBrokers = () => setBrokerAttempt((attempt) => attempt + 1);
@@ -121,6 +135,51 @@ function Shell() {
       .finally(() => setBrokerLoading(false));
     return () => controller.abort();
   }, [brokerAttempt]);
+  useEffect(() => {
+    if (!p.brokerId) {
+      clearAuthToken();
+      setAuthBrokerId(undefined);
+      setAuthError(undefined);
+      setSharedPolicy(undefined);
+      setSharedPolicyUpdating(false);
+      return;
+    }
+    const brokerId = p.brokerId;
+    const controller = new AbortController();
+    let cancelled = false;
+    clearAuthToken();
+    setAuthBrokerId(undefined);
+    setAuthError(undefined);
+    setSharedPolicy(undefined);
+    setSharedPolicyUpdating(false);
+    api
+      .demoAuth(brokerId, controller.signal)
+      .then((response) => {
+        if (cancelled) return undefined;
+        setAuthToken(response.access_token);
+        setAuthBrokerId(brokerId);
+        return api.sharedPolicy(brokerId, controller.signal);
+      })
+      .then((policy) => {
+        if (!cancelled && policy) setSharedPolicy(policy);
+      })
+      .catch((error) => {
+        if (!cancelled && !isAbortError(error)) setAuthError(error);
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [p.brokerId]);
+  const toggleSharedPolicy = () => {
+    if (!p.brokerId || !sharedPolicy || sharedPolicyUpdating) return;
+    setSharedPolicyUpdating(true);
+    api
+      .updateSharedPolicy(p.brokerId, !sharedPolicy.enabled)
+      .then(setSharedPolicy)
+      .catch(setAuthError)
+      .finally(() => setSharedPolicyUpdating(false));
+  };
   return (
     <div className="app">
       <a className="skip-link" href="#main-content">Skip to content</a>
@@ -150,12 +209,35 @@ function Shell() {
             ))}
           </select>
         </label>
+        {p.brokerId && authBrokerId === p.brokerId && sharedPolicy && (
+          <button
+            className={`pool-toggle ${sharedPolicy.enabled ? "enabled" : ""}`}
+            aria-pressed={sharedPolicy.enabled}
+            disabled={sharedPolicyUpdating}
+            aria-busy={sharedPolicyUpdating}
+            onClick={toggleSharedPolicy}
+          >
+            SHARED POOL {sharedPolicy.enabled ? "ON" : "OFF"}
+          </button>
+        )}
       </header>
       <div className="notice">
         <strong>DEMO MODE</strong> Assignments are temporary platform overlays
         for evaluation. They do not update canonical TMS state.
       </div>
-      <Outlet context={{ brokers, brokerLoading, brokerError, retryBrokers }} />
+      <Outlet
+        context={{
+          brokers,
+          brokerLoading,
+          brokerError,
+          retryBrokers,
+          authBrokerId,
+          authError,
+          sharedPolicy,
+          sharedPolicyUpdating,
+          toggleSharedPolicy,
+        }}
+      />
     </div>
   );
 }
@@ -166,6 +248,7 @@ function Status({ value }: { value: string }) {
 }
 export function Queue() {
   const { brokerId } = useParams();
+  const { authBrokerId, authError } = useOutletContext<ShellContext>();
   const [sp, setSp] = useSearchParams();
   const routeLocation = useLocation();
   const applied = parseQueueSearchParams(sp);
@@ -182,7 +265,7 @@ export function Queue() {
     setFilters(applied.filters);
   }, [sp.toString()]);
   useEffect(() => {
-    if (!brokerId) return;
+    if (!brokerId || authBrokerId !== brokerId) return;
     const controller = new AbortController();
     setLoading(true);
     setData(null);
@@ -197,7 +280,7 @@ export function Queue() {
       })
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, [brokerId, sp.toString()]);
+  }, [brokerId, authBrokerId, sp.toString()]);
   const apply = (e: React.FormEvent) => {
     e.preventDefault();
     setSp(buildQueueSearchParams(filters, 1));
@@ -212,6 +295,14 @@ export function Queue() {
         </p>
       </main>
     );
+  if (authError)
+    return (
+      <main id="main-content">
+        <ErrorBox error={authError} />
+      </main>
+    );
+  if (authBrokerId !== brokerId)
+    return <main className="state" role="status">Authenticating broker workspace…</main>;
   return (
     <main id="main-content">
       <div className="page-title">
@@ -400,16 +491,20 @@ function Financials({ load }: { load: Load }) {
     </div>
   );
 }
-export function Analytics({ b, l }: { b: string; l: string }) {
+export function Analytics({ b, l, sharedEnabled }: { b: string; l: string; sharedEnabled: boolean }) {
   const [lane, setLane] = useState<Lane>();
   const [rate, setRate] = useState<Rate>();
   const [recs, setRecs] = useState<Recs>();
+  const [sharedRate, setSharedRate] = useState<SharedRate>();
+  const [sharedRecs, setSharedRecs] = useState<SharedRecs>();
   const [errs, setErrs] = useState<Record<string, unknown>>({});
   useEffect(() => {
     const ctrl = new AbortController();
     setLane(undefined);
     setRate(undefined);
     setRecs(undefined);
+    setSharedRate(undefined);
+    setSharedRecs(undefined);
     setErrs({});
     const loadPanel = <T,>(
       key: string,
@@ -423,8 +518,12 @@ export function Analytics({ b, l }: { b: string; l: string }) {
     loadPanel("lane", api.lane(b, l, ctrl.signal), setLane);
     loadPanel("rate", api.rate(b, l, ctrl.signal), setRate);
     loadPanel("recs", api.recs(b, l, ctrl.signal), setRecs);
+    if (sharedEnabled) {
+      loadPanel("sharedRate", api.sharedRate(b, l, ctrl.signal), setSharedRate);
+      loadPanel("sharedRecs", api.sharedRecs(b, l, ctrl.signal), setSharedRecs);
+    }
     return () => ctrl.abort();
-  }, [b, l]);
+  }, [b, l, sharedEnabled]);
   const failure = (k: string) =>
     errs[k] ? (
       <AnalyticsError error={errs[k]} />
@@ -518,6 +617,63 @@ export function Analytics({ b, l }: { b: string; l: string }) {
           failure("recs")
         )}
       </Panel>
+      <Panel title="Shared carrier pool">
+        {!sharedEnabled ? (
+          <div className="state">
+            <b>Opted out</b>
+            <span>Enable shared-pool participation from the workspace header.</span>
+          </div>
+        ) : errs.sharedRecs ? (
+          <AnalyticsError error={errs.sharedRecs} />
+        ) : sharedRecs ? (
+          sharedRecs.recommendations.length ? (
+            <div className="rec-list">
+              {sharedRecs.recommendations.map((item) => (
+                <div className="shared-rec-row" key={item.candidate_id}>
+                  <strong>#{item.rank}</strong>
+                  <span>
+                    <b>{item.name}</b>
+                    <small>
+                      {item.match_quality.replace("_", " ")} · {item.equipment_type}
+                    </small>
+                  </span>
+                  <em>{item.contributing_broker_count_bucket} brokers</em>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="state">No privacy-safe shared matches meet the threshold.</div>
+          )
+        ) : (
+          failure("sharedRecs")
+        )}
+      </Panel>
+      <Panel title="Shared rate estimate">
+        {!sharedEnabled ? (
+          <div className="state">Enable shared-pool participation to view market range.</div>
+        ) : errs.sharedRate ? (
+          <AnalyticsError error={errs.sharedRate} />
+        ) : sharedRate?.status === "unavailable" ? (
+          <div className="state">
+            <b>Unavailable</b>
+            <span>No three-broker privacy-safe rate population is available.</span>
+          </div>
+        ) : sharedRate ? (
+          <>
+            <div className="estimate">{money(sharedRate.estimate.amount)} <span>
+              {sharedRate.estimate.low && sharedRate.estimate.high
+                ? `${money(sharedRate.estimate.low)}–${money(sharedRate.estimate.high)}`
+                : ""}
+            </span></div>
+            <p className="muted">
+              {sharedRate.confidence} confidence · {sharedRate.sample_count_bucket} samples · {sharedRate.contributing_broker_count_bucket} brokers
+            </p>
+            <span className="tag">SHARED / {sharedRate.match_scope || "market"}</span>
+          </>
+        ) : (
+          failure("sharedRate")
+        )}
+      </Panel>
     </div>
   );
 }
@@ -551,6 +707,7 @@ function RecommendationRow({
 }
 export function DetailPage() {
   const { brokerId, loadId } = useParams();
+  const { authBrokerId, authError, sharedPolicy } = useOutletContext<ShellContext>();
   const routeLocation = useLocation();
   const [load, setLoad] = useState<Detail>();
   const [error, setError] = useState<unknown>();
@@ -559,7 +716,7 @@ export function DetailPage() {
   const [sp, setSp] = useSearchParams();
   const candidate = sp.get("candidate");
   useEffect(() => {
-    if (!brokerId || !loadId) return;
+    if (!brokerId || !loadId || authBrokerId !== brokerId) return;
     const controller = new AbortController();
     setLoad(undefined);
     setError(undefined);
@@ -570,7 +727,7 @@ export function DetailPage() {
         if (!isAbortError(nextError)) setError(nextError);
       });
     return () => controller.abort();
-  }, [brokerId, loadId, reload]);
+  }, [brokerId, loadId, reload, authBrokerId]);
   const refresh = () => setReload((value) => value + 1);
   const backTarget = (routeLocation.state as { from?: string } | null)?.from;
   if (error)
@@ -579,6 +736,14 @@ export function DetailPage() {
         <ErrorBox error={error} />
       </main>
     );
+  if (authError)
+    return (
+      <main id="main-content">
+        <ErrorBox error={authError} />
+      </main>
+    );
+  if (authBrokerId !== brokerId)
+    return <main className="state" role="status">Authenticating broker workspace…</main>;
   if (!load || !brokerId || !loadId)
       return <main className="state" role="status">Loading load context…</main>;
   return (
@@ -678,7 +843,12 @@ export function DetailPage() {
           ))}
         </div>
       </Panel>
-      <Analytics key={analyticsRefresh} b={brokerId} l={loadId} />
+          <Analytics
+            key={analyticsRefresh}
+            b={brokerId}
+            l={loadId}
+            sharedEnabled={sharedPolicy?.enabled ?? false}
+          />
       {candidate && (
         <CandidateDrawer
           b={brokerId}

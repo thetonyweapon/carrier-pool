@@ -1,9 +1,10 @@
 # Shared Carrier Pool
 
-**Status: Planned**
+**Status: Delivered (authenticated demo path)**
 
-This is an explicitly deferred bonus capability. No cross-broker pool behavior
-is currently implemented.
+The authenticated demo path is implemented behind `SHARED_POOL_READ_ENABLED`.
+Production deployments still need to replace the demo token issuer with the
+platform identity provider.
 
 ## Intended Outcome
 
@@ -25,12 +26,35 @@ participating brokers without exposing confidential source data.
 - Opt-out MUST prevent future use and define treatment of previously derived
   materialized results.
 
-## Open Decisions
+## Delivered V1 Boundary
 
-- Which carrier attributes may cross broker boundaries?
-- Whether sharing requires carrier consent or contractual policy.
-- How to aggregate and anonymize lane experience.
-- How revocation propagates to caches and derived scores.
+- Shared recommendations are returned from a separate endpoint and MUST NOT be
+  merged into broker-owned rankings.
+- The requesting broker's opted-in history MAY contribute to its shared result.
+- A result MUST have evidence from at least three distinct opted-in brokers.
+- Cross-broker matching uses normalized MC/DOT evidence without merging
+  broker-scoped `CarrierIdentity` rows.
+- Shared output MAY include a public carrier name, but MUST omit MC/DOT values,
+  source broker and carrier IDs, customer data, rates, raw payloads, exact
+  source lanes, and precise operational timestamps.
+- Evidence counts are bucketed and candidate IDs are opaque HMAC-derived values.
+- Shared candidates are informational and MUST NOT resolve through the local
+  assignment API.
+- Shared rate estimates MAY return privacy-safe aggregate amounts only after the
+  same three-broker threshold is met; source rates and dates MUST remain hidden.
+- Shared reads and policy changes MUST carry a broker-scoped authenticated token.
+
+## Remaining Decisions
+
+- Whether sharing requires carrier consent or only broker contractual policy.
+- Whether future versions may add other public carrier attributes.
+- How revocation should invalidate any future cache or materialized result.
+
+The initial policy decisions are public carrier names, requester contribution,
+a three-broker minimum, on-demand computation so revocation takes effect on the
+next query, and rate aggregation without source disclosure. Policy changes are
+recorded as append-only events and every shared recommendation/rate query
+records its participant-scope digest.
 
 ## Planned Scenarios
 

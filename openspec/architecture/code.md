@@ -1,6 +1,6 @@
 # C4: Code-Level Responsibilities
 
-**Status: Delivered baseline with planned UI and shared-pool code areas**
+**Status: Delivered baseline with guarded shared-pool backend**
 
 This is a code-level map of the most important symbols and package groups. It
 is intentionally selective; it documents architectural ownership rather than
@@ -33,6 +33,7 @@ flowchart LR
         geography[app.lane_geography\nversioned metro mapping]
         lanes[app.lane_intelligence\nprimary lane and history queries]
         recommendations[app.carrier_recommendations\nversioned carrier ranking]
+        pool[app.shared_carrier_pool\nredacted opt-in ranking]
         estimation[app.rate_estimation\nversioned pay estimation]
     end
 
@@ -56,6 +57,8 @@ flowchart LR
     recommendations --> entities
     recommendations --> stops
     recommendations --> database
+    pool --> entities
+    pool --> database
     estimation --> lanes
     estimation --> entities
     estimation --> history
@@ -102,4 +105,4 @@ flowchart LR
 ## Planned Code Areas
 
 - HTTP contracts consumed by the demo-mode operations UI.
-- Shared-pool policy and redaction enforcement.
+- Production identity-provider integration in place of the demo token issuer.
