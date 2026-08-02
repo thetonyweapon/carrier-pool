@@ -133,6 +133,13 @@ def test_normalize_unknown_location_never_falls_back_to_state() -> None:
     assert location.match_method == "unmapped"
 
 
+def test_normalize_location_uses_city_state_when_postal_code_is_unknown() -> None:
+    location = normalize_location("Dallas", "TX", "unknown")
+
+    assert location.metro_key == "DFW"
+    assert location.match_method == "city_state"
+
+
 def test_derive_primary_lane_uses_first_pickup_and_final_dropoff(db_session: Session) -> None:
     add_broker(db_session, "broker-a")
     load = add_load(
@@ -192,6 +199,26 @@ def test_derive_primary_lane_rejects_missing_or_unordered_stops(
 
     with pytest.raises(LaneNotDerivable):
         derive_primary_lane(db_session.query(LoadStop).filter_by(load_id=load.id).all())
+
+    unordered = add_load(
+        db_session,
+        "broker-a",
+        "unordered",
+        LoadStatus.ACTIVE,
+        ("Dallas", "TX", "75201"),
+        ("Houston", "TX", "77002"),
+    )
+    origin = db_session.query(LoadStop).filter_by(load_id=unordered.id, sequence_number=1).one()
+    destination = (
+        db_session.query(LoadStop).filter_by(load_id=unordered.id, sequence_number=2).one()
+    )
+    origin.sequence_number = 3
+    db_session.flush()
+    destination.sequence_number = 1
+    db_session.flush()
+
+    with pytest.raises(LaneNotDerivable, match="distinct and ordered"):
+        derive_primary_lane(db_session.query(LoadStop).filter_by(load_id=unordered.id).all())
 
 
 def test_lane_history_is_broker_scoped_and_uses_nearby_fallback(db_session: Session) -> None:
@@ -347,6 +374,72 @@ def test_lane_history_uses_sufficient_exact_history(db_session: Session) -> None
     assert result.history.fallback_reason is None
 
 
+def test_lane_history_uses_sufficient_nearby_history_with_explanation(
+    db_session: Session,
+) -> None:
+    add_broker(db_session, "broker-a")
+    add_load(
+        db_session,
+        "broker-a",
+        "target",
+        LoadStatus.ACTIVE,
+        ("Dallas", "TX", "75201"),
+        ("Houston", "TX", "77002"),
+    )
+    nearby_lanes = (
+        (("Plano", "TX", "75024"), ("Katy", "TX", "77494")),
+        (("Arlington", "TX", "76011"), ("Missouri City", "TX", "77459")),
+        (("McKinney", "TX", "75070"), ("Sugar Land", "TX", "77478")),
+    )
+    for index, (origin, destination) in enumerate(nearby_lanes):
+        add_load(
+            db_session, "broker-a", f"nearby-{index}", LoadStatus.COMPLETED, origin, destination
+        )
+    db_session.commit()
+
+    result = get_lane_intelligence(db_session, "broker-a", "target")
+
+    assert result is not None
+    assert result.history.selected_scope == "nearby"
+    assert result.history.data_sufficiency == "sufficient"
+    assert (
+        result.history.fallback_reason
+        == "Exact directional history is below the sufficiency threshold"
+    )
+
+
+def test_lane_history_reports_when_history_window_is_truncated(
+    db_session: Session, monkeypatch
+) -> None:
+    monkeypatch.setattr("app.lane_intelligence.HISTORY_LOAD_LIMIT", 2)
+    add_broker(db_session, "broker-a")
+    add_load(
+        db_session,
+        "broker-a",
+        "target",
+        LoadStatus.ACTIVE,
+        ("Dallas", "TX", "75201"),
+        ("Houston", "TX", "77002"),
+    )
+    for index in range(3):
+        add_load(
+            db_session,
+            "broker-a",
+            f"history-{index}",
+            LoadStatus.COMPLETED,
+            ("Dallas", "TX", "75201"),
+            ("Houston", "TX", "77002"),
+        )
+    db_session.commit()
+
+    result = get_lane_intelligence(db_session, "broker-a", "target")
+
+    assert result is not None
+    assert result.history.history_limit == 2
+    assert result.history.history_truncated is True
+    assert result.history.exact_count == 2
+
+
 def test_lane_history_returns_empty_scope_without_history(db_session: Session) -> None:
     add_broker(db_session, "broker-a")
     add_load(
@@ -401,6 +494,8 @@ def test_lane_api_returns_metadata_and_enforces_errors(db_session: Session) -> N
     assert response.json()["normalization_version"] == NORMALIZATION_VERSION
     assert response.json()["lane"]["metro_key"] == "DFW>HOUSTON"
     assert response.json()["history"]["eligible_statuses"] == ["delivered", "completed"]
+    assert response.json()["history"]["history_limit"] == 500
+    assert response.json()["history"]["history_truncated"] is False
     assert missing.status_code == 404
     assert unsupported.status_code == 422
 

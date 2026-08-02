@@ -49,6 +49,14 @@ _CITY_TO_METRO = {
 }
 
 
+def _match_method(has_postal_metro: bool, has_metro: bool) -> str:
+    if has_postal_metro:
+        return "postal_code"
+    if has_metro:
+        return "city_state"
+    return "unmapped"
+
+
 @dataclass(frozen=True)
 class NormalizedLocation:
     city: str
@@ -81,5 +89,5 @@ def normalize_location(city: str, state: str, postal_code: str) -> NormalizedLoc
         exact_key=exact_key,
         metro_key=metro[0] if metro else None,
         metro_name=metro[1] if metro else None,
-        match_method=("postal_code" if postal_metro else "city_state" if metro else "unmapped"),
+        match_method=_match_method(postal_metro is not None, metro is not None),
     )

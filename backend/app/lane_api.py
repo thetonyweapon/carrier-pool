@@ -40,6 +40,8 @@ class LaneHistoryResponse(BaseModel):
     selected_scope: str
     data_sufficiency: str
     fallback_reason: Optional[str]
+    history_limit: int
+    history_truncated: bool
 
 
 class LaneIntelligenceResponse(BaseModel):
@@ -104,5 +106,7 @@ def lane_intelligence(
             selected_scope=result.history.selected_scope,
             data_sufficiency=result.history.data_sufficiency,
             fallback_reason=result.history.fallback_reason,
+            history_limit=result.history.history_limit,
+            history_truncated=result.history.history_truncated,
         ),
     )

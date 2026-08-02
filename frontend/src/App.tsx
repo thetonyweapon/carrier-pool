@@ -545,9 +545,12 @@ export function Analytics({ b, l, sharedEnabled }: { b: string; l: string; share
             </div>
             <p className="muted">
               {lane.history.exact_count} exact · {lane.history.nearby_count}{" "}
-              nearby historical loads
+              nearby historical loads in the latest {lane.history.history_limit}
             </p>
             <span className="tag">{lane.history.data_sufficiency} data</span>
+            {lane.history.history_truncated && (
+              <p className="note">History is capped at the most recent eligible loads.</p>
+            )}
             {lane.history.fallback_reason && (
               <p className="note">{lane.history.fallback_reason}</p>
             )}
