@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.database import get_db
 from app.main import create_app
+from app.observability import increment, reset_metrics
 
 
 @pytest.fixture
@@ -50,3 +51,40 @@ def test_health_returns_service_unavailable_when_database_fails(
 
     assert response.status_code == 503
     assert response.json() == {"detail": {"status": "degraded", "database": "unavailable"}}
+
+
+def test_liveness_and_request_id_do_not_require_database(
+    client: tuple[TestClient, MagicMock],
+) -> None:
+    test_client, session = client
+    response = test_client.get("/live", headers={"X-Request-ID": "request-123"})
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    assert response.headers["X-Request-ID"] == "request-123"
+    session.execute.assert_not_called()
+
+
+def test_metrics_endpoint_renders_counters_and_source_lag(
+    client: tuple[TestClient, MagicMock],
+) -> None:
+    test_client, _ = client
+    reset_metrics()
+    increment("carrier_pool_test_total", {"outcome": "ok"})
+
+    response = test_client.get("/metrics")
+
+    assert response.status_code == 200
+    assert 'carrier_pool_test_total{outcome="ok"} 1' in response.text
+    reset_metrics()
+
+
+def test_metrics_remains_available_when_database_is_down(
+    client: tuple[TestClient, MagicMock],
+) -> None:
+    test_client, session = client
+    session.execute.side_effect = SQLAlchemyError("database unavailable")
+
+    response = test_client.get("/metrics")
+
+    assert response.status_code == 200

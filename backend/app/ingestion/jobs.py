@@ -10,6 +10,7 @@ from sqlalchemy.exc import DBAPIError, IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from app.models import IngestionJob, IngestionJobStatus
+from app.observability import increment, observe_seconds
 
 DEFAULT_LEASE_SECONDS = 300
 DEFAULT_MAX_ATTEMPTS = 5
@@ -107,6 +108,7 @@ def claim_next_job(
     job.lease_expires_at = now + timedelta(seconds=lease_seconds)
     job.started_at = job.started_at or now
     session.commit()
+    increment("carrier_pool_ingestion_attempts_total")
     return job
 
 
@@ -125,6 +127,12 @@ def complete_job(
     job.failure_class = None
     job.error_message = None
     session.commit()
+    increment("carrier_pool_ingestion_jobs_total", {"outcome": "succeeded"})
+    if job.started_at is not None:
+        observe_seconds(
+            "carrier_pool_ingestion_job_duration_seconds",
+            (_as_utc(job.completed_at) - _as_utc(job.started_at)).total_seconds(),
+        )
     return job
 
 
@@ -165,6 +173,15 @@ def fail_job(
         job.status = IngestionJobStatus.DEAD_LETTER
         job.completed_at = now
     session.commit()
+    increment(
+        "carrier_pool_ingestion_jobs_total",
+        {"outcome": "retry_wait" if job.status == IngestionJobStatus.RETRY_WAIT else "dead_letter"},
+    )
+    if job.started_at is not None:
+        observe_seconds(
+            "carrier_pool_ingestion_job_duration_seconds",
+            (_as_utc(now) - _as_utc(job.started_at)).total_seconds(),
+        )
     return job
 
 
@@ -206,3 +223,11 @@ def _owned_job(session: Session, job_id: str, worker_id: str) -> IngestionJob:
     if job.status != IngestionJobStatus.PROCESSING or job.lease_owner != worker_id:
         raise ValueError("ingestion job lease is not owned by worker")
     return job
+
+
+def _as_utc(value: datetime) -> datetime:
+    return (
+        value.replace(tzinfo=timezone.utc)
+        if value.tzinfo is None
+        else value.astimezone(timezone.utc)
+    )
