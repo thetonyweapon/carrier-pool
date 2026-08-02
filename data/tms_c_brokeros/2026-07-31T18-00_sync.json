@@ -1,0 +1,65 @@
+{
+  "records": [
+    {
+      "CreatedDate": "2026-07-31T23:00:00.000+0000",
+      "Id": "BROKEROS-301",
+      "LastModifiedDate": "2026-07-31T23:00:00.000+0000",
+      "Name": "BOS000301",
+      "bos__Carrier_Rate__c": null,
+      "bos__Carrier__c": null,
+      "bos__Customer_Rate__c": "2585.00",
+      "bos__Customer__c": "CUST-301",
+      "bos__Distance_Miles__c": "248.0",
+      "bos__Equipment_Type__c": "Dry Van",
+      "bos__Line_Items__r": [
+        {
+          "bos__Commodity__c": "General freight",
+          "bos__Pallet_Count__c": "20",
+          "bos__Weight_Units__c": "pounds",
+          "bos__Weight__c": "36000.0"
+        }
+      ],
+      "bos__Load_Status__c": "Ready to Book",
+      "bos__Stops__r": [
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": false,
+          "bos__Is_Pickup__c": true,
+          "bos__Location__c": "LOC-301-P",
+          "bos__Number__c": "1",
+          "bos__Scheduled_Date__c": "2026-08-01"
+        },
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": true,
+          "bos__Is_Pickup__c": false,
+          "bos__Location__c": "LOC-301-D",
+          "bos__Number__c": "2",
+          "bos__Scheduled_Date__c": "2026-08-01"
+        }
+      ]
+    }
+  ],
+  "referenced_records": {
+    "CUST-301": {
+      "Name": "Today Demo Shipper",
+      "record_type": "Customer",
+      "type": "Account"
+    },
+    "LOC-301-D": {
+      "Name": "Houston Distribution",
+      "bos__City__c": "Houston",
+      "bos__Postal_Code__c": "77002",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-301-P": {
+      "Name": "Dallas Crossdock",
+      "bos__City__c": "Dallas",
+      "bos__Postal_Code__c": "75201",
+      "bos__State__c": "TX",
+      "type": "Location"
+    }
+  },
+  "synced_at": "2026-07-31T23:00:00.000+0000"
+}

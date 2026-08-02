@@ -1,0 +1,118 @@
+{
+  "carriers": [
+    {
+      "carrier_id": "CARR-BRAVO",
+      "carrier_name": "Prairie State Freight",
+      "dot_no": "DOT-310002",
+      "home_city": "Plano",
+      "home_state": "TX",
+      "mc_no": "MC-120002",
+      "phone": "214-555-1024"
+    },
+    {
+      "carrier_id": "CARR-CHARLIE",
+      "carrier_name": "Triangle Heavy Haul",
+      "dot_no": "DOT-310003",
+      "home_city": "San Antonio",
+      "home_state": "TX",
+      "mc_no": "MC-120003",
+      "phone": "214-555-1014"
+    },
+    {
+      "carrier_id": "CARR-DELTA",
+      "carrier_name": "Hill Country Carriers",
+      "dot_no": "DOT-310004",
+      "home_city": "New Braunfels",
+      "home_state": "TX",
+      "mc_no": "MC-120004",
+      "phone": "214-555-1010"
+    }
+  ],
+  "loads": [
+    {
+      "carrier_ref": "CARR-BRAVO",
+      "customer_code": "CUST-RECENT",
+      "customer_name": "Recent Demo Shipper",
+      "del_arrived_at": "2026-07-30 12:00:00",
+      "del_city": "Houston",
+      "del_date": "2026-07-30",
+      "del_state": "TX",
+      "del_zip": "77002",
+      "dist_km": "402.34",
+      "entered_at": "2026-07-29 00:00:00",
+      "equip": "V",
+      "load_num": "HD-201",
+      "pu_city": "Dallas",
+      "pu_date": "2026-07-29",
+      "pu_departed_at": "2026-07-30 12:00:00",
+      "pu_state": "TX",
+      "pu_zip": "75201",
+      "status_code": 90,
+      "updated_at": "2026-07-30 12:00:00",
+      "weight_kg": "15422.14"
+    },
+    {
+      "carrier_ref": "CARR-CHARLIE",
+      "customer_code": "CUST-RECENT",
+      "customer_name": "Recent Demo Shipper",
+      "del_arrived_at": "2026-07-30 12:00:00",
+      "del_city": "San Antonio",
+      "del_date": "2026-07-30",
+      "del_state": "TX",
+      "del_zip": "78205",
+      "dist_km": "337.96",
+      "entered_at": "2026-07-29 12:00:00",
+      "equip": "R",
+      "load_num": "HD-202",
+      "pu_city": "Sugar Land",
+      "pu_date": "2026-07-30",
+      "pu_departed_at": "2026-07-30 12:00:00",
+      "pu_state": "TX",
+      "pu_zip": "77478",
+      "status_code": 50,
+      "updated_at": "2026-07-30 12:00:00",
+      "weight_kg": "13607.77"
+    },
+    {
+      "carrier_ref": "CARR-DELTA",
+      "customer_code": "CUST-RECENT",
+      "customer_name": "Recent Demo Shipper",
+      "del_arrived_at": null,
+      "del_city": "Irving",
+      "del_date": "2026-07-31",
+      "del_state": "TX",
+      "del_zip": "75039",
+      "dist_km": "370.15",
+      "entered_at": "2026-07-30 00:00:00",
+      "equip": "F",
+      "load_num": "HD-203",
+      "pu_city": "Georgetown",
+      "pu_date": "2026-07-30",
+      "pu_departed_at": null,
+      "pu_state": "TX",
+      "pu_zip": "78626",
+      "status_code": 30,
+      "updated_at": "2026-07-30 12:00:00",
+      "weight_kg": "15875.73"
+    }
+  ],
+  "rates": [
+    {
+      "amount_usd": "2480.00",
+      "code": "LINEHAUL",
+      "created_at": "2026-07-30 12:00:00",
+      "load_num": "HD-203",
+      "rate_id": "RATE-0031",
+      "side": "bill"
+    },
+    {
+      "amount_usd": "1850.00",
+      "code": "LINEHAUL",
+      "created_at": "2026-07-30 12:00:00",
+      "load_num": "HD-203",
+      "rate_id": "RATE-0032",
+      "side": "pay"
+    }
+  ],
+  "synced_at": "2026-07-30 12:00:00"
+}

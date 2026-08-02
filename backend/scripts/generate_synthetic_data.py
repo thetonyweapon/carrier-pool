@@ -22,6 +22,12 @@ DATA_ROOT = ROOT / "data"
 START = date(2026, 7, 6)
 SLOTS = (0, 6, 12, 18)
 CENTRAL_OFFSET = "-05:00"
+OPERATIONAL_START = date(2026, 7, 29)
+HISTORICAL_SLOTS = tuple(range(44))
+OPERATIONAL_SLOTS = tuple(
+    range((OPERATIONAL_START - START).days * 4, (OPERATIONAL_START - START).days * 4 + 16)
+)
+SYNC_SLOTS = HISTORICAL_SLOTS + OPERATIONAL_SLOTS
 
 
 @dataclass(frozen=True)
@@ -37,6 +43,8 @@ class Scenario:
     sell: Decimal
     buy: Decimal
     start_slot: int
+    schedule_offset_days: int = 0
+    forced_status: Optional[str] = None
 
 
 SCENARIOS = (
@@ -214,6 +222,137 @@ DAY11_SCENARIOS = (
     ),
 )
 
+OPERATIONAL_SCENARIOS = (
+    Scenario(
+        201,
+        ("Dallas", "TX", "75201", "DFW"),
+        ("Houston", "TX", "77002", "Houston"),
+        "Dry Van",
+        "CUST-RECENT",
+        "CARR-BRAVO",
+        Decimal("250.0"),
+        Decimal("34000.0"),
+        Decimal("2550.00"),
+        Decimal("2000.00"),
+        92,
+    ),
+    Scenario(
+        202,
+        ("Sugar Land", "TX", "77478", "Houston"),
+        ("San Antonio", "TX", "78205", "San Antonio"),
+        "Reefer",
+        "CUST-RECENT",
+        "CARR-CHARLIE",
+        Decimal("210.0"),
+        Decimal("30000.0"),
+        Decimal("2420.00"),
+        Decimal("1810.00"),
+        94,
+    ),
+    Scenario(
+        203,
+        ("Georgetown", "TX", "78626", "Austin"),
+        ("Irving", "TX", "75039", "DFW"),
+        "Flatbed",
+        "CUST-RECENT",
+        "CARR-DELTA",
+        Decimal("230.0"),
+        Decimal("35000.0"),
+        Decimal("2480.00"),
+        Decimal("1850.00"),
+        96,
+    ),
+    Scenario(
+        301,
+        ("Dallas", "TX", "75201", "DFW"),
+        ("Houston", "TX", "77002", "Houston"),
+        "Dry Van",
+        "CUST-TODAY",
+        "CARR-ECHO",
+        Decimal("248.0"),
+        Decimal("36000.0"),
+        Decimal("2585.00"),
+        Decimal("0.00"),
+        103,
+        forced_status="active",
+    ),
+    Scenario(
+        302,
+        ("Arlington", "TX", "76011", "DFW"),
+        ("Katy", "TX", "77494", "Houston"),
+        "Reefer",
+        "CUST-TODAY",
+        "CARR-ALPHA",
+        Decimal("265.0"),
+        Decimal("40000.0"),
+        Decimal("2860.00"),
+        Decimal("0.00"),
+        104,
+        forced_status="active",
+    ),
+    Scenario(
+        303,
+        ("Dallas", "TX", "75201", "DFW"),
+        ("San Antonio", "TX", "78205", "San Antonio"),
+        "Flatbed",
+        "CUST-TODAY",
+        "CARR-CHARLIE",
+        Decimal("275.0"),
+        Decimal("38000.0"),
+        Decimal("2765.00"),
+        Decimal("0.00"),
+        105,
+        forced_status="active",
+    ),
+    Scenario(
+        401,
+        ("Sugar Land", "TX", "77478", "Houston"),
+        ("Carrollton", "TX", "75006", "DFW"),
+        "Reefer",
+        "CUST-FUTURE",
+        "CARR-ALPHA",
+        Decimal("244.0"),
+        Decimal("42000.0"),
+        Decimal("2950.00"),
+        Decimal("0.00"),
+        104,
+        35,
+    ),
+    Scenario(
+        402,
+        ("Plano", "TX", "75024", "DFW"),
+        ("New Braunfels", "TX", "78130", "San Antonio"),
+        "Dry Van",
+        "CUST-FUTURE",
+        "CARR-BRAVO",
+        Decimal("290.0"),
+        Decimal("36000.0"),
+        Decimal("2690.00"),
+        Decimal("0.00"),
+        105,
+        42,
+    ),
+    Scenario(
+        403,
+        ("Houston", "TX", "77002", "Houston"),
+        ("Round Rock", "TX", "78664", "Austin"),
+        "Flatbed",
+        "CUST-FUTURE",
+        "CARR-DELTA",
+        Decimal("195.0"),
+        Decimal("32000.0"),
+        Decimal("2350.00"),
+        Decimal("0.00"),
+        106,
+        49,
+    ),
+)
+
+CORRECTIONS = {
+    1: (3, Decimal("75.00"), Decimal("100.00")),
+    201: (95, Decimal("50.00"), Decimal("80.00")),
+}
+
 
 def slot_datetime(slot: int) -> datetime:
     day, hour = divmod(slot, 4)
@@ -240,8 +379,10 @@ def active_scenarios(slot: int) -> List[Scenario]:
     return candidates or list(SCENARIOS[-2:])
 
 
-def lifecycle(slot: int, start: int) -> Tuple[str, int]:
-    if start >= 40:
+def lifecycle(slot: int, start: int, forced_status: Optional[str] = None) -> Tuple[str, int]:
+    if forced_status == "active":
+        return "active", 20
+    if start == 40:
         return "active", 20
     age = slot - start
     if age < 1:
@@ -262,16 +403,19 @@ def source_timestamp(scenario: Scenario, slot: int) -> datetime:
 
 
 def scenario_rates(scenario: Scenario, slot: int) -> Tuple[Decimal, Decimal]:
-    status, _ = lifecycle(slot, scenario.start_slot)
+    status, _ = lifecycle(slot, scenario.start_slot, scenario.forced_status)
     if status in {"planned", "active"}:
         return scenario.sell, Decimal("0.00")
-    sell_correction = Decimal("75.00") if scenario.number == 1 and slot >= 3 else Decimal("0.00")
-    pay_correction = Decimal("100.00") if scenario.number == 1 and slot >= 3 else Decimal("0.00")
+    correction_slot, sell_correction, pay_correction = CORRECTIONS.get(
+        scenario.number, (None, Decimal("0.00"), Decimal("0.00"))
+    )
+    if correction_slot is None or slot < correction_slot:
+        sell_correction = pay_correction = Decimal("0.00")
     return scenario.sell + sell_correction, scenario.buy + pay_correction
 
 
 def scheduled_times(scenario: Scenario) -> Tuple[datetime, datetime]:
-    created = slot_datetime(scenario.start_slot)
+    created = slot_datetime(scenario.start_slot) + timedelta(days=scenario.schedule_offset_days)
     return created + timedelta(hours=12), created + timedelta(hours=24)
 
 
@@ -279,7 +423,7 @@ def freightflow_payload(slot: int, records: Sequence[Scenario]) -> dict:
     synced = slot_datetime(slot)
     loads = []
     for scenario in records:
-        status, _ = lifecycle(slot, scenario.start_slot)
+        status, _ = lifecycle(slot, scenario.start_slot, scenario.forced_status)
         updated = source_timestamp(scenario, slot)
         sell, buy = scenario_rates(scenario, slot)
         carrier = (
@@ -357,7 +501,7 @@ def hauldesk_payload(slot: int, records: Sequence[Scenario], known_rates: Dict[s
     carriers = []
     rates = []
     for scenario in records:
-        status, status_code = lifecycle(slot, scenario.start_slot)
+        status, status_code = lifecycle(slot, scenario.start_slot, scenario.forced_status)
         updated = source_timestamp(scenario, slot)
         pickup_ready, delivery_ready = scheduled_times(scenario)
         carrier_ref = None if status in {"planned", "active"} else scenario.carrier
@@ -413,9 +557,10 @@ def hauldesk_payload(slot: int, records: Sequence[Scenario], known_rates: Dict[s
                     rate_row(known_rates, scenario, "pay", "LINEHAUL", pay, updated),
                 ]
             )
+        correction = CORRECTIONS.get(scenario.number)
         if (
-            scenario.number == 1
-            and slot >= 3
+            correction is not None
+            and slot >= correction[0]
             and f"{scenario.number}-adjustment" not in known_rates
         ):
             rates.append(
@@ -424,14 +569,14 @@ def hauldesk_payload(slot: int, records: Sequence[Scenario], known_rates: Dict[s
                     scenario,
                     "bill",
                     "ADJUSTMENT",
-                    Decimal("75.00"),
+                    correction[1],
                     updated,
                     "adjustment",
                 )
             )
         if (
-            scenario.number == 1
-            and slot >= 3
+            correction is not None
+            and slot >= correction[0]
             and f"{scenario.number}-pay-adjustment" not in known_rates
         ):
             rates.append(
@@ -440,7 +585,7 @@ def hauldesk_payload(slot: int, records: Sequence[Scenario], known_rates: Dict[s
                     scenario,
                     "pay",
                     "ADJUSTMENT",
-                    Decimal("100.00"),
+                    correction[2],
                     updated,
                     "pay-adjustment",
                 )
@@ -505,7 +650,7 @@ def brokeros_payload(slot: int, records: Sequence[Scenario]) -> dict:
             }
     records_out = []
     for scenario in records:
-        status, _ = lifecycle(slot, scenario.start_slot)
+        status, _ = lifecycle(slot, scenario.start_slot, scenario.forced_status)
         updated = source_timestamp(scenario, slot)
         sell, buy = scenario_rates(scenario, slot)
         records_out.append(
@@ -593,12 +738,40 @@ def bos_stop(
     }
 
 
+def records_for_slot(slot: int) -> List[Scenario]:
+    if slot < OPERATIONAL_SLOTS[0]:
+        return DAY11_SCENARIOS if slot >= 40 else active_scenarios(slot)
+
+    if slot == OPERATIONAL_SLOTS[-1]:
+        return [scenario for scenario in OPERATIONAL_SCENARIOS if 301 <= scenario.number <= 303]
+
+    recent = [
+        scenario
+        for scenario in OPERATIONAL_SCENARIOS
+        if 201 <= scenario.number <= 203 and scenario.start_slot <= slot <= scenario.start_slot + 6
+    ]
+    current = [
+        scenario
+        for scenario in OPERATIONAL_SCENARIOS
+        if 301 <= scenario.number <= 303 and scenario.start_slot <= slot <= scenario.start_slot + 1
+    ]
+    future = [
+        scenario
+        for scenario in OPERATIONAL_SCENARIOS
+        if 401 <= scenario.number <= 403 and scenario.start_slot == slot
+    ]
+    return recent + current + future
+
+
 def customer_name(customer: str) -> str:
     return {
         "CUST-GULF": "Gulf Coast Foods",
         "CUST-NORTH": "Northstar Retail",
         "CUST-SOUTH": "Alamo Industrial",
         "CUST-DAY11": "Day Eleven Retail",
+        "CUST-RECENT": "Recent Demo Shipper",
+        "CUST-TODAY": "Today Demo Shipper",
+        "CUST-FUTURE": "September Demo Shipper",
     }[customer]
 
 
@@ -660,7 +833,7 @@ def generate(root: Path = DATA_ROOT, clean: bool = False) -> List[Path]:
         "tms_c_brokeros": brokeros_payload,
     }
     rate_state: Dict[str, int] = {}
-    expected_names = {filename(slot) for slot in range(44)}
+    expected_names = {filename(slot) for slot in SYNC_SLOTS}
     for directory_name, builder in destinations.items():
         directory = root / directory_name
         directory.mkdir(parents=True, exist_ok=True)
@@ -668,8 +841,8 @@ def generate(root: Path = DATA_ROOT, clean: bool = False) -> List[Path]:
             for old in directory.glob("*.json"):
                 if old.name in expected_names:
                     old.unlink()
-        for slot in range(44):
-            records = DAY11_SCENARIOS if slot >= 40 else active_scenarios(slot)
+        for slot in SYNC_SLOTS:
+            records = records_for_slot(slot)
             if directory_name == "tms_a_freightflow":
                 payload = builder(slot, records)
             elif directory_name == "tms_b_hauldesk":

@@ -1,0 +1,41 @@
+{
+  "loads": [
+    {
+      "carrier": null,
+      "createdDate": "2026-07-29T00:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-RECENT",
+        "name": "Recent Demo Shipper"
+      },
+      "equipment": "Dry Van",
+      "lastModifiedDate": "2026-07-29T06:00:00-05:00",
+      "mileage": "250.0",
+      "shipmentId": "FF-201",
+      "status": "Booking",
+      "stops": [
+        {
+          "actualDepartureDateTime": null,
+          "city": "Dallas",
+          "estimatedCloseDateTime": "2026-07-29T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-29T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "75201"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "Houston",
+          "estimatedCloseDateTime": "2026-07-30T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-30T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "77002"
+        }
+      ],
+      "totalBuy": null,
+      "totalSell": "2550.00",
+      "weightTotal": "34000.0"
+    }
+  ],
+  "syncedAt": "2026-07-29T06:00:00-05:00"
+}

@@ -1,0 +1,29 @@
+{
+  "carriers": [],
+  "loads": [
+    {
+      "carrier_ref": null,
+      "customer_code": "CUST-TODAY",
+      "customer_name": "Today Demo Shipper",
+      "del_arrived_at": null,
+      "del_city": "Houston",
+      "del_date": "2026-08-01",
+      "del_state": "TX",
+      "del_zip": "77002",
+      "dist_km": "399.12",
+      "entered_at": "2026-07-31 18:00:00",
+      "equip": "V",
+      "load_num": "HD-301",
+      "pu_city": "Dallas",
+      "pu_date": "2026-08-01",
+      "pu_departed_at": null,
+      "pu_state": "TX",
+      "pu_zip": "75201",
+      "status_code": 20,
+      "updated_at": "2026-07-31 18:00:00",
+      "weight_kg": "16329.33"
+    }
+  ],
+  "rates": [],
+  "synced_at": "2026-07-31 18:00:00"
+}

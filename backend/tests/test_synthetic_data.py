@@ -30,7 +30,7 @@ from app.models import (
     TmsType,
 )
 from app.rate_estimation import estimate_carrier_rate
-from scripts.generate_synthetic_data import DATA_ROOT, generate
+from scripts.generate_synthetic_data import DATA_ROOT, SYNC_SLOTS, filename, generate
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE_CONFIG = (
@@ -43,12 +43,8 @@ SOURCE_CONFIG = (
 def test_generated_dataset_is_complete_and_schema_valid() -> None:
     for directory_name, _, _, tms_type in SOURCE_CONFIG:
         files = sorted((DATA_ROOT / directory_name).glob("*.json"))
-        assert len(files) == 44
-        assert [path.name for path in files] == [
-            f"2026-07-{day:02d}T{hour:02d}-00_sync.json"
-            for day in range(6, 17)
-            for hour in (0, 6, 12, 18)
-        ]
+        assert len(files) == len(SYNC_SLOTS)
+        assert [path.name for path in files] == [filename(slot) for slot in SYNC_SLOTS]
         previous = None
         for path in files:
             payload = json.loads(path.read_bytes())
@@ -66,6 +62,60 @@ def test_generated_dataset_is_complete_and_schema_valid() -> None:
                         "Ready to Book"
                     }
                     assert all(record["bos__Carrier__c"] is None for record in payload["records"])
+            if path.name == "2026-08-01T18-00_sync.json":
+                if tms_type == TmsType.FREIGHTFLOW:
+                    assert {load["shipmentId"] for load in payload["loads"]} == {
+                        "FF-301",
+                        "FF-302",
+                        "FF-303",
+                    }
+                    assert all(load["status"] == "Booking" for load in payload["loads"])
+                    assert all(load["carrier"] is None for load in payload["loads"])
+                elif tms_type == TmsType.HAULDESK:
+                    assert {load["load_num"] for load in payload["loads"]} == {
+                        "HD-301",
+                        "HD-302",
+                        "HD-303",
+                    }
+                    assert {load["status_code"] for load in payload["loads"]} == {20}
+                    assert all(load["carrier_ref"] is None for load in payload["loads"])
+                else:
+                    assert {record["Id"] for record in payload["records"]} == {
+                        "BROKEROS-301",
+                        "BROKEROS-302",
+                        "BROKEROS-303",
+                    }
+                    assert {record["bos__Load_Status__c"] for record in payload["records"]} == {
+                        "Ready to Book"
+                    }
+                    assert all(record["bos__Carrier__c"] is None for record in payload["records"])
+            if path.name == "2026-08-01T00-00_sync.json":
+                records = payload["records"] if tms_type == TmsType.BROKEROS else payload["loads"]
+                assert any(
+                    "401"
+                    in (
+                        record["Id"]
+                        if tms_type == TmsType.BROKEROS
+                        else record.get("shipmentId", record.get("load_num", ""))
+                    )
+                    for record in records
+                )
+                if tms_type == TmsType.FREIGHTFLOW:
+                    assert all(
+                        stop["estimatedReadyDateTime"].startswith("2026-09-")
+                        for load in payload["loads"]
+                        if load["shipmentId"] == "FF-401"
+                        for stop in load["stops"]
+                        if stop["stopType"] == "Pickup"
+                    )
+                elif tms_type == TmsType.HAULDESK:
+                    assert next(load for load in payload["loads"] if load["load_num"] == "HD-401")[
+                        "pu_date"
+                    ].startswith("2026-09-")
+                else:
+                    assert next(
+                        record for record in payload["records"] if record["Id"] == "BROKEROS-401"
+                    )["bos__Stops__r"][0]["bos__Scheduled_Date__c"].startswith("2026-09-")
             if tms_type == TmsType.FREIGHTFLOW:
                 sync = FreightFlowSync.model_validate(payload)
                 current = sync.syncedAt
@@ -224,6 +274,54 @@ def test_generated_dataset_ingests_in_chronological_order() -> None:
             assert target.broker_id == broker_id
             assert target.status == LoadStatus.ACTIVE
             assert target.carrier_id is None
+
+        operational_active_targets = (
+            ("source-a", "FF-301", "broker-a"),
+            ("source-b", "HD-302", "broker-b"),
+            ("source-c", "BROKEROS-303", "broker-c"),
+        )
+        for source_id, source_load_id, broker_id in operational_active_targets:
+            target = session.scalar(
+                select(Load).where(
+                    Load.broker_source_id == source_id, Load.source_load_id == source_load_id
+                )
+            )
+            assert target.broker_id == broker_id
+            assert target.status == LoadStatus.ACTIVE
+            assert target.carrier_id is None
+
+        operational_future_targets = (
+            ("source-a", "FF-401", "broker-a"),
+            ("source-b", "HD-402", "broker-b"),
+            ("source-c", "BROKEROS-403", "broker-c"),
+        )
+        for source_id, source_load_id, broker_id in operational_future_targets:
+            target = session.scalar(
+                select(Load).where(
+                    Load.broker_source_id == source_id, Load.source_load_id == source_load_id
+                )
+            )
+            assert target.broker_id == broker_id
+            assert target.status == LoadStatus.PLANNED
+            assert target.carrier_id is None
+            pickup = session.scalar(
+                select(LoadStop).where(
+                    LoadStop.broker_id == broker_id,
+                    LoadStop.load_id == target.id,
+                    LoadStop.sequence_number == 1,
+                )
+            )
+            scheduled_day = pickup.scheduled_date or (
+                pickup.scheduled_start_at.date() if pickup.scheduled_start_at is not None else None
+            )
+            assert scheduled_day is not None
+            assert scheduled_day.month == 9
+
+        today_target = session.scalar(
+            select(Load).where(Load.broker_source_id == "source-a", Load.source_load_id == "FF-301")
+        )
+        assert get_carrier_recommendations(session, "broker-a", today_target.id) is not None
+        assert estimate_carrier_rate(session, "broker-a", today_target.id).status == "estimated"
 
         for source_id, source_load_id, broker_id in day11_targets[::2]:
             target = session.scalar(
