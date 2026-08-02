@@ -34,6 +34,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')"]
+      interval: 5s
+      timeout: 3s
+      start_period: 15s
+      retries: 12
     command: >-
       sh -c "alembic upgrade head && python -m scripts.bootstrap_demo --root /data
       && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
@@ -43,7 +50,8 @@ services:
     ports:
       - "3000:8080"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/"]
       interval: 5s

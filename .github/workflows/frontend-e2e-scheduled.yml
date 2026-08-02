@@ -37,15 +37,24 @@ jobs:
         working-directory: .
         run: |
           for attempt in $(seq 1 30); do
-            if curl --fail --silent http://localhost:3000/api/demo/brokers; then
+            if curl --fail --silent http://localhost:3000/api/ready >/dev/null \
+              && curl --fail --silent http://localhost:3000/api/demo/brokers >/dev/null; then
               exit 0
             fi
             sleep 2
           done
-          docker compose logs
+          echo "::error::Demo stack did not become ready; backend bootstrap or database readiness failed."
+          docker compose ps
+          docker compose logs --no-color backend db frontend
           exit 1
       - name: Run browser matrix
         run: npm run test:e2e
+      - name: Dump demo stack diagnostics
+        if: failure()
+        working-directory: .
+        run: |
+          docker compose ps
+          docker compose logs --no-color backend db frontend
       - name: Stop demo stack
         if: always()
         working-directory: .
