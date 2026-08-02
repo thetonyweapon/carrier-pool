@@ -4,13 +4,17 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 from uuid import uuid4
 
 import pytest
+from alembic.config import Config
 from sqlalchemy import create_engine, event, select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
+from alembic import command
+from app.config import settings
 from app.ingestion.common import upsert_carrier_identity
 from app.ingestion.hauldesk import (
     ConflictingHaulDeskFileError,
@@ -619,6 +623,7 @@ def test_postgres_source_lock_serializes_ingestion() -> None:
     database_url = os.environ["HAULDESK_POSTGRES_TEST_URL"]
     schema = f"hauldesk_test_{uuid4().hex}"
     admin_engine = create_engine(database_url)
+    previous_database_url = settings.database_url
     test_engine = None
     locked_engine = None
     locker = None
@@ -626,13 +631,17 @@ def test_postgres_source_lock_serializes_ingestion() -> None:
     try:
         with admin_engine.begin() as connection:
             connection.execute(text(f'CREATE SCHEMA "{schema}"'))
+        schema_url = database_url + "?options=" + quote(f"-c search_path={schema}")
+        settings.database_url = schema_url
+        alembic_config = Config(str(Path(__file__).parents[1] / "alembic.ini"))
+        command.upgrade(alembic_config, "head")
+        settings.database_url = previous_database_url
         connect_args = {"options": f"-c search_path={schema}"}
         test_engine = create_engine(database_url, connect_args=connect_args)
         locked_engine = create_engine(
             database_url,
             connect_args={"options": f"-c search_path={schema} -c lock_timeout=500ms"},
         )
-        Base.metadata.create_all(test_engine)
         with Session(test_engine) as session:
             session.add(
                 Broker(
@@ -752,6 +761,7 @@ def test_postgres_source_lock_serializes_ingestion() -> None:
             locked_engine.dispose()
         if test_engine is not None:
             test_engine.dispose()
+        settings.database_url = previous_database_url
         with admin_engine.begin() as connection:
             connection.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
         admin_engine.dispose()
