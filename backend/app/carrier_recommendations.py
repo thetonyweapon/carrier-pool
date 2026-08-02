@@ -92,7 +92,6 @@ class _Candidate:
     carrier_identity_id: Optional[str]
     carrier_ids: tuple[str, ...]
     name: str
-    carrier_rows: tuple[Carrier, ...]
 
 
 @dataclass(frozen=True)
@@ -141,7 +140,6 @@ def _candidate_groups(carriers: Sequence[Carrier], target_source_id: str) -> dic
             carrier_identity_id=identity_id,
             carrier_ids=tuple(sorted(row.id for row in rows)),
             name=display.name,
-            carrier_rows=tuple(rows),
         )
     return candidates
 
@@ -209,6 +207,7 @@ def _score_candidate(
         and target_lane_metro_key
         and item.metro_key == target_lane_metro_key
     ]
+    # Exclude loads already represented by exact or nearby lane evidence.
     excluded_load_ids = {item.load_id for item in (*exact, *nearby)}
     outside_lane = [item for item in evidence if item.load_id not in excluded_load_ids]
     equipment_is_known = target_equipment != EquipmentType.UNKNOWN
@@ -324,6 +323,13 @@ def _score_candidate(
 
 
 def _recommendation_sort_key(item: CarrierRecommendation) -> tuple:
+    # Evidence timestamps are normalized at ingestion; normalize again here so
+    # a future caller cannot make naive datetimes affect local-time ordering.
+    latest_timestamp = (
+        _as_utc(item.latest_operational_evidence).timestamp()
+        if item.latest_operational_evidence
+        else float("-inf")
+    )
     return (
         -item.score,
         -item.exact_same_equipment_count,
@@ -332,11 +338,7 @@ def _recommendation_sort_key(item: CarrierRecommendation) -> tuple:
         -item.nearby_count,
         -item.same_equipment_count,
         -sum(factor.evidence_count for factor in item.factors if factor.code == "overall_history"),
-        -(
-            item.latest_operational_evidence.timestamp()
-            if item.latest_operational_evidence
-            else float("-inf")
-        ),
+        -latest_timestamp,
         item.name.casefold(),
         0 if item.carrier_identity_id else 1,
         item.candidate_id,
