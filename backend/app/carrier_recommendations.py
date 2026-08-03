@@ -173,11 +173,7 @@ def _destination_stop(stops: Sequence[LoadStop]) -> Optional[LoadStop]:
 def _origin_stop(stops: Sequence[LoadStop]) -> Optional[LoadStop]:
     ordered = sorted(stops, key=lambda stop: stop.sequence_number)
     return next(
-        (
-            stop
-            for stop in ordered
-            if stop.stop_type in (StopType.PICKUP, StopType.PICKUP_DROPOFF)
-        ),
+        (stop for stop in ordered if stop.stop_type in (StopType.PICKUP, StopType.PICKUP_DROPOFF)),
         None,
     )
 
