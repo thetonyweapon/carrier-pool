@@ -46,6 +46,18 @@ class RecommendationFactor:
 
 
 @dataclass(frozen=True)
+class RecommendationEvidence:
+    origin_city: str
+    origin_state: str
+    origin_postal_code: str
+    destination_city: str
+    destination_state: str
+    destination_postal_code: str
+    completed_month: Optional[str]
+    outcome: str
+
+
+@dataclass(frozen=True)
 class CarrierRecommendation:
     candidate_id: str
     carrier_identity_id: Optional[str]
@@ -60,6 +72,7 @@ class CarrierRecommendation:
     nearby_count: int
     same_equipment_count: int
     latest_operational_evidence: Optional[datetime]
+    evidence: tuple[RecommendationEvidence, ...]
 
 
 @dataclass(frozen=True)
@@ -103,6 +116,7 @@ class _HistoricalEvidence:
     equipment_type: EquipmentType
     customer_id: str
     operational_evidence: Optional[datetime]
+    recommendation_evidence: RecommendationEvidence
 
 
 def validate_scoring_version(version: str) -> None:
@@ -156,10 +170,23 @@ def _destination_stop(stops: Sequence[LoadStop]) -> Optional[LoadStop]:
     )
 
 
+def _origin_stop(stops: Sequence[LoadStop]) -> Optional[LoadStop]:
+    ordered = sorted(stops, key=lambda stop: stop.sequence_number)
+    return next(
+        (stop for stop in ordered if stop.stop_type in (StopType.PICKUP, StopType.PICKUP_DROPOFF)),
+        None,
+    )
+
+
 def _operational_evidence(stop: Optional[LoadStop]) -> Optional[datetime]:
     if stop is None:
         return None
     return stop.actual_arrived_at or stop.actual_departed_at
+
+
+def _completion_month(load: Load, destination: Optional[LoadStop]) -> Optional[str]:
+    completion_time = _operational_evidence(destination) or load.last_synced_at
+    return _as_utc(completion_time).strftime("%Y-%m") if completion_time else None
 
 
 def _recency_points(evidence: Optional[datetime], as_of: datetime) -> int:
@@ -319,6 +346,7 @@ def _score_candidate(
         nearby_count=len(nearby),
         same_equipment_count=len(same_equipment),
         latest_operational_evidence=latest_evidence,
+        evidence=tuple(item.recommendation_evidence for item in evidence),
     )
 
 
@@ -412,6 +440,10 @@ def get_carrier_recommendations(
         except LaneNotDerivable:
             continue
         destination = _destination_stop(stops)
+        origin = _origin_stop(stops)
+        if origin is None or destination is None:
+            continue
+        operational_evidence = _operational_evidence(destination)
         evidence_by_candidate.setdefault(candidate_id, []).append(
             _HistoricalEvidence(
                 load_id=historical_load.id,
@@ -421,9 +453,17 @@ def get_carrier_recommendations(
                 equipment_type=historical_load.equipment_type,
                 customer_id=historical_load.customer_id,
                 operational_evidence=(
-                    _as_utc(evidence)
-                    if (evidence := _operational_evidence(destination)) is not None
-                    else None
+                    _as_utc(operational_evidence) if operational_evidence is not None else None
+                ),
+                recommendation_evidence=RecommendationEvidence(
+                    origin_city=origin.city,
+                    origin_state=origin.state,
+                    origin_postal_code=origin.postal_code,
+                    destination_city=destination.city,
+                    destination_state=destination.state,
+                    destination_postal_code=destination.postal_code,
+                    completed_month=_completion_month(historical_load, destination),
+                    outcome=historical_load.status.value,
                 ),
             )
         )

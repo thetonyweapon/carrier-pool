@@ -80,6 +80,11 @@ export const lane: Lane = {
     history_limit: 500,
     history_truncated: false,
   },
+  typical_travel_time: {
+    minutes: 255,
+    label: "Around 4 hours 15 minutes",
+    version: "tx-metro-travel-time-v1",
+  },
 };
 
 export const rate: Rate = {
@@ -89,7 +94,19 @@ export const rate: Rate = {
   population: { sample_size: 10, selected_tier: "exact", lookback_days: 180, source_types: ["freightflow"] },
 };
 
-export const recs: Recs = { recommendations: [], unscored_carriers: [] };
+export const recs: Recs = {
+  recommendations: [
+    {
+      rank: 1,
+      candidate_id: "carrier:carrier-1",
+      name: "Lone Star Logistics",
+      score: 18,
+      data_sufficiency: "sufficient",
+      factors: [],
+    },
+  ],
+  unscored_carriers: [],
+};
 
 export const sharedRecs: SharedRecs = {
   broker_id: "broker-a",
@@ -146,6 +163,14 @@ export const candidate: Candidate = {
       source_id: "source-a",
       home_city: "Dallas",
       home_state: "TX",
+    },
+  ],
+  evidence: [
+    {
+      origin: { city: "Dallas", state: "TX", postal_code: "75201" },
+      destination: { city: "Houston", state: "TX", postal_code: "77002" },
+      completed_month: "2026-07",
+      outcome: "completed",
     },
   ],
 };

@@ -9,6 +9,7 @@ from app.database import get_db
 from app.lane_geography import NORMALIZATION_VERSION
 from app.lane_intelligence import (
     ELIGIBLE_HISTORY_STATUSES,
+    TRAVEL_TIME_VERSION,
     LaneNotDerivable,
     UnsupportedNormalizationVersion,
     get_lane_intelligence,
@@ -44,12 +45,27 @@ class LaneHistoryResponse(BaseModel):
     history_truncated: bool
 
 
+class TravelTimeResponse(BaseModel):
+    minutes: int
+    label: str
+    version: str
+
+
 class LaneIntelligenceResponse(BaseModel):
     broker_id: str
     load_id: str
     normalization_version: str
     lane: LaneResponse
     history: LaneHistoryResponse
+    typical_travel_time: Optional[TravelTimeResponse]
+
+
+def _travel_time_label(minutes: int) -> str:
+    hours, remainder = divmod(minutes, 60)
+    parts = [f"{hours} hour" + ("" if hours == 1 else "s")] if hours else []
+    if remainder:
+        parts.append(f"{remainder} minute" + ("" if remainder == 1 else "s"))
+    return f"Around {' '.join(parts)}"
 
 
 @router.get(
@@ -77,6 +93,7 @@ def lane_intelligence(
     if result is None:
         raise HTTPException(status_code=404, detail="load not found")
 
+    typical_travel_time = result.typical_travel_time_minutes
     return LaneIntelligenceResponse(
         broker_id=result.broker_id,
         load_id=result.load_id,
@@ -108,5 +125,14 @@ def lane_intelligence(
             fallback_reason=result.history.fallback_reason,
             history_limit=result.history.history_limit,
             history_truncated=result.history.history_truncated,
+        ),
+        typical_travel_time=(
+            TravelTimeResponse(
+                minutes=typical_travel_time,
+                label=_travel_time_label(typical_travel_time),
+                version=TRAVEL_TIME_VERSION,
+            )
+            if typical_travel_time is not None
+            else None
         ),
     )

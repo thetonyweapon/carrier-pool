@@ -199,6 +199,10 @@ def test_exact_same_equipment_ranks_above_nearby_history(db_session: Session) ->
     assert result.recommendations[0].score > result.recommendations[1].score
     assert result.unscored_carriers[0].name == "New Carrier"
     assert result.recommendations[0].factors[0].code == "exact_lane_same_equipment"
+    assert result.recommendations[0].evidence[0].origin_postal_code == "75201"
+    assert result.recommendations[0].evidence[0].destination_postal_code == "77002"
+    assert result.recommendations[0].evidence[0].completed_month == "2026-07"
+    assert result.recommendations[0].evidence[0].outcome == "completed"
 
 
 def test_identity_rows_are_aggregated_once_and_unlinked_same_names_stay_separate(

@@ -547,6 +547,11 @@ export function Analytics({ b, l, sharedEnabled }: { b: string; l: string; share
               {lane.history.exact_count} exact · {lane.history.nearby_count}{" "}
               nearby historical loads in the latest {lane.history.history_limit}
             </p>
+            {lane.typical_travel_time && (
+              <p className="travel-time">
+                <b>Typical travel time</b> {lane.typical_travel_time.label}
+              </p>
+            )}
             <span className="tag">{lane.history.data_sufficiency} data</span>
             {lane.history.history_truncated && (
               <p className="note">History is capped at the most recent eligible loads.</p>
@@ -904,7 +909,7 @@ function CandidateDrawer({
     setErr(undefined);
     setResult(undefined);
     api
-      .candidate(b, candidate, controller.signal)
+      .candidate(b, l, candidate, controller.signal)
       .then(setData)
       .catch((nextError) => {
         if (!isAbortError(nextError)) setErr(nextError);
@@ -1012,8 +1017,15 @@ function CandidateDrawer({
                 >
                   Assign overlay to this carrier
                 </button>
-              </div>
-            ))}
+               </div>
+             ))}
+             <h4>PRIVACY-SAFE CONTRIBUTING TRIPS</h4>
+             {data.evidence.length ? data.evidence.map((item, index) => (
+               <div className="evidence" key={`${item.origin.postal_code}-${item.destination.postal_code}-${index}`}>
+                 <b>{item.origin.city}, {item.origin.state} {item.origin.postal_code} → {item.destination.city}, {item.destination.state} {item.destination.postal_code}</b>
+                 <span>{item.completed_month || "Completion month unavailable"} · {item.outcome}</span>
+               </div>
+             )) : <p className="muted">No contributing trip details are available.</p>}
              {result && (
                <div className={result.kind === "success" ? "success" : "error"} role="status">
                  {result.message}

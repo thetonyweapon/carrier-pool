@@ -15,6 +15,24 @@ from app.models import Load, LoadStatus, LoadStop, StopType
 MIN_SUFFICIENT_HISTORY = 3
 HISTORY_LOAD_LIMIT = 500
 ELIGIBLE_HISTORY_STATUSES = (LoadStatus.DELIVERED, LoadStatus.COMPLETED)
+TRAVEL_TIME_VERSION = "tx-metro-travel-time-v1"
+
+# Fixed, directional planning estimates. Values are deliberately coarse and
+# rounded to 15 minutes; they are not live traffic or dispatch ETAs.
+_TRAVEL_TIME_MINUTES = {
+    "AUSTIN>DFW": 210,
+    "AUSTIN>HOUSTON": 165,
+    "AUSTIN>SAN_ANTONIO": 90,
+    "DFW>AUSTIN": 210,
+    "DFW>HOUSTON": 255,
+    "DFW>SAN_ANTONIO": 270,
+    "HOUSTON>AUSTIN": 165,
+    "HOUSTON>DFW": 255,
+    "HOUSTON>SAN_ANTONIO": 210,
+    "SAN_ANTONIO>AUSTIN": 90,
+    "SAN_ANTONIO>DFW": 270,
+    "SAN_ANTONIO>HOUSTON": 210,
+}
 
 
 class UnsupportedNormalizationVersion(ValueError):
@@ -67,6 +85,13 @@ class LaneIntelligence:
     normalization_version: str
     lane: DerivedLane
     history: LaneHistory
+    typical_travel_time_minutes: Optional[int]
+
+
+def typical_travel_time_minutes(metro_key: Optional[str]) -> Optional[int]:
+    if metro_key is None:
+        return None
+    return _TRAVEL_TIME_MINUTES.get(metro_key)
 
 
 def validate_normalization_version(version: str) -> None:
@@ -199,4 +224,5 @@ def get_lane_intelligence(
             history_limit=HISTORY_LOAD_LIMIT,
             history_truncated=history_truncated,
         ),
+        typical_travel_time_minutes=typical_travel_time_minutes(target_lane.metro_key),
     )

@@ -274,9 +274,28 @@ def test_candidate_detail_supports_canonical_and_identity_ids_and_rejects_foreig
     client: TestClient, db_session: Session
 ) -> None:
     seeded = seed_operations(db_session)
+    add_load(
+        db_session,
+        "broker-a",
+        "recommendation-history",
+        status=LoadStatus.COMPLETED,
+        carrier_id=seeded["canonical"].id,
+    )
+    db_session.commit()
     canonical = client.get("/brokers/broker-a/carrier-candidates/carrier:canonical-a")
     assert canonical.status_code == 200
     assert canonical.json()["carriers"][0]["source_id"] == "source-broker-a"
+    with_evidence = client.get(
+        "/brokers/broker-a/carrier-candidates/carrier:canonical-a",
+        params={"load_id": "target"},
+    )
+    assert with_evidence.status_code == 200
+    assert with_evidence.json()["evidence"][0] == {
+        "origin": {"city": "Dallas", "state": "TX", "postal_code": "75201"},
+        "destination": {"city": "Houston", "state": "TX", "postal_code": "77002"},
+        "completed_month": "2026-07",
+        "outcome": "completed",
+    }
     identity = client.get("/brokers/broker-a/carrier-candidates/identity:identity-a")
     assert identity.status_code == 200
     assert identity.json()["carrier_identity_id"] == "identity-a"

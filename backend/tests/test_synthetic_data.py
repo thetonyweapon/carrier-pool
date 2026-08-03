@@ -212,6 +212,12 @@ def test_generated_dataset_ingests_in_chronological_order() -> None:
         assert brokeros_load.carrier_rate == 2300
         assert freightflow_load.carrier_rate == 2300
 
+        completed_loads = session.scalars(
+            select(Load).where(Load.status == LoadStatus.COMPLETED)
+        ).all()
+        assert completed_loads
+        assert all(load.carrier_id is not None for load in completed_loads)
+
         hauldesk_rates = session.scalars(
             select(RateLineItem).where(RateLineItem.load_id == hauldesk_load.id)
         ).all()

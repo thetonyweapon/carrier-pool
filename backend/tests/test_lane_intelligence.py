@@ -493,6 +493,11 @@ def test_lane_api_returns_metadata_and_enforces_errors(db_session: Session) -> N
     assert response.status_code == 200
     assert response.json()["normalization_version"] == NORMALIZATION_VERSION
     assert response.json()["lane"]["metro_key"] == "DFW>HOUSTON"
+    assert response.json()["typical_travel_time"] == {
+        "minutes": 255,
+        "label": "Around 4 hours 15 minutes",
+        "version": "tx-metro-travel-time-v1",
+    }
     assert response.json()["history"]["eligible_statuses"] == ["delivered", "completed"]
     assert response.json()["history"]["history_limit"] == 500
     assert response.json()["history"]["history_truncated"] is False
