@@ -72,7 +72,11 @@ on the fork, with medium-or-higher review findings fixed before merge.**
 - `LoadVersion` stores both `raw_payload` (original TMS JSON) and `normalized_snapshot` (serialized canonical model fields). This supports point-in-time reconstruction and re-processing if mapping logic changes.
 - `RateLineItem` is append-only. Database triggers on both PostgreSQL (PL/pgSQL) and SQLite block UPDATE/DELETE. Corrections are new rows, not mutations.
 - Domain primary keys are UUID4 strings; the fixed demo broker/source rows are the deliberate stable-ID exception. `source_*_id` fields track TMS foreign identity for idempotent upserts.
-- Demo broker IDs (`broker-a` through `broker-c`) and source IDs (`source-a` through `source-c`) are stable identities, separate from display names. Bootstrap creates the configured display names, reconciles only legacy ID-as-name placeholders, preserves custom names, and validates source ownership and TMS type before committing.
+- Demo broker IDs (`broker-a` through `broker-c`, plus `broker-local`) and source
+  IDs (`source-a` through `source-c`) are stable identities, separate from
+  display names. Bootstrap creates the configured display names, reconciles only
+  legacy ID-as-name placeholders, preserves custom names, and validates source
+  ownership and TMS type before committing.
 
 *Alternatives rejected:* TMS-specific tables (does not scale to multiple TMS types); mutable rate records (loses audit trail); auto-increment PKs (leaks entity count).
 
@@ -170,14 +174,16 @@ Weight is `Numeric(12, 1)`, distance is `Numeric(10, 1)` — these are not finan
   with a broker switcher, lifecycle queue, analytics workspace, carrier drawer,
   and platform assignment overlays. Production authentication and non-demo writes
   remain deferred to platform hardening.
-- **Shared carrier pool.** The first backend slice keeps broker-owned identities
+- **Shared carrier pool.** The delivered backend keeps broker-owned identities
   broker-scoped and matches only normalized MC/DOT evidence across opted-in
   brokers. It returns a separate redacted recommendation list with public
   carrier names, opaque HMAC candidate IDs, bucketed evidence, and a minimum of
   three contributing brokers. The requester's own opted-in history contributes.
   Policy changes and every query are audited; on-demand computation makes
-  revocation effective immediately. Shared rates, assignment, UI presentation,
-  and production identity-provider integration remain deferred to platform
+  revocation effective immediately. Shared rates and UI presentation are
+  delivered in the authenticated demo path; shared candidates remain
+  informational and cannot be assigned through the local assignment endpoint.
+  Production identity-provider integration remains deferred to platform
   hardening; the demo path uses signed broker bearer tokens.
 
 ## What I'd Do Next With More Time

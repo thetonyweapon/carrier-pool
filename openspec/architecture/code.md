@@ -1,6 +1,6 @@
 # C4: Code-Level Responsibilities
 
-**Status: Delivered baseline with guarded shared-pool backend**
+**Status: Delivered baseline with guarded shared-pool backend and demo auth**
 
 This is a code-level map of the most important symbols and package groups. It
 is intentionally selective; it documents architectural ownership rather than
@@ -11,6 +11,8 @@ flowchart LR
     subgraph entry[Entry points]
         create[app.main.create_app]
         health[app.health.health]
+        auth[app.auth / app.auth_api\ndemo auth and authorization]
+        operations[app.broker_operations_api\nload and assignment API]
         ingest[ingest_file functions\nFreightFlow / HaulDesk / BrokerOS]
         generate[scripts.generate_synthetic_data.generate]
     end
@@ -34,6 +36,7 @@ flowchart LR
         lanes[app.lane_intelligence\nprimary lane and history queries]
         recommendations[app.carrier_recommendations\nversioned carrier ranking]
         pool[app.shared_carrier_pool\nredacted opt-in ranking]
+        accounts[app.demo_accounts\nephemeral local accounts]
         estimation[app.rate_estimation\nversioned pay estimation]
     end
 
@@ -41,6 +44,9 @@ flowchart LR
     raw[(data/tms_*/*.json)]
 
     create --> health
+    create --> auth
+    create --> operations
+    auth --> accounts
     health --> session
     session --> database
     ingest --> freight
@@ -58,6 +64,9 @@ flowchart LR
     recommendations --> stops
     recommendations --> database
     pool --> entities
+    operations --> entities
+    operations --> auth
+    pool --> auth
     pool --> database
     estimation --> lanes
     estimation --> entities
@@ -83,7 +92,7 @@ flowchart LR
     classDef delivered fill:#d9ead3,stroke:#38761d,color:#000;
     classDef planned fill:#f3f3f3,stroke:#666,color:#000,stroke-dasharray: 5 5;
     classDef external fill:#fff2cc,stroke:#bf9000,color:#000;
-    class create,health,session,base,entities,history,stops,files,migrations,shared,freight,haul,broker,geography,lanes,recommendations,estimation,ingest,generate delivered;
+    class create,health,auth,operations,accounts,session,base,entities,history,stops,files,migrations,shared,freight,haul,broker,geography,lanes,recommendations,pool,estimation,ingest,generate delivered;
     class database,raw external;
 ```
 
@@ -102,7 +111,7 @@ flowchart LR
 - `generate()` creates deterministic source fixtures without changing
   unrelated files.
 
-## Planned Code Areas
+## Deferred Code Areas
 
-- HTTP contracts consumed by the demo-mode operations UI.
-- Production identity-provider integration in place of the demo token issuer.
+- Production identity-provider integration in place of the demo token issuer and
+  ephemeral local-account layer.

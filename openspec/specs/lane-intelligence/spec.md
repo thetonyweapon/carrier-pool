@@ -83,5 +83,6 @@ or same-metro history. Reverse-direction history is never silently included.
 - There is no persisted lane assignment or aggregate table in this version.
 - History considers the 500 most recently synced eligible loads per broker; a
   database-backed aggregate or pagination is needed for larger history windows.
-- Authentication is not implemented; the broker path parameter is tenant context,
-  not authorization.
+- Production identity-provider authentication is deferred. The demo workflow
+  authenticates broker access with signed bearer tokens; the broker path remains
+  request context and is never trusted by itself.
