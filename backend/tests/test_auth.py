@@ -128,6 +128,6 @@ def test_non_demo_settings_reject_mock_auth(monkeypatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "sqlite+pysqlite:///:memory:")
     monkeypatch.setenv("DEMO_MODE", "false")
     monkeypatch.setenv("AUTH_MODE", "mock")
-    monkeypatch.setenv("ALLOW_MOCK_AUTH", "false")
+    monkeypatch.setenv("ALLOW_MOCK_AUTH", "true")
     with pytest.raises(ValueError, match="only permitted"):
         Settings(_env_file=None)

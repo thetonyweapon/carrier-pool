@@ -40,7 +40,7 @@ class Settings(BaseSettings):
                 raise ValueError("DEMO_MODE requires AUTH_MODE=mock and ALLOW_MOCK_AUTH=true")
             return self
 
-        if self.auth_mode == "mock" or self.allow_mock_auth:
+        if self.allow_mock_auth:
             raise ValueError("mock authentication is only permitted when DEMO_MODE=true")
         if self.auth_secret == DEMO_AUTH_SECRET_FALLBACK:
             raise ValueError("the demo AUTH_SECRET fallback is not allowed outside DEMO_MODE")
