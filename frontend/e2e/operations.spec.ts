@@ -1,12 +1,16 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, Page, test } from "@playwright/test";
+
+async function signInAsAdmin(page: Page) {
+  await page.getByLabel("Email or username").fill("admin");
+  await page.getByLabel("Password").fill("admin");
+  await page.getByRole("button", { name: "Sign in" }).click();
+}
 
 test("broker selection and dispatch board filter flow", async ({ page }) => {
   await page.goto("/brokers");
-  await expect(page.getByRole("heading", { name: "Choose an operations desk" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Ithaca Freight Partners/ })).toBeVisible({ timeout: 15000 });
-
-  await page.getByRole("button", { name: /Ithaca Freight Partners/ }).click();
+  await expect(page.getByRole("heading", { name: "Sign in to operations" })).toBeVisible();
+  await signInAsAdmin(page);
   await expect(page).toHaveURL(/\/brokers\/broker-a\/loads/);
   await expect(page.getByRole("heading", { name: "Dispatch board" })).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Select broker" })).toHaveValue("broker-a");
@@ -26,7 +30,7 @@ test("broker selection and dispatch board filter flow", async ({ page }) => {
 
 test("authenticated shared pool appears separately from local analytics", async ({ page }) => {
   await page.goto("/brokers");
-  await page.getByRole("button", { name: /Ithaca Freight Partners/ }).click();
+  await signInAsAdmin(page);
   await expect(page.getByRole("link", { name: "FF-101" })).toBeVisible();
   await page.getByRole("link", { name: "FF-101" }).click();
   await expect(page).toHaveURL(/\/brokers\/broker-a\/loads\/.+/);
@@ -41,7 +45,7 @@ test("landing and dispatch board have no critical accessibility violations", asy
   let results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter((violation) => ["critical", "serious"].includes(violation.impact || ""))).toEqual([]);
 
-  await page.getByRole("button", { name: /Ithaca Freight Partners/ }).click();
+  await signInAsAdmin(page);
   await expect(page.getByRole("heading", { name: "Dispatch board" })).toBeVisible();
   results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter((violation) => ["critical", "serious"].includes(violation.impact || ""))).toEqual([]);
