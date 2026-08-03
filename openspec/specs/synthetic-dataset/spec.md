@@ -54,5 +54,6 @@
 ## Limitations
 
 - The dataset is synthetic and intentionally focused on the Texas Triangle.
-- It does not yet validate recommendation quality because recommendation logic
-  is not implemented.
+- It does not claim to validate recommendation quality; recommendation logic is
+  delivered separately and the dataset provides deterministic scenarios for its
+  integration tests.

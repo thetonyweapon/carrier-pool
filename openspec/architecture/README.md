@@ -19,8 +19,9 @@ artifacts.
 - Dashed nodes and edges represent planned capabilities.
 - The platform boundary excludes source TMS systems and external operators.
 
-The diagrams distinguish delivered carrier recommendations, rate estimation, and
-the demo-mode operations UI from planned shared-carrier-pool features.
+The diagrams distinguish delivered carrier recommendations, rate estimation,
+demo-mode operations, and the authenticated shared-carrier-pool path from
+production hardening work that remains planned.
 
 ## Related Documents
 
@@ -32,3 +33,6 @@ the demo-mode operations UI from planned shared-carrier-pool features.
 - [Lane intelligence](../specs/lane-intelligence/spec.md)
 - [Carrier recommendations](../specs/carrier-recommendations/spec.md)
 - [Carrier rate estimation](../specs/carrier-rate-estimation/spec.md)
+- [Broker operations UI](../specs/broker-operations-ui/spec.md)
+- [Shared carrier pool](../specs/shared-carrier-pool/spec.md)
+- [Platform hardening](../specs/platform-hardening/spec.md)

@@ -11,7 +11,7 @@ platform identity provider.
 Allow a broker to opt into carefully bounded use of carrier knowledge from other
 participating brokers without exposing confidential source data.
 
-## Planned Requirements
+## Requirements
 
 - Participation MUST be an explicit broker-level opt-in.
 - Non-participating broker data MUST NOT influence shared-pool results.
@@ -56,7 +56,7 @@ next query, and rate aggregation without source disclosure. Policy changes are
 recorded as append-only events and every shared recommendation/rate query
 records its participant-scope digest.
 
-## Planned Scenarios
+## Scenarios
 
 - An opted-in broker receives an eligible shared carrier suggestion labeled as
   shared, without seeing the contributing broker.

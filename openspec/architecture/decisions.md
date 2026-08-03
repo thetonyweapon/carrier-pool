@@ -25,13 +25,14 @@ Broker scope is carried through domain rows and composite foreign keys. This is
 stronger than relying only on application filters and leaves the shared pool as
 an explicit, reviewable exception rather than an accidental leak path.
 
-## Current versus Planned Containers
+## Current Container Boundaries
 
-The FastAPI service exposes health, lane intelligence, recommendation, and rate
-estimation behavior. Ingestion is not represented as a background worker because
-the delivered workflow is a CLI processing one file at a time. The UI container
-remains planned in C2. The shared pool is a data-sharing policy that cuts across
-those containers, not a separate runtime container.
+The FastAPI service exposes health, authentication, broker operations, lane
+intelligence, recommendation, rate estimation, and shared-pool behavior.
+Ingestion is not represented as a background worker because the delivered
+workflow is a CLI processing one file at a time. The UI is a delivered demo
+container. The shared pool is a data-sharing policy that cuts across these
+containers, not a separate runtime container.
 
 ## Mermaid in Markdown
 
@@ -40,9 +41,10 @@ renders the diagrams from source and changes remain reviewable in pull requests.
 
 ## Deferred Architecture
 
-UI, shared pool, and platform hardening remain separate capabilities. Lane
-normalization, carrier recommendations, and rate estimation are delivered as
-on-demand backend services rather than persisted aggregates.
+Production identity integration, durable account storage, and platform hardening
+remain deferred. Lane normalization, carrier recommendations, rate estimation,
+and shared-pool results are delivered as on-demand services rather than
+persisted aggregates.
 
 ## Lane Normalization and Aggregation
 

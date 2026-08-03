@@ -11,8 +11,9 @@ loads.
 The delivered baseline covers the backend foundation, canonical multi-tenant
 model, three chronological file-ingestion adapters, deterministic synthetic
 data, on-demand broker-scoped lane intelligence, explainable carrier
-recommendations, and carrier rate estimation. Frontend and shared-pool
-capabilities remain planned.
+recommendations, carrier rate estimation, a demo operations UI, and an
+authenticated demo shared-carrier-pool path. Production identity integration,
+durable local accounts, and other hardening work remain planned.
 
 ## System Boundaries
 

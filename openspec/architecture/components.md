@@ -1,15 +1,19 @@
 # C3: Backend Components
 
-**Status: Delivered baseline with planned UI and shared-pool components**
+**Status: Delivered backend components for the API, demo auth, operations, and shared pool**
 
-This view describes the current backend package boundaries. Planned components
-are shown only to establish future ownership and integration points.
+This view describes the current backend package boundaries. Production identity
+provider integration remains a future boundary rather than a runtime component.
 
 ```mermaid
 flowchart TB
     subgraph backend[backend/app]
         main[main.py\ncreate_app]
         health[health.py\nhealth router]
+        auth[auth.py / auth_api.py\ndemo auth and authorization]
+        accounts[demo_accounts.py\nephemeral local accounts]
+        operations[broker_operations_api.py\nloads and assignments]
+        sharedpool[shared_carrier_pool.py / shared_carrier_pool_api.py\nredacted shared pool]
         config[config.py\nsettings]
         database[database.py\nengine and sessions]
         models[models.py\ncanonical entities and constraints]
@@ -32,6 +36,15 @@ flowchart TB
 
     http --> main
     main --> health
+    main --> auth
+    main --> operations
+    main --> sharedpool
+    auth --> accounts
+    auth --> models
+    operations --> auth
+    operations --> models
+    sharedpool --> auth
+    sharedpool --> models
     health --> database
     health --> db
     config --> database
@@ -67,7 +80,7 @@ flowchart TB
     classDef delivered fill:#d9ead3,stroke:#38761d,color:#000;
     classDef planned fill:#f3f3f3,stroke:#666,color:#000,stroke-dasharray: 5 5;
     classDef external fill:#fff2cc,stroke:#bf9000,color:#000;
-    class main,health,config,database,models,common,framework,ff,hd,bos,migrations,geography,lanes,recommendation,estimation delivered;
+    class main,health,auth,accounts,operations,sharedpool,config,database,models,common,framework,ff,hd,bos,migrations,geography,lanes,recommendation,estimation delivered;
     class db,files,http,cli external;
 ```
 
@@ -75,6 +88,13 @@ flowchart TB
 
 - `main.py` constructs the FastAPI application and registers routers.
 - `health.py` exposes the synchronous database health check.
+- `auth.py` verifies demo bearer tokens and enforces broker/admin scope.
+- `auth_api.py` exposes demo broker discovery, login, account, and profile
+  endpoints; `demo_accounts.py` keeps local account state in process memory.
+- `broker_operations_api.py` exposes broker-scoped load, carrier, and assignment
+  contracts.
+- `shared_carrier_pool.py` and `shared_carrier_pool_api.py` compute and expose
+  authenticated, redacted cross-broker recommendations and aggregate rates.
 - `config.py` loads environment-backed settings.
 - `database.py` owns the SQLAlchemy engine, session factory, and dependency.
 - `models.py` defines canonical entities, enums, tenant constraints, and
@@ -95,9 +115,12 @@ flowchart TB
   estimates from canonical completed-load history.
 - `rate_estimation_api.py` exposes the broker-scoped rate-estimation contract.
 
-## Planned Integration Points
+## Integration Points
 
 - Recommendation logic consumes canonical loads, stops, carriers, and the
   delivered lane-intelligence history contract.
 - Rate estimation consumes canonical rate history and lane dimensions.
 - Both services must be broker-scoped and expose explanation metadata.
+- The operations and shared-pool routers use the same authenticated principal
+  boundary; production identity-provider integration replaces only the demo
+  issuer and account layer.

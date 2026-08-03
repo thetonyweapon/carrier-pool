@@ -105,4 +105,5 @@ as deterministic tie-breakers.
 - Recommendation results are computed from current canonical state and are not a
   persisted replay of prior rankings.
 - History uses the 500 most recently synced eligible loads per broker.
-- Cross-broker shared-pool recommendations remain a separate planned capability.
+- Cross-broker shared-pool recommendations are delivered as a separate,
+  authenticated and redacted capability; this service remains broker-scoped.
