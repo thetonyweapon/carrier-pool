@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Optional, Sequence
 
-from sqlalchemy import and_, exists, select
+from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from app.lane_geography import NORMALIZATION_VERSION
@@ -13,6 +13,7 @@ from app.lane_intelligence import (
     derive_primary_lane,
     validate_normalization_version,
 )
+from app.load_eligibility import LoadNotEligible, LoadNotFound, require_active_uncovered
 from app.load_stops import load_stops
 from app.models import (
     BrokerSource,
@@ -20,7 +21,6 @@ from app.models import (
     Load,
     LoadStatus,
     LoadStop,
-    PlatformAssignment,
     TmsType,
 )
 
@@ -314,22 +314,12 @@ def estimate_carrier_rate(
     """
     validate_estimation_version(estimation_version)
     validate_normalization_version(normalization_version)
-    assignment_exists = exists(
-        select(PlatformAssignment.id).where(
-            PlatformAssignment.broker_id == broker_id,
-            PlatformAssignment.load_id == load_id,
-        )
-    )
-    target_row = session.execute(
-        select(Load, assignment_exists.label("has_assignment")).where(
-            Load.broker_id == broker_id, Load.id == load_id
-        )
-    ).one_or_none()
-    if target_row is None:
+    try:
+        target = require_active_uncovered(session, broker_id, load_id)
+    except LoadNotFound:
         return None
-    target, has_assignment = target_row
-    if target.status != LoadStatus.ACTIVE or target.carrier_id is not None or has_assignment:
-        raise RateEstimationNotEligible("load must be active and uncovered")
+    except LoadNotEligible as exc:
+        raise RateEstimationNotEligible(str(exc)) from exc
 
     as_of = _as_utc(target.last_synced_at)
     rows, candidate_count = _load_observations(session, broker_id, target.id, as_of)

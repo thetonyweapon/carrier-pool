@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Generator, Optional
 
 import pytest
@@ -109,6 +109,7 @@ def add_load(
     customer_id: Optional[str] = None,
     actual_destination: Optional[datetime] = None,
     last_synced_at: Optional[datetime] = None,
+    scheduled_date: Optional[date] = None,
 ) -> Load:
     load = Load(
         id=load_id,
@@ -144,6 +145,7 @@ def add_load(
                 state=destination[1],
                 postal_code=destination[2],
                 actual_arrived_at=actual_destination,
+                scheduled_date=scheduled_date,
             ),
         ]
     )
@@ -357,6 +359,107 @@ def test_recency_points_use_inclusive_utc_boundaries(age: timedelta, expected: i
 
     as_of = NOW
     assert _recency_points(as_of - age, as_of) == expected
+
+
+def test_recommendations_exclude_operational_evidence_newer_than_target_as_of(
+    db_session: Session,
+) -> None:
+    add_broker(db_session, "broker-a")
+    carrier = add_carrier(db_session, "broker-a", "source-a", "carrier-a", "Carrier A")
+    add_load(
+        db_session,
+        "broker-a",
+        "source-a",
+        "target",
+        LoadStatus.ACTIVE,
+        ("Dallas", "TX", "75201"),
+        ("Houston", "TX", "77002"),
+    )
+    add_load(
+        db_session,
+        "broker-a",
+        "source-a",
+        "future-evidence",
+        LoadStatus.COMPLETED,
+        ("Dallas", "TX", "75201"),
+        ("Houston", "TX", "77002"),
+        carrier_id=carrier.id,
+        actual_destination=NOW + timedelta(days=1),
+        last_synced_at=NOW - timedelta(days=1),
+    )
+    db_session.commit()
+
+    result = get_carrier_recommendations(db_session, "broker-a", "target")
+
+    assert result is not None
+    assert result.recommendations == ()
+    assert result.unscored_carriers[0].candidate_id == "carrier:carrier-a"
+
+
+def test_recommendations_exclude_future_snapshot_without_operational_evidence(
+    db_session: Session,
+) -> None:
+    add_broker(db_session, "broker-a")
+    carrier = add_carrier(db_session, "broker-a", "source-a", "carrier-a", "Carrier A")
+    add_load(
+        db_session,
+        "broker-a",
+        "source-a",
+        "target",
+        LoadStatus.ACTIVE,
+        ("Dallas", "TX", "75201"),
+        ("Houston", "TX", "77002"),
+    )
+    add_load(
+        db_session,
+        "broker-a",
+        "source-a",
+        "future-snapshot",
+        LoadStatus.COMPLETED,
+        ("Dallas", "TX", "75201"),
+        ("Houston", "TX", "77002"),
+        carrier_id=carrier.id,
+        actual_destination=None,
+        last_synced_at=NOW + timedelta(days=1),
+    )
+    db_session.commit()
+
+    result = get_carrier_recommendations(db_session, "broker-a", "target")
+
+    assert result is not None
+    assert result.recommendations == ()
+    assert result.unscored_carriers[0].candidate_id == "carrier:carrier-a"
+
+
+def test_recommendations_exclude_future_scheduled_date(db_session: Session) -> None:
+    add_broker(db_session, "broker-a")
+    carrier = add_carrier(db_session, "broker-a", "source-a", "carrier-a", "Carrier A")
+    add_load(
+        db_session,
+        "broker-a",
+        "source-a",
+        "target",
+        LoadStatus.ACTIVE,
+        ("Dallas", "TX", "75201"),
+        ("Houston", "TX", "77002"),
+    )
+    add_load(
+        db_session,
+        "broker-a",
+        "source-a",
+        "future-scheduled",
+        LoadStatus.COMPLETED,
+        ("Dallas", "TX", "75201"),
+        ("Houston", "TX", "77002"),
+        carrier_id=carrier.id,
+        scheduled_date=NOW.date() + timedelta(days=1),
+    )
+    db_session.commit()
+
+    result = get_carrier_recommendations(db_session, "broker-a", "target")
+
+    assert result is not None
+    assert result.recommendations == ()
 
 
 def test_datetime_normalization_is_utc() -> None:

@@ -16,6 +16,7 @@ from app.carrier_recommendations import (
 from app.config import settings
 from app.database import get_db
 from app.lane_intelligence import LaneNotDerivable
+from app.load_eligibility import is_active_uncovered
 from app.models import (
     BrokerSource,
     Carrier,
@@ -312,7 +313,7 @@ def loads(
     principal: BrokerPrincipal = Depends(require_broker_principal),
     db: Session = Depends(get_db),
 ) -> LoadListResponse:
-    del principal
+    broker_id = principal.broker_id
     pickup_schedule = (
         select(func.min(LoadStop.scheduled_start_at))
         .where(LoadStop.broker_id == broker_id, LoadStop.load_id == Load.id)
@@ -427,7 +428,7 @@ def load_detail(
     principal: BrokerPrincipal = Depends(require_broker_principal),
     db: Session = Depends(get_db),
 ) -> LoadDetailResponse:
-    del principal
+    broker_id = principal.broker_id
     load = _load_or_404(db, broker_id, load_id)
     customer, source_name, source_id, stops, assignment, assigned_carrier, canonical_carrier = (
         _related(db, load)
@@ -456,6 +457,7 @@ def assign_load(
     principal: BrokerPrincipal = Depends(require_broker_principal),
     db: Session = Depends(get_db),
 ) -> AssignmentResponse:
+    broker_id = principal.broker_id
     actor = principal.actor
     if not settings.demo_mode:
         raise HTTPException(status_code=404, detail="not found")
@@ -482,7 +484,7 @@ def assign_load(
             if prior_carrier is None:
                 raise HTTPException(status_code=409, detail="assignment result is unavailable")
             return _assignment_event_response(prior_event, prior_carrier)
-    if load.status != LoadStatus.ACTIVE or load.carrier_id is not None:
+    if not is_active_uncovered(db, load, allow_assignment_update=True):
         raise HTTPException(
             status_code=409, detail="load is not an active canonical uncovered target"
         )
@@ -504,19 +506,12 @@ def assign_load(
             raise HTTPException(status_code=422, detail="carrier is not owned by broker")
         if candidate_id is None:
             candidate_id = carrier.id
+    if candidate_id and request.carrier_id:
+        candidate_carriers = _resolve_candidate_carriers(db, broker_id, candidate_id)
+        if carrier.id not in {candidate.id for candidate in candidate_carriers}:
+            raise HTTPException(status_code=422, detail="carrier_id and candidate_id do not match")
     elif candidate_id:
-        if candidate_id.startswith("identity:"):
-            identity_id = candidate_id.split(":", 1)[1]
-            carriers = db.scalars(
-                select(Carrier).where(
-                    Carrier.broker_id == broker_id, Carrier.carrier_identity_id == identity_id
-                )
-            ).all()
-        else:
-            canonical_id = candidate_id.removeprefix("carrier:")
-            carriers = db.scalars(
-                select(Carrier).where(Carrier.broker_id == broker_id, Carrier.id == canonical_id)
-            ).all()
+        carriers = _resolve_candidate_carriers(db, broker_id, candidate_id)
         if len(carriers) != 1:
             raise HTTPException(
                 status_code=422, detail="candidate must resolve to one broker carrier"
@@ -586,6 +581,20 @@ def assign_load(
     )
 
 
+def _resolve_candidate_carriers(db: Session, broker_id: str, candidate_id: str) -> list[Carrier]:
+    if candidate_id.startswith("identity:"):
+        identity_id = candidate_id.split(":", 1)[1]
+        return db.scalars(
+            select(Carrier).where(
+                Carrier.broker_id == broker_id, Carrier.carrier_identity_id == identity_id
+            )
+        ).all()
+    canonical_id = candidate_id.removeprefix("carrier:")
+    return db.scalars(
+        select(Carrier).where(Carrier.broker_id == broker_id, Carrier.id == canonical_id)
+    ).all()
+
+
 @router.get(
     "/brokers/{broker_id}/carrier-candidates/{candidate_id}", response_model=CandidateDetailResponse
 )
@@ -596,7 +605,7 @@ def carrier_candidate(
     principal: BrokerPrincipal = Depends(require_broker_principal),
     db: Session = Depends(get_db),
 ) -> CandidateDetailResponse:
-    del principal
+    broker_id = principal.broker_id
     if candidate_id.startswith("identity:"):
         identity_id = candidate_id.split(":", 1)[1]
         identity = db.scalar(

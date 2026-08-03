@@ -188,6 +188,15 @@ def test_ingests_crm_record_references_multistop_and_weight(db_session: Session)
     assert db_session.scalars(select(RateLineItem)).all() == []
 
 
+def test_newer_sync_does_not_apply_an_older_brokeros_record(db_session: Session) -> None:
+    ingest_contents(db_session, "brokeros-a", "first.json", contents(make_sync()))
+    stale = make_sync(synced_at="2026-07-06T17:00:00.000+0000", status="Invoiced")
+    stale["records"][0]["LastModifiedDate"] = "2026-07-06T08:00:00.000+0000"
+    ingest_contents(db_session, "brokeros-a", "second.json", contents(stale))
+
+    assert db_session.scalar(select(Load)).status == LoadStatus.ACTIVE
+
+
 def test_status_equipment_and_null_weight_mappings(db_session: Session) -> None:
     payload = make_sync(status="Paid", equipment=None, line_items=[])
     ingest_contents(db_session, "brokeros-a", "first.json", contents(payload))

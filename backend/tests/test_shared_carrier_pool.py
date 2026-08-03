@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
@@ -23,6 +23,7 @@ from app.models import (
     Load,
     LoadStatus,
     LoadStop,
+    PlatformAssignment,
     SharedPoolPolicyEvent,
     SharedPoolQueryAudit,
     StopType,
@@ -127,6 +128,7 @@ def add_load(
     carrier_id: Optional[str] = None,
     origin: tuple[str, str, str] = ("Dallas", "TX", "75201"),
     destination: tuple[str, str, str] = ("Houston", "TX", "77002"),
+    scheduled_date: Optional[date] = None,
 ) -> Load:
     source_id = f"source-{broker_id}"
     load = Load(
@@ -162,6 +164,7 @@ def add_load(
                 city=destination[0],
                 state=destination[1],
                 postal_code=destination[2],
+                scheduled_date=scheduled_date,
             ),
         ]
     )
@@ -209,6 +212,27 @@ def test_shared_results_require_three_distinct_opted_in_contributors(db_session:
     assert db_session.scalar(
         select(SharedPoolQueryAudit).where(SharedPoolQueryAudit.load_id == "target")
     )
+
+
+def test_shared_recommendations_exclude_future_scheduled_dates(db_session: Session) -> None:
+    seed_shared_pool(db_session)
+    for broker_id in ("broker-b", "broker-c", "broker-d"):
+        pickup = db_session.scalar(
+            select(LoadStop).where(
+                LoadStop.load_id == f"history-{broker_id}",
+                LoadStop.sequence_number == 1,
+            )
+        )
+        assert pickup is not None
+        pickup.scheduled_date = NOW.date() + timedelta(days=1)
+    db_session.commit()
+
+    result = get_shared_carrier_recommendations(
+        db_session, "broker-a", "target", "test-shared-pool-secret"
+    )
+
+    assert result is not None
+    assert result.recommendations == ()
 
 
 def test_set_shared_pool_policy_sees_pending_broker_with_autoflush_disabled() -> None:
@@ -281,6 +305,26 @@ def test_shared_rate_estimate_requires_three_brokers_and_returns_redacted_market
     assert result.sample_count_bucket == "3-5"
     assert result.contributing_broker_count_bucket == "3-5"
     assert result.match_scope == "exact"
+
+
+def test_shared_analytics_rejects_a_platform_assigned_target(db_session: Session) -> None:
+    seed_shared_pool(db_session)
+    carrier = db_session.get(Load, "history-broker-a").carrier_id
+    db_session.add(
+        PlatformAssignment(
+            broker_id="broker-a",
+            load_id="target",
+            carrier_id=carrier,
+            demo_actor="test-user",
+            assignment_version=1,
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    db_session.commit()
+
+    with pytest.raises(SharedPoolNotEligible):
+        get_shared_rate_estimate(db_session, "broker-a", "target")
 
 
 def test_shared_rate_estimate_rejects_load_without_derivable_lane(db_session: Session) -> None:

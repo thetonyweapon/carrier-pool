@@ -427,6 +427,27 @@ def test_zero_sum_rate_correction_is_stored_as_zero_not_null(db_session: Session
     assert versions[-1].normalized_snapshot["carrier_rate"] == "0.00"
 
 
+def test_newer_sync_does_not_apply_an_older_hauldesk_record(db_session: Session) -> None:
+    ingest_contents(db_session, "hauldesk-a", "first.json", contents(make_sync(status_code=20)))
+    stale = make_sync(
+        synced_at="2026-07-06 12:00:00",
+        status_code=90,
+        updated_at="2026-07-05 12:00:00",
+    )
+    stale["loads"][0]["customer_name"] = "Older Customer"
+    stale["carriers"][0]["carrier_name"] = "OLDER CARRIER"
+    stale["rates"][0]["rate_id"] = 910233
+    stale["rates"][0]["amount_usd"] = 1.00
+    stale["rates"][1]["rate_id"] = 910234
+    ingest_contents(db_session, "hauldesk-a", "second.json", contents(stale))
+
+    assert db_session.scalar(select(Load)).status == LoadStatus.ACTIVE
+    assert db_session.scalar(select(Customer)).name == "Alamo Building Supply"
+    assert db_session.scalar(select(Carrier)).name == "DELTA PRIME LLC"
+    rate = db_session.scalar(select(RateLineItem).where(RateLineItem.side == "pay"))
+    assert rate.amount == Decimal("1035.00")
+
+
 def test_carrier_identity_normalizes_mc_and_dot_across_sources(db_session: Session) -> None:
     first = upsert_carrier_identity(
         db_session,

@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import or_, select
+from sqlalchemy import and_, exists, or_, select
 from sqlalchemy.exc import DBAPIError, IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
@@ -80,6 +80,26 @@ def claim_next_job(
     lease_seconds: int = DEFAULT_LEASE_SECONDS,
 ) -> Optional[IngestionJob]:
     now = now or datetime.now(timezone.utc)
+    earlier = IngestionJob.__table__.alias("earlier_ingestion_job")
+    earlier_job_exists = exists(
+        select(earlier.c.id).where(
+            earlier.c.broker_source_id == IngestionJob.broker_source_id,
+            earlier.c.status.in_(
+                (
+                    IngestionJobStatus.QUEUED,
+                    IngestionJobStatus.RETRY_WAIT,
+                    IngestionJobStatus.PROCESSING,
+                )
+            ),
+            or_(
+                earlier.c.synced_at < IngestionJob.synced_at,
+                and_(
+                    earlier.c.synced_at == IngestionJob.synced_at,
+                    earlier.c.filename < IngestionJob.filename,
+                ),
+            ),
+        )
+    )
     job = session.scalar(
         select(IngestionJob)
         .where(
@@ -94,9 +114,10 @@ def claim_next_job(
                     (IngestionJob.status == IngestionJobStatus.PROCESSING)
                     & (IngestionJob.lease_expires_at < now)
                 ),
-            )
+            ),
+            ~earlier_job_exists,
         )
-        .order_by(IngestionJob.synced_at, IngestionJob.id)
+        .order_by(IngestionJob.synced_at, IngestionJob.filename, IngestionJob.id)
         .with_for_update(skip_locked=True)
     )
     if job is None:
@@ -105,6 +126,7 @@ def claim_next_job(
     job.status = IngestionJobStatus.PROCESSING
     job.attempt_count += 1
     job.lease_owner = worker_id
+    job.lease_token = str(uuid4())
     job.lease_expires_at = now + timedelta(seconds=lease_seconds)
     job.started_at = job.started_at or now
     session.commit()
@@ -118,12 +140,14 @@ def complete_job(
     worker_id: str,
     *,
     now: Optional[datetime] = None,
+    lease_token: str,
 ) -> IngestionJob:
-    job = _owned_job(session, job_id, worker_id)
+    job = _owned_job(session, job_id, worker_id, lease_token, now=now)
     job.status = IngestionJobStatus.SUCCEEDED
     job.completed_at = now or datetime.now(timezone.utc)
     job.lease_owner = None
     job.lease_expires_at = None
+    job.lease_token = None
     job.failure_class = None
     job.error_message = None
     session.commit()
@@ -143,11 +167,23 @@ def renew_lease(
     *,
     now: Optional[datetime] = None,
     lease_seconds: int = DEFAULT_LEASE_SECONDS,
+    lease_token: str,
 ) -> IngestionJob:
-    job = _owned_job(session, job_id, worker_id)
+    job = _owned_job(session, job_id, worker_id, lease_token, now=now)
     job.lease_expires_at = (now or datetime.now(timezone.utc)) + timedelta(seconds=lease_seconds)
     session.commit()
     return job
+
+
+def assert_job_lease(
+    session: Session,
+    job_id: str,
+    worker_id: str,
+    lease_token: str,
+    *,
+    now: Optional[datetime] = None,
+) -> None:
+    _owned_job(session, job_id, worker_id, lease_token, now=now)
 
 
 def fail_job(
@@ -158,14 +194,16 @@ def fail_job(
     *,
     now: Optional[datetime] = None,
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
+    lease_token: str,
 ) -> IngestionJob:
     now = now or datetime.now(timezone.utc)
-    job = _owned_job(session, job_id, worker_id)
+    job = _owned_job(session, job_id, worker_id, lease_token, now=now)
     retryable = is_retryable(error)
     job.failure_class = error.__class__.__name__
     job.error_message = str(error)[:2000]
     job.lease_owner = None
     job.lease_expires_at = None
+    job.lease_token = None
     if retryable and job.attempt_count < max_attempts:
         job.status = IngestionJobStatus.RETRY_WAIT
         job.available_at = now + timedelta(seconds=2 ** max(job.attempt_count - 1, 0))
@@ -201,6 +239,7 @@ def replay_dead_letter(
     job.available_at = now or datetime.now(timezone.utc)
     job.lease_owner = None
     job.lease_expires_at = None
+    job.lease_token = None
     job.failure_class = None
     job.error_message = None
     job.completed_at = None
@@ -216,11 +255,27 @@ def is_retryable(error: BaseException) -> bool:
     return error.__class__.__name__ in RETRYABLE_FAILURE_CLASSES
 
 
-def _owned_job(session: Session, job_id: str, worker_id: str) -> IngestionJob:
-    job = session.get(IngestionJob, job_id)
+def _owned_job(
+    session: Session,
+    job_id: str,
+    worker_id: str,
+    lease_token: str,
+    *,
+    now: Optional[datetime] = None,
+) -> IngestionJob:
+    now = now or datetime.now(timezone.utc)
+    job = session.scalar(select(IngestionJob).where(IngestionJob.id == job_id).with_for_update())
     if job is None:
         raise ValueError("ingestion job not found")
-    if job.status != IngestionJobStatus.PROCESSING or job.lease_owner != worker_id:
+    if (
+        job.status != IngestionJobStatus.PROCESSING
+        or job.lease_owner != worker_id
+        or not job.lease_token
+        or not lease_token
+        or job.lease_token != lease_token
+        or job.lease_expires_at is None
+        or _as_utc(job.lease_expires_at) <= _as_utc(now)
+    ):
         raise ValueError("ingestion job lease is not owned by worker")
     return job
 

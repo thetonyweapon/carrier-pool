@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional, Sequence
 
-from sqlalchemy import and_, func, select, tuple_
+from sqlalchemy import and_, exists, func, or_, select, tuple_
 from sqlalchemy.orm import Session
 
 from app.lane_geography import NORMALIZATION_VERSION
@@ -15,6 +15,7 @@ from app.lane_intelligence import (
     LaneNotDerivable,
     derive_primary_lane,
 )
+from app.load_eligibility import LoadNotEligible, LoadNotFound, require_active_uncovered
 from app.load_stops import load_stops
 from app.models import (
     Broker,
@@ -22,7 +23,6 @@ from app.models import (
     CarrierIdentity,
     EquipmentType,
     Load,
-    LoadStatus,
     LoadStop,
     SharedPoolPolicy,
     SharedPoolPolicyEvent,
@@ -152,11 +152,12 @@ def get_shared_carrier_recommendations(
     if requester_policy is None:
         raise SharedPoolDisabled("requesting broker has not opted into the shared pool")
 
-    target = session.scalar(select(Load).where(Load.broker_id == broker_id, Load.id == load_id))
-    if target is None:
+    try:
+        target = require_active_uncovered(session, broker_id, load_id)
+    except LoadNotFound:
         return None
-    if target.status != LoadStatus.ACTIVE or target.carrier_id is not None:
-        raise SharedPoolNotEligible("load must be active and uncovered")
+    except LoadNotEligible as exc:
+        raise SharedPoolNotEligible(str(exc)) from exc
 
     target_stops = load_stops(session, broker_id, [target.id]).get(target.id, [])
     try:
@@ -171,7 +172,7 @@ def get_shared_carrier_recommendations(
     ).all()
     participant_scope_digest = _participant_scope_digest(policies)
     participant_ids = [policy.broker_id for policy in policies]
-    historical_loads = _historical_loads(session, participant_ids)
+    historical_loads = _historical_loads(session, participant_ids, _as_utc(target.last_synced_at))
     historical_stops = _load_stops_by_scope(
         session, participant_ids, [load.id for load in historical_loads]
     )
@@ -217,6 +218,16 @@ def get_shared_carrier_recommendations(
         try:
             lane = derive_primary_lane(stops)
         except LaneNotDerivable:
+            continue
+        operational_times = [
+            timestamp
+            for stop in stops
+            for timestamp in (stop.actual_arrived_at, stop.actual_departed_at)
+            if timestamp is not None
+        ]
+        if operational_times and max(map(_as_utc, operational_times)) > _as_utc(
+            target.last_synced_at
+        ):
             continue
         exact = lane.exact_key == target_lane.exact_key
         nearby = (
@@ -299,10 +310,45 @@ def _load_stops_by_scope(
     return grouped
 
 
-def _historical_loads(session: Session, participant_ids: Sequence[str]) -> list[Load]:
+def _historical_loads(
+    session: Session, participant_ids: Sequence[str], as_of: Optional[datetime] = None
+) -> list[Load]:
     """Fetch a bounded, deterministic history slice for every participant."""
     if not participant_ids:
         return []
+    filters = [
+        Load.broker_id.in_(participant_ids),
+        Load.status.in_(ELIGIBLE_HISTORY_STATUSES),
+        Load.carrier_id.is_not(None),
+    ]
+    if as_of is not None:
+        filters.append(Load.last_synced_at <= as_of)
+        filters.extend(
+            (
+                or_(Load.source_created_at.is_(None), Load.source_created_at <= as_of),
+                or_(Load.source_updated_at.is_(None), Load.source_updated_at <= as_of),
+                or_(Load.booked_at.is_(None), Load.booked_at <= as_of),
+                ~exists(
+                    select(LoadStop.id).where(
+                        LoadStop.broker_id == Load.broker_id,
+                        LoadStop.load_id == Load.id,
+                        or_(
+                            LoadStop.scheduled_start_at > as_of,
+                            LoadStop.scheduled_end_at > as_of,
+                            LoadStop.actual_arrived_at > as_of,
+                            LoadStop.actual_departed_at > as_of,
+                        ),
+                    )
+                ),
+                ~exists(
+                    select(LoadStop.id).where(
+                        LoadStop.broker_id == Load.broker_id,
+                        LoadStop.load_id == Load.id,
+                        LoadStop.scheduled_date > as_of.date(),
+                    )
+                ),
+            )
+        )
     ranked = (
         select(
             Load.id.label("load_id"),
@@ -314,11 +360,7 @@ def _historical_loads(session: Session, participant_ids: Sequence[str]) -> list[
             )
             .label("history_rank"),
         )
-        .where(
-            Load.broker_id.in_(participant_ids),
-            Load.status.in_(ELIGIBLE_HISTORY_STATUSES),
-            Load.carrier_id.is_not(None),
-        )
+        .where(*filters)
         .subquery()
     )
     return session.scalars(
@@ -392,3 +434,9 @@ def _count_bucket(value: int) -> str:
     if value <= 10:
         return "6-10"
     return "11+"
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)

@@ -8,11 +8,11 @@ from sqlalchemy.orm import Session
 
 from app.lane_geography import NORMALIZATION_VERSION
 from app.lane_intelligence import derive_primary_lane
+from app.load_eligibility import LoadNotEligible, LoadNotFound, require_active_uncovered
 from app.load_stops import load_stops
 from app.models import (
     EquipmentType,
     Load,
-    LoadStatus,
     LoadStop,
     SharedPoolPolicy,
     SharedPoolQueryAudit,
@@ -93,11 +93,12 @@ def get_shared_rate_estimate(
     if normalization_version != NORMALIZATION_VERSION:
         raise ValueError(f"unsupported normalization version: {normalization_version}")
     requester_policy = _enabled_policy(session, broker_id)
-    target = session.scalar(select(Load).where(Load.broker_id == broker_id, Load.id == load_id))
-    if target is None:
+    try:
+        target = require_active_uncovered(session, broker_id, load_id)
+    except LoadNotFound:
         return None
-    if target.status != LoadStatus.ACTIVE or target.carrier_id is not None:
-        raise SharedPoolNotEligible("load must be active and uncovered")
+    except LoadNotEligible as exc:
+        raise SharedPoolNotEligible(str(exc)) from exc
     target_stops = load_stops(session, broker_id, [target.id]).get(target.id, [])
     try:
         target_lane = derive_primary_lane(target_stops)
@@ -110,13 +111,17 @@ def get_shared_rate_estimate(
     ).all()
     participant_ids = [policy.broker_id for policy in policies]
     scope_digest = _participant_scope_digest(policies)
-    historical_loads = _historical_loads(session, participant_ids)
+    historical_loads = _historical_loads(session, participant_ids, _as_utc(target.last_synced_at))
     stops_by_load = _load_stops_by_scope(
         session,
         participant_ids,
         [load.id for load in historical_loads],
     )
-    observations = _observations(historical_loads, stops_by_load)
+    observations = [
+        item
+        for item in _observations(historical_loads, stops_by_load)
+        if item.rate_date <= _as_utc(target.last_synced_at)
+    ]
     selected = None
     for lookback_days in (PRIMARY_LOOKBACK_DAYS, EXTENDED_LOOKBACK_DAYS):
         cutoff = _as_utc(target.last_synced_at) - timedelta(days=lookback_days)

@@ -127,6 +127,14 @@ def require_broker_principal(
         raise HTTPException(status_code=403, detail="broker identity mismatch")
     if db.get(Broker, broker_id) is None:
         raise HTTPException(status_code=404, detail="broker not found")
+    if principal.is_admin:
+        return BrokerPrincipal(
+            broker_id=broker_id,
+            actor=principal.actor,
+            subject=principal.subject,
+            account_id=principal.account_id,
+            is_admin=True,
+        )
     return principal
 
 

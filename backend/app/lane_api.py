@@ -79,7 +79,7 @@ def lane_intelligence(
     principal: BrokerPrincipal = Depends(require_broker_principal),
     db: Session = Depends(get_db),
 ) -> LaneIntelligenceResponse:
-    del principal
+    broker_id = principal.broker_id
     try:
         result = get_lane_intelligence(db, broker_id, load_id, normalization_version)
     except UnsupportedNormalizationVersion as exc:

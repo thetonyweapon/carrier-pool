@@ -719,6 +719,7 @@ class IngestionJob(Base):
     attempt_count: Mapped[int] = mapped_column(nullable=False, default=0)
     available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     lease_owner: Mapped[Optional[str]] = mapped_column(String(255))
+    lease_token: Mapped[Optional[str]] = mapped_column(String(36))
     lease_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     failure_class: Mapped[Optional[str]] = mapped_column(String(255))
     error_message: Mapped[Optional[str]] = mapped_column(String(2000))
@@ -734,6 +735,10 @@ class IngestionJob(Base):
             ondelete="CASCADE",
         ),
         CheckConstraint("attempt_count >= 0", name="ck_ingestion_jobs_attempt_nonnegative"),
+        CheckConstraint(
+            "status != 'processing' OR (lease_token IS NOT NULL AND lease_expires_at IS NOT NULL)",
+            name="ck_ingestion_jobs_processing_lease_required",
+        ),
         UniqueConstraint("broker_source_id", "filename", name="uq_ingestion_jobs_source_filename"),
         Index("ix_ingestion_jobs_status_available", "status", "available_at", "id"),
     )
