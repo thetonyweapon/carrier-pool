@@ -26,7 +26,10 @@ def test_broker_scoped_routes_require_bearer_authentication() -> None:
 def test_demo_token_endpoint_is_hidden_outside_demo_mode(monkeypatch) -> None:
     monkeypatch.setattr("app.auth_api.settings.demo_mode", False)
     with TestClient(create_app()) as client:
-        response = client.post("/demo/auth", json={"broker_id": "broker-a"})
+        response = client.post(
+            "/demo/auth",
+            json={"broker_id": "broker-a", "identifier": "admin", "password": "admin"},
+        )
     assert response.status_code == 404
 
 

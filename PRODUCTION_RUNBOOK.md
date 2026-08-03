@@ -14,6 +14,10 @@ with managed secrets and provider-specific commands before deployment.
 Do not set `DEMO_MODE=true` or `ALLOW_MOCK_AUTH=true` in production. Do not reuse
 the fallback secrets from the demo Compose file.
 
+The in-memory demo accounts and `admin` / `admin` credential are not available
+in the production profile. Production authentication remains an external
+provider integration boundary and must not use local demo account state.
+
 ## Deploy
 
 1. Validate the environment and Compose configuration:

@@ -22,6 +22,8 @@ class BrokerPrincipal:
     broker_id: str
     actor: str
     subject: str
+    account_id: str = ""
+    is_admin: bool = False
 
 
 def issue_demo_token(broker_id: str, actor: str = "demo-user") -> str:
@@ -31,14 +33,31 @@ def issue_demo_token(broker_id: str, actor: str = "demo-user") -> str:
         raise ValueError("mock authentication is not enabled")
     if not settings.auth_secret:
         raise ValueError("AUTH_SECRET is not configured")
+    return issue_authenticated_token(
+        broker_id=broker_id,
+        account_id=actor,
+        actor=actor,
+        subject=actor,
+    )
+
+
+def issue_authenticated_token(
+    broker_id: str,
+    account_id: str,
+    actor: str,
+    subject: str,
+    is_admin: bool = False,
+) -> str:
     payload = _encode_payload(
         {
             "aud": settings.auth_audience,
+            "account_id": account_id,
+            "admin": is_admin,
             "broker_id": broker_id,
             "actor": actor,
             "expires_at": int(time.time()) + settings.auth_token_ttl_seconds,
             "iss": settings.auth_issuer,
-            "sub": actor,
+            "sub": subject,
         }
     )
     return f"{payload}.{_signature(payload)}"
@@ -68,6 +87,8 @@ def get_current_principal(
         expires_at = int(decoded["expires_at"])
         issuer = str(decoded["iss"])
         subject = str(decoded["sub"])
+        account_id = str(decoded.get("account_id", subject))
+        is_admin = decoded.get("admin") is True
     except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
         raise HTTPException(status_code=401, detail="invalid bearer token") from exc
     if (
@@ -77,10 +98,24 @@ def get_current_principal(
         or not broker_id
         or not actor
         or not subject
-        or subject != actor
+        or not account_id
     ):
         raise HTTPException(status_code=401, detail="invalid bearer token")
-    return BrokerPrincipal(broker_id=broker_id, actor=actor, subject=subject)
+    return BrokerPrincipal(
+        broker_id=broker_id,
+        actor=actor,
+        subject=subject,
+        account_id=account_id,
+        is_admin=is_admin,
+    )
+
+
+def get_optional_principal(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
+) -> Optional[BrokerPrincipal]:
+    if credentials is None or not settings.demo_mode:
+        return None
+    return get_current_principal(credentials)
 
 
 def require_broker_principal(
@@ -88,7 +123,7 @@ def require_broker_principal(
     principal: BrokerPrincipal = Depends(get_current_principal),
     db: Session = Depends(get_db),
 ) -> BrokerPrincipal:
-    if principal.broker_id != broker_id:
+    if not principal.is_admin and principal.broker_id != broker_id:
         raise HTTPException(status_code=403, detail="broker identity mismatch")
     if db.get(Broker, broker_id) is None:
         raise HTTPException(status_code=404, detail="broker not found")

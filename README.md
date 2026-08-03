@@ -469,6 +469,17 @@ issuer and audience, and never trust a broker ID supplied by the client. OIDC,
 JWKS discovery, key rotation, revocation, and provider-specific claim mapping
 remain deferred; no network calls are required for this demo.
 
+### Local demo accounts
+
+The login page supports ephemeral local accounts. `admin` / `admin` is the
+intentional sysadmin demo exception and can select any broker. Existing TMS
+brokers are demo-locked; `Local Sandbox Brokerage` is the editable local
+broker fixture. Local accounts are kept only in backend memory, use salted
+hashes while the process is running, and disappear when the backend container
+restarts. Normal accounts are restricted to their assigned broker, while the
+admin account can switch broker context. Password reset is deliberately a UI
+notice only; no email or third-party service is contacted.
+
 ### Option A: Docker Compose (recommended)
 
 Compose sets `DEMO_MODE=true` automatically, runs migrations, creates the three

@@ -220,7 +220,97 @@ def test_demo_brokers_are_gated(client: TestClient, db_session: Session, monkeyp
     monkeypatch.setattr(settings, "demo_mode", True)
     response = client.get("/demo/brokers")
     assert response.status_code == 200
-    assert response.json() == [{"id": "broker-a", "name": "Broker broker-a"}]
+    assert response.json() == [{"id": "broker-a", "name": "Broker broker-a", "is_demo": True}]
+
+
+def test_local_account_lifecycle_and_admin_broker_switching(
+    client: TestClient, db_session: Session
+) -> None:
+    add_broker(db_session, "broker-a")
+    add_broker(db_session, "broker-local")
+    local = db_session.get(Broker, "broker-local")
+    assert local is not None
+    local.is_demo = False
+    db_session.commit()
+
+    for invalid_password in ("abcdef", "a!b", "admin!"):
+        assert (
+            client.post(
+                "/demo/accounts",
+                json={
+                    "broker_id": "broker-local",
+                    "name": "Invalid Password",
+                    "email": f"{invalid_password.replace('!', '')}@example.test",
+                    "password": invalid_password,
+                },
+            ).status_code
+            == 422
+        )
+
+    created = client.post(
+        "/demo/accounts",
+        json={
+            "broker_id": "broker-local",
+            "name": "Local Operator",
+            "email": "operator@example.test",
+            "password": "tiger!7",
+        },
+    )
+    assert created.status_code == 201
+    assert (
+        client.post(
+            "/demo/accounts",
+            json={
+                "broker_id": "broker-local",
+                "name": "Duplicate",
+                "email": "OPERATOR@example.test",
+                "password": "tiger!7",
+            },
+        ).status_code
+        == 409
+    )
+    assert (
+        client.post(
+            "/demo/accounts",
+            json={
+                "broker_id": "broker-a",
+                "name": "Locked",
+                "email": "locked@example.test",
+                "password": "tiger!7",
+            },
+        ).status_code
+        == 403
+    )
+
+    login = client.post(
+        "/demo/auth",
+        json={
+            "broker_id": "broker-local",
+            "identifier": "OPERATOR@example.test",
+            "password": "tiger!7",
+        },
+    )
+    assert login.status_code == 200
+    client.headers["Authorization"] = f"Bearer {login.json()['access_token']}"
+    assert client.get("/me").json()["profile_locked"] is False
+    assert [item["id"] for item in client.get("/demo/brokers").json()] == ["broker-local"]
+    assert client.get("/brokers/broker-a/loads").status_code == 403
+    updated = client.patch("/me", json={"name": "Renamed Operator"})
+    assert updated.status_code == 200
+    assert updated.json()["name"] == "Renamed Operator"
+
+    admin = client.post(
+        "/demo/auth",
+        json={"broker_id": "broker-a", "identifier": "admin", "password": "admin"},
+    )
+    assert admin.status_code == 200
+    client.headers["Authorization"] = f"Bearer {admin.json()['access_token']}"
+    assert client.get("/me?broker_id=broker-local").status_code == 200
+    assert client.patch("/me", json={"name": "Cannot Change Admin"}).status_code == 403
+    assert {item["id"] for item in client.get("/demo/brokers").json()} == {
+        "broker-a",
+        "broker-local",
+    }
 
 
 def test_load_list_detail_and_filters_are_broker_scoped(

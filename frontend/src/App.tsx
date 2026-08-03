@@ -15,13 +15,16 @@ import {
   api,
   Carrier,
   Candidate,
+  DemoBroker,
   Detail,
   Lane,
   Load,
+  Profile,
   Rate,
   Recommendation,
   Recs,
   clearAuthToken,
+  hasAuthToken,
   setAuthToken,
   SharedPolicy,
   SharedRate,
@@ -99,28 +102,35 @@ function Panel({
   );
 }
 type ShellContext = {
-  brokers: { id: string; name: string }[];
+  brokers: DemoBroker[];
   brokerLoading: boolean;
   brokerError: unknown;
   retryBrokers: () => void;
   authBrokerId?: string;
+  activeBrokerName?: string;
+  authIsAdmin: boolean;
+  authLoading: boolean;
   authError: unknown;
   sharedPolicy?: SharedPolicy;
   sharedPolicyUpdating: boolean;
   toggleSharedPolicy: () => void;
+  logout: () => void;
 };
 
 function Shell() {
-  const [brokers, setBrokers] = useState<{ id: string; name: string }[]>([]);
+  const [brokers, setBrokers] = useState<DemoBroker[]>([]);
   const [brokerLoading, setBrokerLoading] = useState(true);
   const [brokerError, setBrokerError] = useState<unknown>();
   const [brokerAttempt, setBrokerAttempt] = useState(0);
   const [authBrokerId, setAuthBrokerId] = useState<string>();
+  const [authIsAdmin, setAuthIsAdmin] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState<unknown>();
   const [sharedPolicy, setSharedPolicy] = useState<SharedPolicy>();
   const [sharedPolicyUpdating, setSharedPolicyUpdating] = useState(false);
-  const p = useParams();
   const nav = useNavigate();
+  const routeLocation = useLocation();
+  const routeBrokerId = routeLocation.pathname.match(/^\/brokers\/([^/]+)/)?.[1];
   const retryBrokers = () => setBrokerAttempt((attempt) => attempt + 1);
   useEffect(() => {
     const controller = new AbortController();
@@ -136,57 +146,66 @@ function Shell() {
     return () => controller.abort();
   }, [brokerAttempt]);
   useEffect(() => {
-    if (!p.brokerId) {
-      clearAuthToken();
-      setAuthBrokerId(undefined);
-      setAuthError(undefined);
-      setSharedPolicy(undefined);
-      setSharedPolicyUpdating(false);
-      return;
-    }
-    const brokerId = p.brokerId;
     const controller = new AbortController();
-    let cancelled = false;
-    clearAuthToken();
-    setAuthBrokerId(undefined);
+    setAuthLoading(true);
     setAuthError(undefined);
     setSharedPolicy(undefined);
-    setSharedPolicyUpdating(false);
+    if (!hasAuthToken()) {
+      setAuthBrokerId(undefined);
+      setAuthIsAdmin(false);
+      setSharedPolicy(undefined);
+      setAuthLoading(false);
+      return () => controller.abort();
+    }
     api
-      .demoAuth(brokerId, controller.signal)
-      .then((response) => {
-        if (cancelled) return undefined;
-        setAuthToken(response.access_token);
-        setAuthBrokerId(brokerId);
-        return api.sharedPolicy(brokerId, controller.signal);
+      .me(routeBrokerId, controller.signal)
+      .then((profile) => {
+        setAuthBrokerId(profile.broker_id);
+        setAuthIsAdmin(profile.is_admin);
+        return api.sharedPolicy(profile.broker_id, controller.signal).catch(() => undefined);
       })
-      .then((policy) => {
-        if (!cancelled && policy) setSharedPolicy(policy);
-      })
+      .then(setSharedPolicy)
       .catch((error) => {
-        if (!cancelled && !isAbortError(error)) setAuthError(error);
-      });
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [p.brokerId]);
+        if (!isAbortError(error)) {
+          clearAuthToken();
+          setAuthBrokerId(undefined);
+          setAuthIsAdmin(false);
+          setAuthError(error);
+        }
+      })
+      .finally(() => setAuthLoading(false));
+    return () => controller.abort();
+  }, [routeBrokerId]);
   const toggleSharedPolicy = () => {
-    if (!p.brokerId || !sharedPolicy || sharedPolicyUpdating) return;
+    if (!routeBrokerId || !sharedPolicy || sharedPolicyUpdating) return;
     setSharedPolicyUpdating(true);
     api
-      .updateSharedPolicy(p.brokerId, !sharedPolicy.enabled)
+      .updateSharedPolicy(routeBrokerId, !sharedPolicy.enabled)
       .then(setSharedPolicy)
       .catch(setAuthError)
       .finally(() => setSharedPolicyUpdating(false));
   };
+  const logout = () => {
+    clearAuthToken();
+    setAuthBrokerId(undefined);
+    setAuthIsAdmin(false);
+    setSharedPolicy(undefined);
+    nav("/login", { replace: true });
+  };
+  const selectableBrokers = authIsAdmin || !authBrokerId
+    ? brokers
+    : brokers.filter((broker) => broker.id === authBrokerId);
+  const activeBrokerName = brokers.find((broker) => broker.id === routeBrokerId)?.name;
+  if (routeBrokerId && !authLoading && !authBrokerId && !authError) {
+    return <Navigate to="/login" replace />;
+  }
   return (
     <div className="app">
       <a className="skip-link" href="#main-content">Skip to content</a>
       <header>
-        <Link
+          <Link
           className="brand"
-          to={p.brokerId ? `/brokers/${p.brokerId}/loads` : "/brokers"}
+            to={routeBrokerId ? `/brokers/${routeBrokerId}/loads` : "/brokers"}
         >
           <b>CP</b>
           <span>
@@ -194,22 +213,23 @@ function Shell() {
           </span>
         </Link>
         <div className="demo">DEMO MODE</div>
-        <label className="switcher">
-          BROKER{" "}
-          <select
-            value={p.brokerId || ""}
-            onChange={(e) => e.target.value && nav(`/brokers/${e.target.value}/loads`)}
-            aria-label="Select broker"
-          >
-            <option value="">Select broker</option>
-            {brokers.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {p.brokerId && authBrokerId === p.brokerId && sharedPolicy && (
+        {authBrokerId && (
+          <label className="switcher">
+            BROKER{" "}
+            <select
+              value={routeBrokerId || authBrokerId}
+              onChange={(e) => e.target.value && nav(`/brokers/${e.target.value}/loads`)}
+              aria-label="Select broker"
+            >
+              {selectableBrokers.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {routeBrokerId && (authIsAdmin || authBrokerId === routeBrokerId) && sharedPolicy && (
           <button
             className={`pool-toggle ${sharedPolicy.enabled ? "enabled" : ""}`}
             aria-pressed={sharedPolicy.enabled}
@@ -220,6 +240,8 @@ function Shell() {
             SHARED POOL {sharedPolicy.enabled ? "ON" : "OFF"}
           </button>
         )}
+        {authBrokerId && <Link className="profile-link" to="/profile">PROFILE</Link>}
+        {authBrokerId && <button className="logout" onClick={logout}>LOG OUT</button>}
       </header>
       <div className="notice">
         <strong>DEMO MODE</strong> Assignments are temporary platform overlays
@@ -232,10 +254,14 @@ function Shell() {
           brokerError,
           retryBrokers,
           authBrokerId,
+          activeBrokerName,
+          authIsAdmin,
+          authLoading,
           authError,
           sharedPolicy,
           sharedPolicyUpdating,
           toggleSharedPolicy,
+          logout,
         }}
       />
     </div>
@@ -248,7 +274,7 @@ function Status({ value }: { value: string }) {
 }
 export function Queue() {
   const { brokerId } = useParams();
-  const { authBrokerId, authError } = useOutletContext<ShellContext>();
+  const { authBrokerId, authIsAdmin, authLoading, activeBrokerName, authError } = useOutletContext<ShellContext>();
   const [sp, setSp] = useSearchParams();
   const routeLocation = useLocation();
   const applied = parseQueueSearchParams(sp);
@@ -265,7 +291,7 @@ export function Queue() {
     setFilters(applied.filters);
   }, [sp.toString()]);
   useEffect(() => {
-    if (!brokerId || authBrokerId !== brokerId) return;
+    if (!brokerId || (!authIsAdmin && authBrokerId !== brokerId)) return;
     const controller = new AbortController();
     setLoading(true);
     setData(null);
@@ -280,7 +306,7 @@ export function Queue() {
       })
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, [brokerId, authBrokerId, sp.toString()]);
+  }, [brokerId, authBrokerId, authIsAdmin, sp.toString()]);
   const apply = (e: React.FormEvent) => {
     e.preventDefault();
     setSp(buildQueueSearchParams(filters, 1));
@@ -301,13 +327,13 @@ export function Queue() {
         <ErrorBox error={authError} />
       </main>
     );
-  if (authBrokerId !== brokerId)
+  if (authLoading || (!authIsAdmin && authBrokerId !== brokerId))
     return <main className="state" role="status">Authenticating broker workspace…</main>;
   return (
     <main id="main-content">
       <div className="page-title">
         <div>
-          <p className="eyebrow">BROKER OPERATIONS / LOAD QUEUE</p>
+            <p className="eyebrow">BROKER OPERATIONS / {activeBrokerName || brokerId} / LOAD QUEUE</p>
           <h1>Dispatch board</h1>
         </div>
         <span className="count">{data?.total ?? "—"} loads in scope</span>
@@ -715,7 +741,7 @@ function RecommendationRow({
 }
 export function DetailPage() {
   const { brokerId, loadId } = useParams();
-  const { authBrokerId, authError, sharedPolicy } = useOutletContext<ShellContext>();
+  const { authBrokerId, authIsAdmin, authLoading, activeBrokerName, authError, sharedPolicy } = useOutletContext<ShellContext>();
   const routeLocation = useLocation();
   const [load, setLoad] = useState<Detail>();
   const [error, setError] = useState<unknown>();
@@ -724,7 +750,7 @@ export function DetailPage() {
   const [sp, setSp] = useSearchParams();
   const candidate = sp.get("candidate");
   useEffect(() => {
-    if (!brokerId || !loadId || authBrokerId !== brokerId) return;
+    if (!brokerId || !loadId || (!authIsAdmin && authBrokerId !== brokerId)) return;
     const controller = new AbortController();
     setLoad(undefined);
     setError(undefined);
@@ -735,7 +761,7 @@ export function DetailPage() {
         if (!isAbortError(nextError)) setError(nextError);
       });
     return () => controller.abort();
-  }, [brokerId, loadId, reload, authBrokerId]);
+  }, [brokerId, loadId, reload, authBrokerId, authIsAdmin]);
   const refresh = () => setReload((value) => value + 1);
   const backTarget = (routeLocation.state as { from?: string } | null)?.from;
   if (error)
@@ -750,7 +776,7 @@ export function DetailPage() {
         <ErrorBox error={authError} />
       </main>
     );
-  if (authBrokerId !== brokerId)
+  if (authLoading || (!authIsAdmin && authBrokerId !== brokerId))
     return <main className="state" role="status">Authenticating broker workspace…</main>;
   if (!load || !brokerId || !loadId)
       return <main className="state" role="status">Loading load context…</main>;
@@ -761,7 +787,7 @@ export function DetailPage() {
       </Link>
       <div className="detail-title">
         <div>
-          <p className="eyebrow">LOAD DETAIL / {load.source.name}</p>
+          <p className="eyebrow">{activeBrokerName || brokerId} / LOAD DETAIL / {load.source.name}</p>
           <h1>{load.display_number}</h1>
           <p>
             {load.customer.name} · <Status value={load.status} />
@@ -1041,18 +1067,59 @@ function CandidateDrawer({
     </div>
   );
 }
-function BrokerLanding() {
-  const { brokers, brokerLoading, brokerError, retryBrokers } =
+function LoginPage() {
+  const { brokers, brokerLoading, brokerError, retryBrokers, authBrokerId } =
     useOutletContext<ShellContext>();
   const nav = useNavigate();
+  const [createMode, setCreateMode] = useState(false);
+  const [brokerId, setBrokerId] = useState("");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string>();
+  const [error, setError] = useState<unknown>();
+  useEffect(() => {
+    if (!brokerId && brokers.length) setBrokerId(brokers[0].id);
+    if (authBrokerId) nav(`/brokers/${authBrokerId}/loads`, { replace: true });
+  }, [brokers, brokerId, authBrokerId, nav]);
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError(undefined);
+    setMessage(undefined);
+    try {
+      if (createMode) {
+        await api.createAccount(brokerId, name, email, password);
+        setIdentifier(email);
+        setCreateMode(false);
+        setMessage("Account created. Sign in with the new local account.");
+      } else {
+        const response = await api.demoAuth(brokerId, identifier, password);
+        setAuthToken(response.access_token);
+        nav(`/brokers/${response.broker_id}/loads`, { replace: true });
+      }
+    } catch (nextError) {
+      setError(nextError);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const toggleCreateMode = () => {
+    setCreateMode((value) => {
+      const next = !value;
+      if (next) setBrokerId(brokers.find((broker) => !broker.is_demo)?.id || brokerId);
+      return next;
+    });
+    setError(undefined);
+    setMessage(undefined);
+  };
   return (
     <main id="main-content" className="empty">
-      <p className="eyebrow">CARRIER POOL / DEMO ACCESS</p>
-      <h1>Choose an operations desk</h1>
-      <p>
-        Select a broker workspace to review loads, evidence, and carrier
-        decisions.
-      </p>
+      <p className="eyebrow">CARRIER POOL / LOCAL DEMO ACCESS</p>
+      <h1>{createMode ? "Create a local account" : "Sign in to operations"}</h1>
+      <p>Select a broker workspace. Accounts are memory-only and reset when the backend restarts.</p>
       {brokerLoading ? (
         <div className="state" role="status">Loading demo brokers…</div>
       ) : brokerError ? (
@@ -1060,20 +1127,80 @@ function BrokerLanding() {
           <b>Could not load demo brokers.</b>
           <button className="primary" onClick={retryBrokers}>Retry</button>
         </div>
-      ) : !brokers.length ? (
-        <div className="state">No demo brokers are available.</div>
-      ) : <div className="broker-choices">
-        {brokers.map((b) => (
-          <button
-            key={b.id}
-            className="choice"
-            onClick={() => nav(`/brokers/${b.id}/loads`)}
-          >
-            <b>{b.name}</b>
-            <span>{b.id}</span>
+      ) : !brokers.length ? <div className="state">No brokers are available.</div> : (
+        <form className="login-form" onSubmit={submit}>
+          {Boolean(error) && <div className="state error" role="alert">{error instanceof Error ? error.message : "Request failed"}</div>}
+          {message && <div className="state success" role="status">{message}</div>}
+          <label>Broker<select value={brokerId} onChange={(event) => setBrokerId(event.target.value)}>
+            {brokers.map((broker) => <option key={broker.id} value={broker.id}>{broker.name}{broker.is_demo ? " · DEMO LOCKED" : " · LOCAL"}</option>)}
+          </select></label>
+          {createMode && <label>Name<input value={name} onChange={(event) => setName(event.target.value)} required /></label>}
+          <label>{createMode ? "Email" : "Email or username"}<input value={createMode ? email : identifier} onChange={(event) => createMode ? setEmail(event.target.value) : setIdentifier(event.target.value)} required /></label>
+          <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+          <button className="primary" type="submit" disabled={busy}>{busy ? "Working…" : createMode ? "Create account" : "Sign in"}</button>
+          <button className="link-button" type="button" onClick={toggleCreateMode}>
+            {createMode ? "Back to sign in" : "Create a local account"}
           </button>
-        ))}
-      </div>}
+          <small className="demo-hint">Sysadmin demo login: <b>admin / admin</b>. This is an explicit demo-only exception.</small>
+        </form>
+      )}
+    </main>
+  );
+}
+
+function ProfilePage() {
+  const { authBrokerId, authLoading, authError, logout } = useOutletContext<ShellContext>();
+  const [profile, setProfile] = useState<Profile>();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<unknown>();
+  const [message, setMessage] = useState<string>();
+  const [resetOpen, setResetOpen] = useState(false);
+  useEffect(() => {
+    if (!authBrokerId) return;
+    const controller = new AbortController();
+    api.me(authBrokerId, controller.signal).then((next) => {
+      setProfile(next);
+      setName(next.name);
+      setEmail(next.email || "");
+    }).catch((nextError) => {
+      if (!isAbortError(nextError)) setError(nextError);
+    });
+    return () => controller.abort();
+  }, [authBrokerId]);
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(undefined);
+    setMessage(undefined);
+    try {
+      const next = await api.updateProfile({ name, email, password: password || undefined });
+      setProfile(next);
+      setPassword("");
+      setMessage("Profile updated for this demo run.");
+    } catch (nextError) {
+      setError(nextError);
+    }
+  };
+  if (authError) return <main id="main-content"><ErrorBox error={authError} /></main>;
+  if (authLoading || !profile) return <main className="state" role="status">Loading profile…</main>;
+  return (
+    <main id="main-content" className="profile-page">
+      <p className="eyebrow">ACCOUNT / PROFILE</p>
+      <h1>{profile.name}</h1>
+      <p>{profile.broker_name} · {profile.is_admin ? "Sysadmin" : profile.is_demo ? "Demo broker" : "Local broker"}</p>
+      {Boolean(error) && <div className="state error" role="alert">{error instanceof Error ? error.message : "Could not update profile"}</div>}
+      {message && <div className="state success" role="status">{message}</div>}
+      <form className="profile-form" onSubmit={save}>
+        <label>Name<input value={name} onChange={(event) => setName(event.target.value)} disabled={profile.profile_locked} /></label>
+        <label>Email<input value={email} onChange={(event) => setEmail(event.target.value)} disabled={profile.profile_locked || profile.is_admin} /></label>
+        <label>New password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} disabled={profile.profile_locked || profile.is_admin} placeholder="6-12 chars + symbol" /></label>
+        <button className="primary" type="submit" disabled={profile.profile_locked}>Save changes</button>
+      </form>
+      {profile.profile_locked && <p className="note">Demo broker profiles are locked. Local accounts reset when the backend restarts.</p>}
+      <button className="link-button" onClick={() => setResetOpen(true)}>Forgot password?</button>
+      <button className="logout-button" onClick={logout}>Log out</button>
+      {resetOpen && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setResetOpen(false)}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="reset-title"><h2 id="reset-title">Password reset unavailable</h2><p>Email delivery is not connected in this demo. Create a new local account instead.</p><button className="primary" onClick={() => setResetOpen(false)}>Close</button></div></div>}
     </main>
   );
 }
@@ -1081,13 +1208,15 @@ export function App() {
   return (
     <RouterRoutes>
       <Route element={<Shell />}>
-        <Route path="/brokers" element={<BrokerLanding />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/brokers" element={<Navigate to="/login" replace />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="/brokers/:brokerId/loads" element={<Queue />} />
         <Route
           path="/brokers/:brokerId/loads/:loadId"
           element={<DetailPage />}
         />
-        <Route path="*" element={<Navigate to="/brokers" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Route>
     </RouterRoutes>
   );

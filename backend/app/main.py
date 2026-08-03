@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from app.auth_api import router as auth_router
 from app.broker_operations_api import router as broker_operations_router
+from app.demo_accounts import DemoAccountRegistry
 from app.health import router as health_router
 from app.lane_api import router as lane_router
 from app.observability import RequestObservabilityMiddleware, configure_logging
@@ -13,6 +14,7 @@ from app.shared_carrier_pool_api import router as shared_carrier_pool_router
 def create_app() -> FastAPI:
     configure_logging()
     application = FastAPI(title="Carrier Pool API", version="0.1.0")
+    application.state.demo_accounts = DemoAccountRegistry()
     application.add_middleware(RequestObservabilityMiddleware)
     application.include_router(health_router)
     application.include_router(auth_router)
