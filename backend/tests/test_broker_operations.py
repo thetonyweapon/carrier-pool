@@ -224,6 +224,31 @@ def test_demo_brokers_are_gated(client: TestClient, db_session: Session, monkeyp
     assert response.json() == [{"id": "broker-a", "name": "Broker broker-a", "is_demo": True}]
 
 
+def test_self_service_accounts_are_limited_to_local_sandbox(
+    client: TestClient, db_session: Session
+) -> None:
+    add_broker(db_session, "broker-local")
+    add_broker(db_session, "broker-other")
+    local = db_session.get(Broker, "broker-local")
+    other = db_session.get(Broker, "broker-other")
+    assert local is not None and other is not None
+    local.is_demo = False
+    other.is_demo = False
+    db_session.commit()
+
+    response = client.post(
+        "/demo/accounts",
+        json={
+            "broker_id": "broker-other",
+            "name": "Other Operator",
+            "email": "other@example.test",
+            "password": "tiger!7",
+        },
+    )
+
+    assert response.status_code == 403
+
+
 def test_local_account_lifecycle_and_admin_broker_switching(
     client: TestClient, db_session: Session
 ) -> None:

@@ -183,6 +183,7 @@ class SharedPoolPolicy(Base):
     policy_revision: Mapped[int] = mapped_column(nullable=False, default=1)
     attribute_profile: Mapped[str] = mapped_column(String(64), nullable=False)
     changed_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    changed_by_subject: Mapped[str] = mapped_column(String(255), nullable=False, default="system")
     reason: Mapped[Optional[str]] = mapped_column(String(1000))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
@@ -206,6 +207,8 @@ class SharedPoolPolicyEvent(Base):
     policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
     attribute_profile: Mapped[str] = mapped_column(String(64), nullable=False)
     changed_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    changed_by_subject: Mapped[str] = mapped_column(String(255), nullable=False, default="system")
+    request_id: Mapped[str] = mapped_column(String(128), nullable=False, default="system")
     reason: Mapped[Optional[str]] = mapped_column(String(1000))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
@@ -239,6 +242,8 @@ class SharedPoolQueryAudit(Base):
     participant_scope_digest: Mapped[str] = mapped_column(String(64), nullable=False)
     participant_count: Mapped[int] = mapped_column(nullable=False)
     result_count: Mapped[int] = mapped_column(nullable=False)
+    actor_subject: Mapped[str] = mapped_column(String(255), nullable=False, default="system")
+    request_id: Mapped[str] = mapped_column(String(128), nullable=False, default="system")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (
@@ -481,6 +486,7 @@ class PlatformAssignment(Base):
     candidate_id: Mapped[Optional[str]] = mapped_column(String(255))
     assignment_version: Mapped[int] = mapped_column(nullable=False, default=1)
     demo_actor: Mapped[str] = mapped_column(String(255), nullable=False)
+    actor_subject: Mapped[str] = mapped_column(String(255), nullable=False, default="system")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
@@ -517,6 +523,8 @@ class PlatformAssignmentEvent(Base):
     idempotency_key: Mapped[Optional[str]] = mapped_column(String(128))
     assignment_version: Mapped[int] = mapped_column(nullable=False)
     demo_actor: Mapped[str] = mapped_column(String(255), nullable=False)
+    actor_subject: Mapped[str] = mapped_column(String(255), nullable=False, default="system")
+    request_id: Mapped[str] = mapped_column(String(128), nullable=False, default="system")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (

@@ -122,9 +122,7 @@ export const sharedRecs: SharedRecs = {
       rank: 1,
       candidate_id: "shared:opaque-candidate",
       name: "Lone Star Transport",
-      match_quality: "exact",
-      equipment_type: "dry_van",
-      evidence_count_bucket: "3-5",
+       evidence_count_bucket: "3-5",
       contributing_broker_count_bucket: "3-5",
     },
   ],
@@ -141,12 +139,8 @@ export const sharedRate: SharedRate = {
   status: "estimated",
   estimate: { amount: "1850.00", low: "1750.00", high: "1950.00", calculation_mode: "median_rate_per_mile" },
   confidence: "medium",
-  match_scope: "exact",
-  equipment_scope: "equipment",
   sample_count_bucket: "3-5",
   contributing_broker_count_bucket: "3-5",
-  selected_tier: "exact_lane_equipment",
-  lookback_days: 180,
 };
 
 export const candidate: Candidate = {

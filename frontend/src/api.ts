@@ -118,8 +118,6 @@ export type SharedRecommendation = {
   rank: number;
   candidate_id: string;
   name: string;
-  match_quality: string;
-  equipment_type: string;
   evidence_count_bucket: string;
   contributing_broker_count_bucket: string;
 };
@@ -148,12 +146,8 @@ export type SharedRate = {
     calculation_mode?: string | null;
   };
   confidence: string;
-  match_scope?: string | null;
-  equipment_scope?: string | null;
   sample_count_bucket: string;
   contributing_broker_count_bucket: string;
-  selected_tier?: string | null;
-  lookback_days?: number | null;
 };
 export type SharedPolicy = {
   broker_id: string;

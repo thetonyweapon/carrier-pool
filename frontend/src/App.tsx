@@ -668,7 +668,7 @@ export function Analytics({ b, l, sharedEnabled }: { b: string; l: string; share
                   <span>
                     <b>{item.name}</b>
                     <small>
-                      {item.match_quality.replace("_", " ")} · {item.equipment_type}
+                       privacy-safe shared evidence
                     </small>
                   </span>
                   <em>{item.contributing_broker_count_bucket} brokers</em>
@@ -702,7 +702,7 @@ export function Analytics({ b, l, sharedEnabled }: { b: string; l: string; share
             <p className="muted">
               {sharedRate.confidence} confidence · {sharedRate.sample_count_bucket} samples · {sharedRate.contributing_broker_count_bucket} brokers
             </p>
-            <span className="tag">SHARED / {sharedRate.match_scope || "market"}</span>
+             <span className="tag">SHARED</span>
           </>
         ) : (
           failure("sharedRate")

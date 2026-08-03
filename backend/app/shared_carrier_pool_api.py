@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -26,8 +26,6 @@ class SharedCarrierRecommendationResponse(BaseModel):
     rank: int
     candidate_id: str
     name: str
-    match_quality: str
-    equipment_type: str
     evidence_count_bucket: str
     contributing_broker_count_bucket: str
 
@@ -65,12 +63,8 @@ class SharedRateEstimateResponse(BaseModel):
     status: str
     estimate: dict[str, Optional[str]]
     confidence: str
-    match_scope: Optional[str]
-    equipment_scope: Optional[str]
     sample_count_bucket: str
     contributing_broker_count_bucket: str
-    selected_tier: Optional[str]
-    lookback_days: Optional[int]
 
 
 @router.get("/brokers/{broker_id}/shared-pool-policy", response_model=SharedPoolPolicyResponse)
@@ -95,6 +89,7 @@ def shared_pool_policy(
 def update_shared_pool_policy(
     broker_id: str,
     request: SharedPoolPolicyRequest,
+    http_request: Request,
     db: Session = Depends(get_db),
     principal: BrokerPrincipal = Depends(require_broker_principal),
 ) -> SharedPoolPolicyResponse:
@@ -105,6 +100,8 @@ def update_shared_pool_policy(
         request.enabled,
         principal.actor,
         request.reason,
+        principal.subject,
+        http_request.state.request_id,
     )
     db.commit()
     return SharedPoolPolicyResponse(
@@ -122,6 +119,7 @@ def update_shared_pool_policy(
 def shared_carrier_rate_estimate(
     broker_id: str,
     load_id: str,
+    http_request: Request,
     db: Session = Depends(get_db),
     principal: BrokerPrincipal = Depends(require_broker_principal),
 ) -> SharedRateEstimateResponse:
@@ -132,7 +130,13 @@ def shared_carrier_rate_estimate(
     # not required here (unlike recommendations). The shared_pool_id_secret is
     # still validated at the recommendation endpoint below.
     try:
-        result = get_shared_rate_estimate(db, broker_id, load_id)
+        result = get_shared_rate_estimate(
+            db,
+            broker_id,
+            load_id,
+            actor_subject=principal.subject,
+            request_id=http_request.state.request_id,
+        )
     except SharedPoolDisabled as exc:
         raise HTTPException(status_code=404, detail="not found") from exc
     except SharedPoolNotEligible as exc:
@@ -157,12 +161,8 @@ def shared_carrier_rate_estimate(
             "calculation_mode": result.calculation_mode,
         },
         confidence=result.confidence,
-        match_scope=result.match_scope,
-        equipment_scope=result.equipment_scope,
         sample_count_bucket=result.sample_count_bucket,
         contributing_broker_count_bucket=result.contributing_broker_count_bucket,
-        selected_tier=result.selected_tier,
-        lookback_days=result.lookback_days,
     )
 
 
@@ -173,6 +173,7 @@ def shared_carrier_rate_estimate(
 def shared_carrier_recommendations(
     broker_id: str,
     load_id: str,
+    http_request: Request,
     db: Session = Depends(get_db),
     principal: BrokerPrincipal = Depends(require_broker_principal),
 ) -> SharedCarrierRecommendationsResponse:
@@ -191,6 +192,8 @@ def shared_carrier_recommendations(
             broker_id,
             load_id,
             settings.shared_pool_id_secret,
+            actor_subject=principal.subject,
+            request_id=http_request.state.request_id,
         )
     except SharedPoolDisabled as exc:
         raise HTTPException(status_code=404, detail="not found") from exc
@@ -215,8 +218,6 @@ def shared_carrier_recommendations(
                 rank=rank,
                 candidate_id=item.candidate_id,
                 name=item.name,
-                match_quality=item.match_quality,
-                equipment_type=item.equipment_type.value,
                 evidence_count_bucket=item.evidence_count_bucket,
                 contributing_broker_count_bucket=item.contributing_broker_count_bucket,
             )
