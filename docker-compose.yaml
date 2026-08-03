@@ -23,6 +23,7 @@ services:
       DEMO_MODE: "true"
       AUTH_MODE: "mock"
       ALLOW_MOCK_AUTH: "true"
+      # Demo-only fallbacks; non-demo settings reject these values.
       AUTH_SECRET: ${AUTH_SECRET:-carrier-pool-compose-demo-auth-secret}
       SHARED_POOL_READ_ENABLED: "true"
       SHARED_POOL_ID_SECRET: ${SHARED_POOL_ID_SECRET:-carrier-pool-compose-demo-shared-secret}

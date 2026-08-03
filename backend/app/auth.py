@@ -25,6 +25,8 @@ class BrokerPrincipal:
 
 
 def issue_demo_token(broker_id: str, actor: str = "demo-user") -> str:
+    if not settings.demo_mode:
+        raise ValueError("mock authentication is only enabled for demo mode")
     if settings.auth_mode != "mock" or not settings.allow_mock_auth:
         raise ValueError("mock authentication is not enabled")
     if not settings.auth_secret:
@@ -47,7 +49,12 @@ def get_current_principal(
 ) -> BrokerPrincipal:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=401, detail="bearer authentication required")
-    if settings.auth_mode != "mock" or not settings.allow_mock_auth or not settings.auth_secret:
+    if (
+        not settings.demo_mode
+        or settings.auth_mode != "mock"
+        or not settings.allow_mock_auth
+        or not settings.auth_secret
+    ):
         raise HTTPException(status_code=503, detail="authentication is not configured")
     try:
         payload, signature = credentials.credentials.split(".", 1)

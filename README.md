@@ -454,6 +454,21 @@ use the same three-broker threshold and expose only an aggregate amount/range,
 never source rates or dates. The demo token issuer is not a production identity
 provider.
 
+### Authentication boundary
+
+This repository intentionally does not contact an identity provider or any
+other third-party vendor. The local evaluation profile uses the signed mock
+issuer only when `DEMO_MODE=true`, `AUTH_MODE=mock`, and
+`ALLOW_MOCK_AUTH=true`. The `/demo/auth` endpoint is hidden otherwise, and
+mock bearer verification rejects tokens outside demo mode.
+
+Non-demo settings reject mock authentication and the documented Compose
+fallback secrets. A future provider integration must derive `broker_id` from a
+verified tenant or organization claim, use `sub` as the actor subject, enforce
+issuer and audience, and never trust a broker ID supplied by the client. OIDC,
+JWKS discovery, key rotation, revocation, and provider-specific claim mapping
+remain deferred; no network calls are required for this demo.
+
 ### Option A: Docker Compose (recommended)
 
 Compose sets `DEMO_MODE=true` automatically, runs migrations, creates the three

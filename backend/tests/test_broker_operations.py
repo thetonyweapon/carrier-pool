@@ -319,7 +319,7 @@ def test_assignment_overlay_lifecycle_and_downstream_gating(
             f"/brokers/broker-a/loads/{target_id}/assignments",
             json={"carrier_id": seeded["canonical"].id},
         ).status_code
-        == 404
+        == 503
     )
     monkeypatch.setattr(settings, "demo_mode", True)
     assert (
