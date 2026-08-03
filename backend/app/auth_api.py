@@ -122,7 +122,7 @@ def demo_brokers(
         for broker in db.scalars(
             select(Broker)
             .where(Broker.id == broker_filter if broker_filter else True)
-            .order_by(Broker.name, Broker.id)
+            .order_by(Broker.id)
         ).all()
     ]
 
