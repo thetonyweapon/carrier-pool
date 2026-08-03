@@ -1,4 +1,5 @@
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -89,7 +90,15 @@ def get_current_principal(
         subject = str(decoded["sub"])
         account_id = str(decoded.get("account_id", subject))
         is_admin = decoded.get("admin") is True
-    except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        json.JSONDecodeError,
+        binascii.Error,
+        UnicodeError,
+        OverflowError,
+    ) as exc:
         raise HTTPException(status_code=401, detail="invalid bearer token") from exc
     if (
         expires_at <= int(time.time())

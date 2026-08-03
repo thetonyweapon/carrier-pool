@@ -163,6 +163,11 @@ def create_demo_account(
     accounts: DemoAccountRegistry = Depends(account_registry),
 ) -> AccountCreateResponse:
     _require_demo()
+    if request.broker_id != "broker-local":
+        raise HTTPException(
+            status_code=403,
+            detail="self-service accounts are limited to the local sandbox",
+        )
     broker = db.get(Broker, request.broker_id)
     if broker is None:
         raise HTTPException(status_code=404, detail="broker not found")

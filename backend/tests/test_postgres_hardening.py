@@ -216,7 +216,7 @@ def seed_append_only_rows(session: Session) -> dict[str, str]:
 def test_postgres_schema_is_migrated_and_append_only_triggers_are_live(migrated_postgres) -> None:
     engine, _ = migrated_postgres
     with Session(engine) as session:
-        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "e5f6a7b8c9d0"
+        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "a7b8c9d0e1f2"
         row_ids = seed_append_only_rows(session)
         mutation_targets = (
             (RateLineItem, row_ids["rate_line_item"], {"amount": Decimal("1.00")}),
@@ -412,6 +412,6 @@ def test_postgres_migration_downgrade_and_reupgrade_round_trip(migrated_postgres
         command.upgrade(alembic_config, "head")
         settings.database_url = previous_database_url
         with Session(migrated_postgres[0]) as session:
-            assert session.scalar(text("SELECT version_num FROM alembic_version")) == "e5f6a7b8c9d0"
+            assert session.scalar(text("SELECT version_num FROM alembic_version")) == "a7b8c9d0e1f2"
     finally:
         settings.database_url = previous_database_url

@@ -200,7 +200,7 @@ def fail_job(
     job = _owned_job(session, job_id, worker_id, lease_token, now=now)
     retryable = is_retryable(error)
     job.failure_class = error.__class__.__name__
-    job.error_message = str(error)[:2000]
+    job.error_message = _safe_error_message(error)
     job.lease_owner = None
     job.lease_expires_at = None
     job.lease_token = None
@@ -278,6 +278,11 @@ def _owned_job(
     ):
         raise ValueError("ingestion job lease is not owned by worker")
     return job
+
+
+def _safe_error_message(error: BaseException) -> str:
+    """Keep source payload values out of durable operational error records."""
+    return f"{error.__class__.__name__}: ingestion failed"
 
 
 def _as_utc(value: datetime) -> datetime:

@@ -401,14 +401,14 @@ def test_api_returns_redacted_shared_contract_and_audits_query(
         "rank": 1,
         "candidate_id": body["recommendations"][0]["candidate_id"],
         "name": "Lone Star Transport",
-        "match_quality": "exact",
-        "equipment_type": "dry_van",
         "evidence_count_bucket": "3-5",
         "contributing_broker_count_bucket": "3-5",
     }
     assert "mc_number" not in body["recommendations"][0]
     assert "dot_number" not in body["recommendations"][0]
     assert "broker_id" not in body["recommendations"][0]
+    assert "match_quality" not in body["recommendations"][0]
+    assert "equipment_type" not in body["recommendations"][0]
     assert db_session.scalar(select(func.count()).select_from(SharedPoolQueryAudit)) == 1
 
 

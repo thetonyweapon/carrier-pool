@@ -2,7 +2,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -29,6 +29,7 @@ from app.models import (
     PlatformAssignment,
     PlatformAssignmentEvent,
 )
+from app.observability import canonical_request_id
 
 router = APIRouter(tags=["broker operations"])
 MAX_CANDIDATE_EVIDENCE = 20
@@ -456,6 +457,7 @@ def assign_load(
     request: AssignmentRequest,
     principal: BrokerPrincipal = Depends(require_broker_principal),
     db: Session = Depends(get_db),
+    http_request: Request = None,
 ) -> AssignmentResponse:
     broker_id = principal.broker_id
     actor = principal.actor
@@ -520,11 +522,15 @@ def assign_load(
     else:
         raise HTTPException(status_code=422, detail="carrier_id or candidate_id is required")
     now = datetime.now(timezone.utc)
+    request_id = canonical_request_id(
+        http_request.state.request_id if http_request is not None else None
+    )
     if assignment:
         assignment.carrier_id = carrier.id
         assignment.candidate_id = candidate_id
         assignment.assignment_version += 1
         assignment.demo_actor = actor
+        assignment.actor_subject = principal.subject
         assignment.updated_at = now
     else:
         assignment = PlatformAssignment(
@@ -533,6 +539,7 @@ def assign_load(
             carrier_id=carrier.id,
             candidate_id=candidate_id,
             demo_actor=actor,
+            actor_subject=principal.subject,
             assignment_version=1,
             created_at=now,
             updated_at=now,
@@ -553,6 +560,8 @@ def assign_load(
             idempotency_key=request.idempotency_key,
             assignment_version=assignment.assignment_version,
             demo_actor=actor,
+            actor_subject=principal.subject,
+            request_id=request_id,
             created_at=now,
         )
     )

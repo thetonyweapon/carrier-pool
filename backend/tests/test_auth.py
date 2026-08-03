@@ -100,6 +100,15 @@ def test_mock_auth_is_unavailable_outside_demo_mode(monkeypatch) -> None:
     assert error.value.status_code == 503
 
 
+def test_malformed_base64_bearer_tokens_are_rejected() -> None:
+    credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="%%%%.%%%%")
+
+    with pytest.raises(HTTPException) as error:
+        get_current_principal(credentials)
+
+    assert error.value.status_code == 401
+
+
 @pytest.mark.parametrize(
     ("field", "value", "message"),
     (

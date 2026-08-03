@@ -71,7 +71,7 @@ def discover_jobs(root: Path) -> int:
                     )
                     job.status = IngestionJobStatus.DEAD_LETTER
                     job.failure_class = error.__class__.__name__
-                    job.error_message = str(error)[:2000]
+                    job.error_message = f"{error.__class__.__name__}: ingestion failed"
                     job.completed_at = datetime.now(timezone.utc)
                     session.flush()
                 else:

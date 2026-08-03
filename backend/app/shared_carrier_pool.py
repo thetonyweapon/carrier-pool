@@ -28,6 +28,7 @@ from app.models import (
     SharedPoolPolicyEvent,
     SharedPoolQueryAudit,
 )
+from app.observability import canonical_request_id
 
 SHARED_POOL_POLICY_VERSION = "shared-carrier-pool-v1"
 SHARED_POOL_ATTRIBUTE_PROFILE = "public-carrier-name-v1"
@@ -83,6 +84,8 @@ def set_shared_pool_policy(
     enabled: bool,
     changed_by: str,
     reason: Optional[str] = None,
+    changed_by_subject: str = "system",
+    request_id: Optional[str] = None,
 ) -> SharedPoolPolicy:
     """Record participation state for a future authenticated policy boundary."""
     # Make pending rows visible before the existence check. SessionLocal uses
@@ -92,6 +95,7 @@ def set_shared_pool_policy(
     if session.get(Broker, broker_id) is None:
         raise ValueError("broker not found")
     now = datetime.now(timezone.utc)
+    request_id = canonical_request_id(request_id)
     # PostgreSQL uses this row lock to serialize concurrent policy revisions;
     # SQLite test databases do not provide row-level locking.
     policy = session.scalar(
@@ -104,6 +108,7 @@ def set_shared_pool_policy(
             policy_revision=1,
             attribute_profile=SHARED_POOL_ATTRIBUTE_PROFILE,
             changed_by=changed_by,
+            changed_by_subject=changed_by_subject,
             reason=reason,
             updated_at=now,
         )
@@ -113,6 +118,7 @@ def set_shared_pool_policy(
         policy.policy_revision += 1
         policy.attribute_profile = SHARED_POOL_ATTRIBUTE_PROFILE
         policy.changed_by = changed_by
+        policy.changed_by_subject = changed_by_subject
         policy.reason = reason
         policy.updated_at = now
     session.add(
@@ -123,6 +129,8 @@ def set_shared_pool_policy(
             policy_version=SHARED_POOL_POLICY_VERSION,
             attribute_profile=SHARED_POOL_ATTRIBUTE_PROFILE,
             changed_by=changed_by,
+            changed_by_subject=changed_by_subject,
+            request_id=request_id,
             reason=reason,
             created_at=now,
         )
@@ -137,9 +145,12 @@ def get_shared_carrier_recommendations(
     load_id: str,
     id_secret: str,
     normalization_version: str = NORMALIZATION_VERSION,
+    actor_subject: str = "system",
+    request_id: Optional[str] = None,
 ) -> Optional[SharedCarrierPoolResult]:
     if not id_secret:
         raise SharedPoolUnavailable("shared pool identifier secret is not configured")
+    request_id = canonical_request_id(request_id)
     if normalization_version != NORMALIZATION_VERSION:
         raise ValueError(f"unsupported normalization version: {normalization_version}")
 
@@ -273,6 +284,8 @@ def get_shared_carrier_recommendations(
             participant_scope_digest=participant_scope_digest,
             participant_count=len(participant_ids),
             result_count=len(candidates),
+            actor_subject=actor_subject,
+            request_id=request_id,
             created_at=datetime.now(timezone.utc),
         )
     )

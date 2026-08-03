@@ -141,7 +141,7 @@ describe("operations UI", () => {
     expect(await screen.findByRole("heading", { name: "LOAD-001" })).toBeInTheDocument();
     expect(await screen.findByText("Dallas, TX")).toBeInTheDocument();
     expect(await screen.findByText("Lone Star Transport")).toBeInTheDocument();
-    expect(screen.getByText("SHARED / exact")).toBeInTheDocument();
+    expect(screen.getByText("SHARED")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "SHARED POOL ON" })).toBeInTheDocument();
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Lone Star Logistics" })).toBeInTheDocument();

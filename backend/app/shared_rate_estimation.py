@@ -17,7 +17,7 @@ from app.models import (
     SharedPoolPolicy,
     SharedPoolQueryAudit,
 )
-from app.observability import increment
+from app.observability import canonical_request_id, increment
 from app.shared_carrier_pool import (
     MIN_SHARED_CONTRIBUTING_BROKERS,
     SHARED_POOL_POLICY_VERSION,
@@ -89,7 +89,10 @@ def get_shared_rate_estimate(
     broker_id: str,
     load_id: str,
     normalization_version: str = NORMALIZATION_VERSION,
+    actor_subject: str = "system",
+    request_id: Optional[str] = None,
 ) -> Optional[SharedRateEstimateResult]:
+    request_id = canonical_request_id(request_id)
     if normalization_version != NORMALIZATION_VERSION:
         raise ValueError(f"unsupported normalization version: {normalization_version}")
     requester_policy = _enabled_policy(session, broker_id)
@@ -222,6 +225,8 @@ def get_shared_rate_estimate(
             participant_scope_digest=scope_digest,
             participant_count=len(participant_ids),
             result_count=1 if result.status == "estimated" else 0,
+            actor_subject=actor_subject,
+            request_id=request_id,
             created_at=datetime.now(timezone.utc),
         )
     )

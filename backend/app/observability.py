@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 import time
 from collections import defaultdict
@@ -14,6 +15,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 _logger = logging.getLogger("carrier_pool.request")
+_REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 _tracer = trace.get_tracer("carrier-pool")
 _lock = threading.Lock()
 _counters: defaultdict[tuple[str, tuple[tuple[str, str], ...]], int] = defaultdict(int)
@@ -70,7 +72,7 @@ def configure_logging() -> None:
 
 class RequestObservabilityMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
-        request_id = request.headers.get("X-Request-ID") or str(uuid4())
+        request_id = canonical_request_id(request.headers.get("X-Request-ID"))
         request.state.request_id = request_id
         started = time.perf_counter()
         response: Optional[Response] = None
@@ -109,6 +111,12 @@ class RequestObservabilityMiddleware(BaseHTTPMiddleware):
                 )
                 if response is not None:
                     response.headers["X-Request-ID"] = request_id
+
+
+def canonical_request_id(candidate: Optional[str]) -> str:
+    if candidate is not None and _REQUEST_ID_PATTERN.fullmatch(candidate):
+        return candidate
+    return str(uuid4())
 
 
 class _JsonFormatter(logging.Formatter):
