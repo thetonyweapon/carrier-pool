@@ -1,12 +1,17 @@
 import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { App } from "./App";
+import { clearAuthToken, setAuthToken } from "./api";
 import { candidate, detail, lane, loadList, rate, recs } from "./test/fixtures";
 import { server } from "./test/server";
 
+afterEach(() => clearAuthToken());
+
 function renderApp(path = "/brokers/broker-a/loads") {
+  if (path !== "/brokers") setAuthToken("test-token");
+  else clearAuthToken();
   return render(
     <MemoryRouter initialEntries={[path]}>
       <App />
@@ -80,6 +85,25 @@ describe("operations UI", () => {
     expect(screen.getByText("Loading demo brokers…")).toBeInTheDocument();
     expect(screen.queryByText("No demo brokers are available.")).not.toBeInTheDocument();
     release?.();
+  });
+
+  it("signs in through the demo account flow", async () => {
+    renderApp("/brokers");
+    expect(await screen.findByRole("heading", { name: "Sign in to operations" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Email or username"), { target: { value: "admin" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "admin" } });
+    fireEvent.submit(screen.getByRole("button", { name: "Sign in" }).closest("form")!);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(await screen.findByRole("heading", { name: "Dispatch board" })).toBeInTheDocument();
+  });
+
+  it("shows the locked demo profile and unavailable password reset", async () => {
+    renderApp("/profile");
+    expect(await screen.findByRole("heading", { name: "Test Operator" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Forgot password?" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText(/not connected in this demo/i)).toBeInTheDocument();
   });
 
   it("renders detail analytics and an accessible candidate drawer", async () => {

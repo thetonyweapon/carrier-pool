@@ -39,6 +39,7 @@ SOURCE_CONFIG = (
         TmsType.BROKEROS,
     ),
 )
+LOCAL_BROKER = ("broker-local", "Local Sandbox Brokerage")
 
 
 def bootstrap(root: Path) -> int:
@@ -51,7 +52,8 @@ def bootstrap(root: Path) -> int:
             raise ValueError("Demo broker configuration contains duplicate display names")
 
         existing_brokers = session.scalars(select(Broker)).all()
-        for broker_name, broker_id in desired_broker_names.items():
+        broker_names = {**desired_broker_names, LOCAL_BROKER[1]: LOCAL_BROKER[0]}
+        for broker_name, broker_id in broker_names.items():
             collision = next(
                 (broker for broker in existing_brokers if broker.name == broker_name), None
             )
@@ -91,9 +93,12 @@ def bootstrap(root: Path) -> int:
         for _, broker_id, broker_name, source_id, source_name, tms_type in SOURCE_CONFIG:
             broker = session.get(Broker, broker_id)
             if broker is None:
-                session.add(Broker(id=broker_id, name=broker_name, created_at=now))
+                session.add(Broker(id=broker_id, name=broker_name, is_demo=True, created_at=now))
             elif broker.name == broker_id:
                 broker.name = broker_name
+            broker = session.get(Broker, broker_id)
+            if broker is not None:
+                broker.is_demo = True
 
             source = session.get(BrokerSource, source_id)
             if source is None:
@@ -121,6 +126,19 @@ def bootstrap(root: Path) -> int:
                     changed_by="demo-bootstrap",
                     reason="demo broker opted into shared carrier pool",
                 )
+        local_broker = session.get(Broker, LOCAL_BROKER[0])
+        if local_broker is None:
+            session.add(
+                Broker(
+                    id=LOCAL_BROKER[0],
+                    name=LOCAL_BROKER[1],
+                    is_demo=False,
+                    created_at=now,
+                )
+            )
+        else:
+            local_broker.name = LOCAL_BROKER[1]
+            local_broker.is_demo = False
         session.commit()
 
         ingested = 0

@@ -1,9 +1,10 @@
-import type { Candidate, Detail, Lane, Load, LoadListResponse, Rate, Recs, SharedRate, SharedRecs, Summary } from "../api";
+import type { Candidate, DemoBroker, Detail, Lane, Load, LoadListResponse, Rate, Recs, SharedRate, SharedRecs } from "../api";
 
-export const demoBrokers: Summary[] = [
-  { id: "broker-a", name: "Ithaca Freight Partners" },
-  { id: "broker-b", name: "Aegean Route Logistics" },
-  { id: "broker-c", name: "Olive Harbor Transport" },
+export const demoBrokers: DemoBroker[] = [
+  { id: "broker-a", name: "Ithaca Freight Partners", is_demo: true },
+  { id: "broker-b", name: "Aegean Route Logistics", is_demo: true },
+  { id: "broker-c", name: "Olive Harbor Transport", is_demo: true },
+  { id: "broker-local", name: "Local Sandbox Brokerage", is_demo: false },
 ];
 
 export const load: Load = {

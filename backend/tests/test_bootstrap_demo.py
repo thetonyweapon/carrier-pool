@@ -37,6 +37,7 @@ def test_bootstrap_creates_display_names_and_preserves_stable_ids(bootstrap_db, 
         ("broker-a", "Ithaca Freight Partners"),
         ("broker-b", "Aegean Route Logistics"),
         ("broker-c", "Olive Harbor Transport"),
+        ("broker-local", "Local Sandbox Brokerage"),
     ]
     assert [
         (source.id, source.broker_id, source.source_name, source.tms_type) for source in sources
@@ -88,6 +89,7 @@ def test_bootstrap_reconciles_legacy_placeholder_names(bootstrap_db, tmp_path) -
         "Ithaca Freight Partners",
         "Aegean Route Logistics",
         "Olive Harbor Transport",
+        "Local Sandbox Brokerage",
     ]
     assert [source.source_name for source in sources] == ["FreightFlow", "HaulDesk", "BrokerOS"]
 
@@ -114,6 +116,7 @@ def test_bootstrap_preserves_custom_names(bootstrap_db, tmp_path) -> None:
         "Custom broker-a",
         "Custom broker-b",
         "Custom broker-c",
+        "Local Sandbox Brokerage",
     ]
     assert [source.source_name for source in sources] == [
         "Custom source-a",

@@ -18,6 +18,14 @@ on the fork, with medium-or-higher review findings fixed before merge.**
   must map a verified tenant or organization claim to `broker_id`; provider
   selection, JWKS discovery, rotation, revocation, and provider-specific claim
   mapping remain deferred.
+- Issue #37 adds an in-memory local-account layer for demo UX only. The seeded
+  TMS brokers are marked demo-locked and a non-demo local sandbox broker is
+  bootstrapped for editable profile flows. `admin` / `admin` is an explicit
+  sysadmin demo exception; created accounts use the 6-12 character password
+  rule, unique case-insensitive email addresses, and common-word rejection.
+  Accounts and password hashes are never persisted, so a backend restart
+  resets them. Password reset, email delivery, and account recovery remain
+  unavailable without an external service.
 - Production assumes managed PostgreSQL, a separate non-demo deployment
   profile, a filesystem-polling ingestion worker behind a storage abstraction,
   JSON logs, Prometheus metrics, and OpenTelemetry traces.

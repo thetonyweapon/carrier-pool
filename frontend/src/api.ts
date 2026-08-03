@@ -1,4 +1,5 @@
 export type Summary = { id: string; name: string };
+export type DemoBroker = Summary & { is_demo: boolean };
 export type Carrier = {
   id: string;
   name: string;
@@ -178,6 +179,16 @@ export type Candidate = {
     outcome: string;
   }[];
 };
+export type Profile = {
+  account_id: string;
+  email?: string | null;
+  name: string;
+  broker_id: string;
+  broker_name: string;
+  is_admin: boolean;
+  is_demo: boolean;
+  profile_locked: boolean;
+};
 
 const base =
   import.meta.env.VITE_API_BASE_URL ||
@@ -238,16 +249,29 @@ export function clearAuthToken(): void {
   if (typeof window !== "undefined") window.sessionStorage.removeItem(authStorageKey);
 }
 
+export function hasAuthToken(): boolean {
+  return typeof window !== "undefined" && window.sessionStorage.getItem(authStorageKey) !== null;
+}
+
 const segment = (value: string) => encodeURIComponent(value);
 
 export const api = {
-  brokers: (signal?: AbortSignal) => request<Summary[]>("/demo/brokers", { signal }),
-  demoAuth: (broker: string, signal?: AbortSignal) =>
-    request<{ access_token: string; token_type: string; broker_id: string }>("/demo/auth", {
+  brokers: (signal?: AbortSignal) => request<DemoBroker[]>("/demo/brokers", { signal }),
+  demoAuth: (broker: string, identifier: string, password: string, signal?: AbortSignal) =>
+    request<{ access_token: string; token_type: string; broker_id: string; account_id: string; is_admin: boolean }>("/demo/auth", {
       method: "POST",
-      body: JSON.stringify({ broker_id: broker }),
+      body: JSON.stringify({ broker_id: broker, identifier, password }),
       signal,
     }),
+  createAccount: (broker: string, name: string, email: string, password: string) =>
+    request<{ account_id: string; broker_id: string; email: string; name: string }>("/demo/accounts", {
+      method: "POST",
+      body: JSON.stringify({ broker_id: broker, name, email, password }),
+    }),
+  me: (broker?: string, signal?: AbortSignal) =>
+    request<Profile>(broker ? `/me?broker_id=${segment(broker)}` : "/me", { signal }),
+  updateProfile: (body: { name?: string; email?: string; password?: string }) =>
+    request<Profile>("/me", { method: "PATCH", body: JSON.stringify(body) }),
   sharedPolicy: (broker: string, signal?: AbortSignal) =>
     request<SharedPolicy>(`/brokers/${segment(broker)}/shared-pool-policy`, { signal }),
   updateSharedPolicy: (broker: string, enabled: boolean) =>

@@ -17,7 +17,6 @@ from app.config import settings
 from app.database import get_db
 from app.lane_intelligence import LaneNotDerivable
 from app.models import (
-    Broker,
     BrokerSource,
     Carrier,
     CarrierIdentity,
@@ -299,16 +298,6 @@ def _related(db: Session, load: Load):
     if customer is None:
         raise HTTPException(status_code=500, detail="load customer is missing")
     return customer, source_name, source_id, stops, assignment, assigned_carrier, canonical_carrier
-
-
-@router.get("/demo/brokers", response_model=list[Summary])
-def demo_brokers(db: Session = Depends(get_db)) -> list[Summary]:
-    if not settings.demo_mode:
-        raise HTTPException(status_code=404, detail="not found")
-    return [
-        Summary(id=b.id, name=b.name)
-        for b in db.scalars(select(Broker).order_by(Broker.name, Broker.id)).all()
-    ]
 
 
 @router.get("/brokers/{broker_id}/loads", response_model=LoadListResponse)
