@@ -9,8 +9,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import BrokerPrincipal, require_broker_principal
+from app.carrier_recommendations import (
+    RecommendationNotEligible,
+    get_carrier_recommendations,
+)
 from app.config import settings
 from app.database import get_db
+from app.lane_intelligence import LaneNotDerivable
 from app.models import (
     Broker,
     BrokerSource,
@@ -26,6 +31,7 @@ from app.models import (
 )
 
 router = APIRouter(tags=["broker operations"])
+MAX_CANDIDATE_EVIDENCE = 20
 
 
 class Summary(BaseModel):
@@ -117,6 +123,19 @@ class CandidateCarrierResponse(CarrierSummary):
     home_state: Optional[str] = None
 
 
+class CandidateEvidenceStopResponse(BaseModel):
+    city: str
+    state: str
+    postal_code: str
+
+
+class CandidateEvidenceResponse(BaseModel):
+    origin: CandidateEvidenceStopResponse
+    destination: CandidateEvidenceStopResponse
+    completed_month: Optional[str] = None
+    outcome: str
+
+
 class CandidateDetailResponse(BaseModel):
     broker_id: str
     candidate_id: str
@@ -125,6 +144,7 @@ class CandidateDetailResponse(BaseModel):
     mc_number: Optional[str] = None
     dot_number: Optional[str] = None
     carriers: list[CandidateCarrierResponse]
+    evidence: list[CandidateEvidenceResponse] = Field(default_factory=list)
 
 
 def _money(value: Optional[Decimal]) -> Optional[str]:
@@ -583,6 +603,7 @@ def assign_load(
 def carrier_candidate(
     broker_id: str,
     candidate_id: str,
+    load_id: Optional[str] = Query(default=None),
     principal: BrokerPrincipal = Depends(require_broker_principal),
     db: Session = Depends(get_db),
 ) -> CandidateDetailResponse:
@@ -612,6 +633,42 @@ def carrier_candidate(
             raise HTTPException(status_code=404, detail="carrier candidate not found")
         carrier = carriers[0]
         name, mc_number, dot_number = carrier.name, carrier.mc_number, carrier.dot_number
+    evidence: list[CandidateEvidenceResponse] = []
+    if load_id is not None:
+        try:
+            recommendation_result = get_carrier_recommendations(db, broker_id, load_id)
+        except RecommendationNotEligible as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except LaneNotDerivable as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        if recommendation_result is None:
+            raise HTTPException(status_code=404, detail="load not found")
+        recommendation = next(
+            (
+                item
+                for item in recommendation_result.recommendations
+                if item.candidate_id == candidate_id
+            ),
+            None,
+        )
+        if recommendation is not None:
+            evidence = [
+                CandidateEvidenceResponse(
+                    origin=CandidateEvidenceStopResponse(
+                        city=item.origin_city,
+                        state=item.origin_state,
+                        postal_code=item.origin_postal_code,
+                    ),
+                    destination=CandidateEvidenceStopResponse(
+                        city=item.destination_city,
+                        state=item.destination_state,
+                        postal_code=item.destination_postal_code,
+                    ),
+                    completed_month=item.completed_month,
+                    outcome=item.outcome,
+                )
+                for item in recommendation.evidence[:MAX_CANDIDATE_EVIDENCE]
+            ]
     return CandidateDetailResponse(
         broker_id=broker_id,
         candidate_id=candidate_id,
@@ -632,4 +689,5 @@ def carrier_candidate(
             )
             for c in carriers
         ],
+        evidence=evidence,
     )

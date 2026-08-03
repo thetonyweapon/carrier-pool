@@ -76,6 +76,7 @@ export type Lane = {
     history_limit: number;
     history_truncated: boolean;
   };
+  typical_travel_time?: { minutes: number; label: string; version: string } | null;
 };
 export type Rate = {
   status: string;
@@ -170,6 +171,12 @@ export type Candidate = {
   mc_number?: string | null;
   dot_number?: string | null;
   carriers: CandidateMember[];
+  evidence: {
+    origin: Location;
+    destination: Location;
+    completed_month?: string | null;
+    outcome: string;
+  }[];
 };
 
 const base =
@@ -275,10 +282,11 @@ export const api = {
       `/brokers/${segment(broker)}/loads/${segment(load)}/shared-carrier-rate-estimate`,
       { signal },
     ),
-  candidate: (broker: string, candidate: string, signal?: AbortSignal) =>
-    request<Candidate>(`/brokers/${segment(broker)}/carrier-candidates/${segment(candidate)}`, {
-      signal,
-    }),
+  candidate: (broker: string, load: string, candidate: string, signal?: AbortSignal) =>
+    request<Candidate>(
+      `/brokers/${segment(broker)}/carrier-candidates/${segment(candidate)}?load_id=${segment(load)}`,
+      { signal },
+    ),
   assign: (broker: string, load: string, body: object) =>
     request<Assignment>(`/brokers/${segment(broker)}/loads/${segment(load)}/assignments`, {
       method: "POST",

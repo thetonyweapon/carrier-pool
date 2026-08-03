@@ -121,6 +121,7 @@ describe("operations UI", () => {
     expect(screen.getByRole("button", { name: "SHARED POOL ON" })).toBeInTheDocument();
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Lone Star Logistics" })).toBeInTheDocument();
+    expect(screen.getByText(/Dallas, TX 75201/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Close carrier details" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Assign overlay to this carrier" }));
     await waitFor(() => expect(assignmentBody).toMatchObject({
