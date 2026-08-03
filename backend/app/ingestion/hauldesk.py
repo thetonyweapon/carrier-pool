@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timezone
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -19,7 +19,9 @@ from app.ingestion.common import (
     IngestionLimitError,
     enforce_ingestion_file_size,
     enforce_ingestion_limits,
+    read_verified_file,
     upsert_carrier_identity,
+    validate_carrier_identity_transition,
 )
 from app.models import (
     BrokerSource,
@@ -145,7 +147,7 @@ def ingest_file(session: Session, broker_source_id: str, path: Path) -> Ingestio
         enforce_ingestion_file_size(path)
     except IngestionLimitError as exc:
         raise InvalidHaulDeskPayloadError("Invalid HaulDesk sync payload") from exc
-    return ingest_contents(session, broker_source_id, path.name, path.read_bytes())
+    return ingest_contents(session, broker_source_id, path.name, read_verified_file(path))
 
 
 def ingest_contents(
@@ -153,6 +155,7 @@ def ingest_contents(
     broker_source_id: str,
     filename: str,
     raw_contents: bytes,
+    before_commit: Optional[Callable[[Session], None]] = None,
 ) -> IngestionResult:
     raw_payload, sync = _parse_payload(raw_contents)
     synced_at = _parse_central_datetime(sync.synced_at, "synced_at")
@@ -206,6 +209,20 @@ def ingest_contents(
             session.add(ingestion_file)
             session.flush()
 
+            stale_source_load_ids = _stale_source_load_ids(session, source, sync.loads)
+            stale_carrier_ids = {
+                str(source_load.carrier_ref)
+                for source_load in sync.loads
+                if str(source_load.load_num) in stale_source_load_ids
+                and source_load.carrier_ref is not None
+            }
+            active_carrier_ids = {
+                str(source_load.carrier_ref)
+                for source_load in sync.loads
+                if str(source_load.load_num) not in stale_source_load_ids
+                and source_load.carrier_ref is not None
+            }
+
             carrier_by_id = {}
             for source_carrier in sync.carriers:
                 carrier_id = str(source_carrier.carrier_id)
@@ -213,6 +230,19 @@ def ingest_contents(
                     raise InvalidHaulDeskPayloadError(
                         f"Duplicate HaulDesk carrier_id in file: {carrier_id}"
                     )
+                if carrier_id in stale_carrier_ids and carrier_id not in active_carrier_ids:
+                    existing_carrier = session.scalar(
+                        select(Carrier).where(
+                            Carrier.broker_source_id == source.id,
+                            Carrier.source_carrier_id == carrier_id,
+                        )
+                    )
+                    validate_carrier_identity_transition(
+                        existing_carrier,
+                        source_carrier.mc_no,
+                        source_carrier.dot_no,
+                    )
+                    continue
                 try:
                     carrier_by_id[carrier_id] = _upsert_carrier(
                         session, source, source_carrier, synced_at
@@ -223,6 +253,7 @@ def ingest_contents(
             raw_rates = [dict(rate) for rate in raw_payload["rates"]]
             affected: Dict[str, Dict[str, Any]] = {}
             loads_by_source_id: Dict[str, Load] = {}
+            stale_load_ids: set[str] = set()
 
             for source_load in sync.loads:
                 source_load_id = str(source_load.load_num)
@@ -231,37 +262,23 @@ def ingest_contents(
                         f"Duplicate HaulDesk load_num in file: {source_load_id}"
                     )
                 raw_load = raw_loads[str(source_load.load_num)]
-                load = _upsert_load(
+                load, stale = _upsert_load(
                     session,
                     source,
                     ingestion_file,
                     source_load,
                     carrier_by_id,
+                    source_carrier_ids={str(item.carrier_id) for item in sync.carriers},
                 )
                 loads_by_source_id[str(source_load.load_num)] = load
+                if stale:
+                    stale_load_ids.add(load.id)
+                    continue
                 affected[load.id] = {"load": raw_load, "rates": []}
 
             seen_rate_ids = set()
             for source_rate, raw_rate in zip(sync.rates, raw_rates):
                 rate_id = str(source_rate.rate_id)
-                if rate_id in seen_rate_ids:
-                    raise InvalidHaulDeskPayloadError(
-                        f"Duplicate HaulDesk rate_id in file: {rate_id}"
-                    )
-                seen_rate_ids.add(rate_id)
-                if (
-                    session.scalar(
-                        select(RateLineItem.id).where(
-                            RateLineItem.broker_source_id == source.id,
-                            RateLineItem.source_rate_id == rate_id,
-                        )
-                    )
-                    is not None
-                ):
-                    raise InvalidHaulDeskPayloadError(
-                        f"HaulDesk rate_id was already ingested: {rate_id}"
-                    )
-
                 load = loads_by_source_id.get(str(source_rate.load_num))
                 if load is None:
                     load = session.scalar(
@@ -274,11 +291,34 @@ def ingest_contents(
                     raise InvalidHaulDeskPayloadError(
                         f"Rate {rate_id} references unknown load {source_rate.load_num}"
                     )
+                if rate_id in seen_rate_ids:
+                    raise InvalidHaulDeskPayloadError(
+                        f"Duplicate HaulDesk rate_id in file: {rate_id}"
+                    )
+                seen_rate_ids.add(rate_id)
+                existing_rate = session.scalar(
+                    select(RateLineItem).where(
+                        RateLineItem.broker_source_id == source.id,
+                        RateLineItem.source_rate_id == rate_id,
+                    )
+                )
+                if existing_rate is not None and (
+                    load.id not in stale_load_ids or existing_rate.load_id != load.id
+                ):
+                    raise InvalidHaulDeskPayloadError(
+                        f"HaulDesk rate_id was already ingested: {rate_id}"
+                    )
 
                 side = _map_rate_side(source_rate.side)
                 code = _validate_rate_code(source_rate.code)
                 amount = _validate_source_currency(source_rate.amount_usd, "amount_usd")
                 source_created_at = _parse_central_datetime(source_rate.created_at, "created_at")
+                if load.id in stale_load_ids:
+                    if existing_rate is None:
+                        raise InvalidHaulDeskPayloadError(
+                            f"New HaulDesk rate was supplied for stale load {source_rate.load_num}"
+                        )
+                    continue
                 session.add(
                     RateLineItem(
                         broker_id=source.broker_id,
@@ -319,6 +359,8 @@ def ingest_contents(
                     )
                 )
 
+            if before_commit is not None:
+                before_commit(session)
             ingestion_file.status = IngestionStatus.SUCCEEDED
             ingestion_file.processed_at = datetime.now(timezone.utc)
     except IntegrityError as exc:
@@ -346,6 +388,13 @@ def _upsert_carrier(
     observed_at: datetime,
 ) -> Carrier:
     source_carrier_id = str(source_carrier.carrier_id)
+    carrier = session.scalar(
+        select(Carrier).where(
+            Carrier.broker_source_id == source.id,
+            Carrier.source_carrier_id == source_carrier_id,
+        )
+    )
+    validate_carrier_identity_transition(carrier, source_carrier.mc_no, source_carrier.dot_no)
     carrier_identity = upsert_carrier_identity(
         session,
         source.broker_id,
@@ -353,17 +402,16 @@ def _upsert_carrier(
         source_carrier.dot_no,
         observed_at,
     )
-    carrier = session.scalar(
-        select(Carrier).where(
-            Carrier.broker_source_id == source.id,
-            Carrier.source_carrier_id == source_carrier_id,
-        )
+    identity_id = (
+        carrier_identity.id
+        if carrier_identity
+        else (carrier.carrier_identity_id if carrier else None)
     )
     values = {
-        "carrier_identity_id": carrier_identity.id if carrier_identity else None,
+        "carrier_identity_id": identity_id,
         "name": source_carrier.carrier_name,
-        "mc_number": source_carrier.mc_no,
-        "dot_number": source_carrier.dot_no,
+        "mc_number": source_carrier.mc_no or (carrier.mc_number if carrier else None),
+        "dot_number": source_carrier.dot_no or (carrier.dot_number if carrier else None),
         "phone_number": source_carrier.phone,
         "home_city": source_carrier.home_city,
         "home_state": source_carrier.home_state,
@@ -424,12 +472,44 @@ def _upsert_load(
     ingestion_file: IngestionFile,
     source_load: HaulDeskLoad,
     carriers: Dict[str, Carrier],
-) -> Load:
+    source_carrier_ids: set[str],
+) -> tuple[Load, bool]:
     observed_at = ingestion_file.synced_at
     source_created_at = _parse_central_datetime(source_load.entered_at, "entered_at")
     source_updated_at = _parse_central_datetime(source_load.updated_at, "updated_at")
+    source_load_id = str(source_load.load_num)
+    load = session.scalar(
+        select(Load).where(
+            Load.broker_source_id == source.id,
+            Load.source_load_id == source_load_id,
+        )
+    )
     status = _map_status(source_load.status_code)
     equipment_type = _map_equipment(source_load.equip)
+    weight_lbs = _convert_unit(source_load.weight_kg, KG_TO_LB, "weight_kg", MAX_WEIGHT_LBS)
+    distance_miles = _convert_unit(source_load.dist_km, KM_TO_MILE, "dist_km", MAX_DISTANCE_MILES)
+    if source_load.carrier_ref is not None:
+        carrier_id = str(source_load.carrier_ref)
+        if (
+            carrier_id not in source_carrier_ids
+            and session.scalar(
+                select(Carrier).where(
+                    Carrier.broker_source_id == source.id,
+                    Carrier.source_carrier_id == carrier_id,
+                )
+            )
+            is None
+        ):
+            raise InvalidHaulDeskPayloadError(
+                f"Load {source_load.load_num} references unknown carrier {source_load.carrier_ref}"
+            )
+    if (
+        load is not None
+        and load.source_updated_at is not None
+        and source_updated_at < _as_utc(load.source_updated_at)
+    ):
+        return load, True
+
     customer = _upsert_customer(session, source, source_load, observed_at)
     carrier = None
     if source_load.carrier_ref is not None:
@@ -445,16 +525,6 @@ def _upsert_load(
             raise InvalidHaulDeskPayloadError(
                 f"Load {source_load.load_num} references unknown carrier {source_load.carrier_ref}"
             )
-
-    source_load_id = str(source_load.load_num)
-    load = session.scalar(
-        select(Load).where(
-            Load.broker_source_id == source.id,
-            Load.source_load_id == source_load_id,
-        )
-    )
-    weight_lbs = _convert_unit(source_load.weight_kg, KG_TO_LB, "weight_kg", MAX_WEIGHT_LBS)
-    distance_miles = _convert_unit(source_load.dist_km, KM_TO_MILE, "dist_km", MAX_DISTANCE_MILES)
     if load is None:
         load = Load(
             broker_id=source.broker_id,
@@ -489,7 +559,28 @@ def _upsert_load(
         load.booked_at = source_updated_at
     session.flush()
     _sync_stops(session, source, load, source_load)
-    return load
+    return load, False
+
+
+def _stale_source_load_ids(
+    session: Session, source: BrokerSource, source_loads: Sequence[HaulDeskLoad]
+) -> set[str]:
+    stale_ids: set[str] = set()
+    for source_load in source_loads:
+        source_updated_at = _parse_central_datetime(source_load.updated_at, "updated_at")
+        load = session.scalar(
+            select(Load).where(
+                Load.broker_source_id == source.id,
+                Load.source_load_id == str(source_load.load_num),
+            )
+        )
+        if (
+            load is not None
+            and load.source_updated_at is not None
+            and source_updated_at < _as_utc(load.source_updated_at)
+        ):
+            stale_ids.add(str(source_load.load_num))
+    return stale_ids
 
 
 def _sync_stops(

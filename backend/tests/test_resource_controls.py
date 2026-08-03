@@ -6,9 +6,11 @@ import pytest
 from app.config import settings
 from app.ingestion import brokeros, freightflow, hauldesk
 from app.ingestion.common import (
+    IngestionFileSecurityError,
     IngestionLimitError,
     enforce_ingestion_file_size,
     enforce_ingestion_limits,
+    read_verified_file,
 )
 
 
@@ -26,6 +28,28 @@ def test_ingestion_path_limit(tmp_path, monkeypatch):
 
     with pytest.raises(IngestionLimitError, match="byte limit"):
         enforce_ingestion_file_size(path)
+
+
+def test_verified_ingestion_rejects_symlinks_and_checksum_mismatches(tmp_path):
+    path = Path(tmp_path) / "payload.json"
+    path.write_bytes(b"payload")
+    link = Path(tmp_path) / "link.json"
+    link.symlink_to(path)
+
+    with pytest.raises(IngestionFileSecurityError):
+        read_verified_file(link)
+    with pytest.raises(IngestionFileSecurityError, match="checksum"):
+        read_verified_file(path, expected_checksum="0" * 64)
+
+
+def test_verified_ingestion_rejects_path_escape(tmp_path):
+    root = Path(tmp_path) / "root"
+    root.mkdir()
+    outside = Path(tmp_path) / "outside.json"
+    outside.write_bytes(b"payload")
+
+    with pytest.raises(IngestionFileSecurityError, match="escapes"):
+        read_verified_file(root / ".." / "outside.json", root=root)
 
 
 def test_ingestion_record_limit(monkeypatch):

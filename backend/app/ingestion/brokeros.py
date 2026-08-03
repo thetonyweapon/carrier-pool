@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import func, select
@@ -17,6 +17,7 @@ from app.ingestion.common import (
     IngestionLimitError,
     enforce_ingestion_file_size,
     enforce_ingestion_limits,
+    read_verified_file,
 )
 from app.models import (
     BrokerSource,
@@ -134,7 +135,7 @@ def ingest_file(session: Session, broker_source_id: str, path: Path) -> Ingestio
         enforce_ingestion_file_size(path)
     except IngestionLimitError as exc:
         raise InvalidBrokerOSPayloadError("Invalid BrokerOS sync payload") from exc
-    return ingest_contents(session, broker_source_id, path.name, path.read_bytes())
+    return ingest_contents(session, broker_source_id, path.name, read_verified_file(path))
 
 
 def ingest_contents(
@@ -142,6 +143,7 @@ def ingest_contents(
     broker_source_id: str,
     filename: str,
     raw_contents: bytes,
+    before_commit: Optional[Callable[[Session], None]] = None,
 ) -> IngestionResult:
     raw_payload, sync = _parse_payload(raw_contents)
     synced_at = _require_aware_utc(sync.synced_at, "synced_at")
@@ -210,6 +212,8 @@ def ingest_contents(
                     raw_load,
                     sync.referenced_records,
                 )
+            if before_commit is not None:
+                before_commit(session)
             ingestion_file.status = IngestionStatus.SUCCEEDED
             ingestion_file.processed_at = datetime.now(timezone.utc)
     except IntegrityError as exc:
@@ -239,6 +243,12 @@ def _ingest_load(
 ) -> None:
     source_created_at = _require_aware_utc(source_load.source_created_at, "CreatedDate")
     source_updated_at = _require_aware_utc(source_load.source_updated_at, "LastModifiedDate")
+    load = session.scalar(
+        select(Load).where(
+            Load.broker_source_id == source.id,
+            Load.source_load_id == source_load.source_load_id,
+        )
+    )
     customer_reference = _resolve_account(
         references, source_load.customer_ref, "Customer", "customer reference"
     )
@@ -247,6 +257,19 @@ def _ingest_load(
         if source_load.carrier_ref is not None
         else None
     )
+    status = _map_status(source_load.source_status)
+    equipment_type = _map_equipment(source_load.equipment)
+    customer_rate = _validate_currency(source_load.customer_rate, "bos__Customer_Rate__c")
+    carrier_rate = _validate_currency(source_load.carrier_rate, "bos__Carrier_Rate__c")
+    distance_miles = _validate_distance(source_load.distance_miles)
+    weight_lbs = _aggregate_weight(source_load.line_items)
+    if (
+        load is not None
+        and load.source_updated_at is not None
+        and source_updated_at < _as_utc(load.source_updated_at)
+    ):
+        return
+
     customer = _upsert_customer(
         session, source, source_load.customer_ref, customer_reference, ingestion_file.synced_at
     )
@@ -257,19 +280,7 @@ def _ingest_load(
         if carrier_reference is not None
         else None
     )
-    status = _map_status(source_load.source_status)
-    equipment_type = _map_equipment(source_load.equipment)
-    customer_rate = _validate_currency(source_load.customer_rate, "bos__Customer_Rate__c")
-    carrier_rate = _validate_currency(source_load.carrier_rate, "bos__Carrier_Rate__c")
-    distance_miles = _validate_distance(source_load.distance_miles)
-    weight_lbs = _aggregate_weight(source_load.line_items)
 
-    load = session.scalar(
-        select(Load).where(
-            Load.broker_source_id == source.id,
-            Load.source_load_id == source_load.source_load_id,
-        )
-    )
     if load is None:
         load = Load(
             broker_id=source.broker_id,

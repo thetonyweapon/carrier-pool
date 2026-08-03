@@ -39,6 +39,15 @@ def db_session():
                 created_at=NOW,
             )
         )
+        session.add(
+            BrokerSource(
+                id="source-b",
+                broker_id="broker-a",
+                tms_type=TmsType.HAULDESK,
+                source_name="HaulDesk",
+                created_at=NOW,
+            )
+        )
         session.commit()
         yield session
     engine.dispose()
@@ -65,7 +74,9 @@ def test_job_claim_lease_and_completion_are_durable(db_session: Session) -> None
     assert claimed.attempt_count == 1
     assert claim_next_job(db_session, "worker-b", now=NOW) is None
 
-    completed = complete_job(db_session, job.id, "worker-a", now=NOW)
+    completed = complete_job(
+        db_session, job.id, "worker-a", now=NOW, lease_token=claimed.lease_token
+    )
     assert completed.status == IngestionJobStatus.SUCCEEDED
     assert completed.lease_owner is None
 
@@ -74,16 +85,30 @@ def test_retryable_failure_backoff_then_dead_letters_permanent_failure(
     db_session: Session,
 ) -> None:
     job = enqueue(db_session)
-    claim_next_job(db_session, "worker-a", now=NOW)
-    retry = fail_job(db_session, job.id, "worker-a", ConnectionError("database reset"), now=NOW)
+    claimed = claim_next_job(db_session, "worker-a", now=NOW)
+    retry = fail_job(
+        db_session,
+        job.id,
+        "worker-a",
+        ConnectionError("database reset"),
+        now=NOW,
+        lease_token=claimed.lease_token,
+    )
     assert retry.status == IngestionJobStatus.RETRY_WAIT
     retry_available_at = retry.available_at.replace(tzinfo=timezone.utc)
     assert retry_available_at > NOW
 
     retry.available_at = NOW - timedelta(seconds=1)
     db_session.commit()
-    claim_next_job(db_session, "worker-b", now=NOW)
-    dead_letter = fail_job(db_session, job.id, "worker-b", ValueError("invalid payload"), now=NOW)
+    claimed = claim_next_job(db_session, "worker-b", now=NOW)
+    dead_letter = fail_job(
+        db_session,
+        job.id,
+        "worker-b",
+        ValueError("invalid payload"),
+        now=NOW,
+        lease_token=claimed.lease_token,
+    )
     assert dead_letter.status == IngestionJobStatus.DEAD_LETTER
     assert dead_letter.failure_class == "ValueError"
 
@@ -94,9 +119,131 @@ def test_retryable_failure_backoff_then_dead_letters_permanent_failure(
 
 def test_worker_lease_can_be_renewed(db_session: Session) -> None:
     job = enqueue(db_session)
-    claim_next_job(db_session, "worker-a", now=NOW)
-    renewed = renew_lease(db_session, job.id, "worker-a", now=NOW, lease_seconds=600)
+    claimed = claim_next_job(db_session, "worker-a", now=NOW)
+    renewed = renew_lease(
+        db_session,
+        job.id,
+        "worker-a",
+        now=NOW,
+        lease_seconds=600,
+        lease_token=claimed.lease_token,
+    )
     assert renewed.lease_expires_at.replace(tzinfo=timezone.utc) == NOW + timedelta(seconds=600)
+
+
+def test_source_head_blocks_later_job_but_not_a_different_source(db_session: Session) -> None:
+    first = enqueue(db_session, "first.json")
+    later = enqueue_job(
+        db_session,
+        broker_id="broker-a",
+        broker_source_id="source-a",
+        filename="later.json",
+        file_path="/data/later.json",
+        checksum="later".ljust(64, "0"),
+        synced_at=NOW + timedelta(seconds=1),
+        now=NOW + timedelta(seconds=1),
+    )
+    parallel = enqueue_job(
+        db_session,
+        broker_id="broker-a",
+        broker_source_id="source-b",
+        filename="parallel.json",
+        file_path="/data/parallel.json",
+        checksum="parallel".ljust(64, "0"),
+        synced_at=NOW,
+        now=NOW,
+    )
+    first_claim = claim_next_job(db_session, "worker-a", now=NOW)
+    assert first_claim.id in {first.id, parallel.id}
+    complete_job(
+        db_session,
+        first_claim.id,
+        "worker-a",
+        now=NOW,
+        lease_token=first_claim.lease_token,
+    )
+    second_claim = claim_next_job(db_session, "worker-b", now=NOW)
+    assert second_claim.id in {first.id, parallel.id}
+    complete_job(
+        db_session,
+        second_claim.id,
+        "worker-b",
+        now=NOW,
+        lease_token=second_claim.lease_token,
+    )
+    assert claim_next_job(db_session, "worker-c", now=NOW) is None
+    later.available_at = NOW
+    db_session.commit()
+    assert claim_next_job(db_session, "worker-c", now=NOW).id == later.id
+
+
+def test_expired_lease_reclaim_fences_the_previous_owner(db_session: Session) -> None:
+    job = enqueue(db_session)
+    first = claim_next_job(db_session, "worker-a", now=NOW, lease_seconds=1)
+    old_token = first.lease_token
+    second = claim_next_job(db_session, "worker-b", now=NOW + timedelta(seconds=2))
+
+    assert second.id == job.id
+    with pytest.raises(ValueError, match="not owned"):
+        complete_job(
+            db_session,
+            job.id,
+            "worker-a",
+            now=NOW + timedelta(seconds=2),
+            lease_token=old_token,
+        )
+
+
+def test_expired_lease_cannot_be_completed_or_renewed(db_session: Session) -> None:
+    job = enqueue(db_session)
+    claimed = claim_next_job(db_session, "worker-a", now=NOW, lease_seconds=1)
+
+    with pytest.raises(ValueError, match="not owned"):
+        complete_job(
+            db_session,
+            job.id,
+            "worker-a",
+            now=NOW + timedelta(seconds=2),
+            lease_token=claimed.lease_token,
+        )
+    with pytest.raises(ValueError, match="not owned"):
+        renew_lease(
+            db_session,
+            job.id,
+            "worker-a",
+            now=NOW + timedelta(seconds=2),
+            lease_token=claimed.lease_token,
+        )
+
+
+def test_source_head_uses_sync_time_not_enqueue_time(db_session: Session) -> None:
+    late = enqueue_job(
+        db_session,
+        broker_id="broker-a",
+        broker_source_id="source-a",
+        filename="late.json",
+        file_path="/data/late.json",
+        checksum="late".ljust(64, "0"),
+        synced_at=NOW + timedelta(seconds=2),
+        now=NOW,
+    )
+    early = enqueue_job(
+        db_session,
+        broker_id="broker-a",
+        broker_source_id="source-a",
+        filename="early.json",
+        file_path="/data/early.json",
+        checksum="early".ljust(64, "0"),
+        synced_at=NOW,
+        now=NOW,
+    )
+    early.created_at = NOW + timedelta(seconds=1)
+    db_session.commit()
+
+    claimed = claim_next_job(db_session, "worker-a", now=NOW)
+
+    assert claimed.id == early.id
+    assert claimed.id != late.id
 
 
 def test_job_checksum_conflict_is_rejected(db_session: Session) -> None:

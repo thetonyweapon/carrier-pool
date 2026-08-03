@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import func, select
@@ -18,7 +18,9 @@ from app.ingestion.common import (
     IngestionLimitError,
     enforce_ingestion_file_size,
     enforce_ingestion_limits,
+    read_verified_file,
     upsert_carrier_identity,
+    validate_carrier_identity_transition,
 )
 from app.models import (
     BrokerSource,
@@ -131,7 +133,7 @@ def ingest_file(session: Session, broker_source_id: str, path: Path) -> Ingestio
         enforce_ingestion_file_size(path)
     except IngestionLimitError as exc:
         raise InvalidFreightFlowPayloadError("Invalid FreightFlow sync payload") from exc
-    raw_contents = path.read_bytes()
+    raw_contents = read_verified_file(path)
     return ingest_contents(session, broker_source_id, path.name, raw_contents)
 
 
@@ -140,6 +142,7 @@ def ingest_contents(
     broker_source_id: str,
     filename: str,
     raw_contents: bytes,
+    before_commit: Optional[Callable[[Session], None]] = None,
 ) -> IngestionResult:
     raw_payload, sync = _parse_payload(raw_contents)
 
@@ -200,6 +203,8 @@ def ingest_contents(
 
             for raw_load, source_load in zip(raw_payload["loads"], sync.loads):
                 _ingest_load(session, source, ingestion_file, source_load, raw_load)
+            if before_commit is not None:
+                before_commit(session)
             ingestion_file.status = IngestionStatus.SUCCEEDED
             ingestion_file.processed_at = datetime.now(timezone.utc)
     except IntegrityError as exc:
@@ -230,23 +235,41 @@ def _ingest_load(
     _require_timezone(source_load.lastModifiedDate, "lastModifiedDate")
     source_created_at = _to_utc(source_load.createdDate)
     source_updated_at = _to_utc(source_load.lastModifiedDate)
-    customer_rate = _validate_source_currency(source_load.totalSell, "totalSell")
-    carrier_rate = _validate_source_currency(source_load.totalBuy, "totalBuy")
-    status = _map_status(source_load.status)
-    equipment_type = _map_equipment(source_load.equipment)
-    customer = _upsert_customer(session, source, source_load.customer, ingestion_file.synced_at)
-    try:
-        carrier = _upsert_carrier(session, source, source_load.carrier, ingestion_file.synced_at)
-    except CarrierIdentityConflictError as exc:
-        raise InvalidFreightFlowPayloadError(str(exc)) from exc
     source_load_id = str(source_load.shipmentId)
-
     load = session.scalar(
         select(Load).where(
             Load.broker_source_id == source.id,
             Load.source_load_id == source_load_id,
         )
     )
+    customer_rate = _validate_source_currency(source_load.totalSell, "totalSell")
+    carrier_rate = _validate_source_currency(source_load.totalBuy, "totalBuy")
+    status = _map_status(source_load.status)
+    equipment_type = _map_equipment(source_load.equipment)
+    if (
+        load is not None
+        and load.source_updated_at is not None
+        and source_updated_at < _to_utc(load.source_updated_at)
+    ):
+        if source_load.carrier is not None:
+            existing_carrier = session.scalar(
+                select(Carrier).where(
+                    Carrier.broker_source_id == source.id,
+                    Carrier.source_carrier_id == str(source_load.carrier.carrierMasterId),
+                )
+            )
+            validate_carrier_identity_transition(
+                existing_carrier,
+                source_load.carrier.mcNumber,
+                source_load.carrier.dotNumber,
+            )
+        return
+
+    customer = _upsert_customer(session, source, source_load.customer, ingestion_file.synced_at)
+    try:
+        carrier = _upsert_carrier(session, source, source_load.carrier, ingestion_file.synced_at)
+    except CarrierIdentityConflictError as exc:
+        raise InvalidFreightFlowPayloadError(str(exc)) from exc
     if load is None:
         load = Load(
             broker_id=source.broker_id,
@@ -348,6 +371,13 @@ def _upsert_carrier(
         return None
 
     source_carrier_id = str(source_carrier.carrierMasterId)
+    carrier = session.scalar(
+        select(Carrier).where(
+            Carrier.broker_source_id == source.id,
+            Carrier.source_carrier_id == source_carrier_id,
+        )
+    )
+    validate_carrier_identity_transition(carrier, source_carrier.mcNumber, source_carrier.dotNumber)
     carrier_identity = upsert_carrier_identity(
         session,
         source.broker_id,
@@ -355,17 +385,16 @@ def _upsert_carrier(
         source_carrier.dotNumber,
         observed_at,
     )
-    carrier = session.scalar(
-        select(Carrier).where(
-            Carrier.broker_source_id == source.id,
-            Carrier.source_carrier_id == source_carrier_id,
-        )
+    identity_id = (
+        carrier_identity.id
+        if carrier_identity
+        else (carrier.carrier_identity_id if carrier else None)
     )
     if carrier is None:
         carrier = Carrier(
             broker_id=source.broker_id,
             broker_source_id=source.id,
-            carrier_identity_id=carrier_identity.id if carrier_identity else None,
+            carrier_identity_id=identity_id,
             source_carrier_id=source_carrier_id,
             name=source_carrier.name,
             mc_number=source_carrier.mcNumber,
@@ -377,17 +406,22 @@ def _upsert_carrier(
         session.add(carrier)
     else:
         changed = (
-            carrier.carrier_identity_id != (carrier_identity.id if carrier_identity else None)
+            carrier.carrier_identity_id != identity_id
             or carrier.name != source_carrier.name
-            or carrier.mc_number != source_carrier.mcNumber
-            or carrier.dot_number != source_carrier.dotNumber
+            or (
+                source_carrier.mcNumber is not None and carrier.mc_number != source_carrier.mcNumber
+            )
+            or (
+                source_carrier.dotNumber is not None
+                and carrier.dot_number != source_carrier.dotNumber
+            )
             or carrier.phone_number != source_carrier.phoneNumber
         )
         if changed:
-            carrier.carrier_identity_id = carrier_identity.id if carrier_identity else None
+            carrier.carrier_identity_id = identity_id
             carrier.name = source_carrier.name
-            carrier.mc_number = source_carrier.mcNumber
-            carrier.dot_number = source_carrier.dotNumber
+            carrier.mc_number = source_carrier.mcNumber or carrier.mc_number
+            carrier.dot_number = source_carrier.dotNumber or carrier.dot_number
             carrier.phone_number = source_carrier.phoneNumber
             carrier.updated_at = observed_at
     session.flush()

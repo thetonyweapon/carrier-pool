@@ -79,7 +79,7 @@ def carrier_recommendations(
     principal: BrokerPrincipal = Depends(require_broker_principal),
     db: Session = Depends(get_db),
 ) -> CarrierRecommendationsResponse:
-    del principal
+    broker_id = principal.broker_id
     try:
         result = get_carrier_recommendations(
             db,

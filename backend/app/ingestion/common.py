@@ -1,4 +1,7 @@
+import hashlib
+import os
 import re
+import stat
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -18,11 +21,75 @@ class IngestionLimitError(ValueError):
     """A source file exceeds configured resource limits."""
 
 
+class IngestionFileSecurityError(ValueError):
+    """A queued source file is not a safe regular file."""
+
+
 def enforce_ingestion_file_size(path: Path) -> None:
-    if path.stat().st_size > settings.ingestion_max_file_bytes:
+    _validate_file_path(path)
+    fd = _open_verified_descriptor(path)
+    try:
+        if os.fstat(fd).st_size > settings.ingestion_max_file_bytes:
+            raise IngestionLimitError(
+                f"sync file exceeds {settings.ingestion_max_file_bytes} byte limit"
+            )
+    finally:
+        os.close(fd)
+
+
+def read_verified_file(
+    path: Path, *, expected_checksum: Optional[str] = None, root: Optional[Path] = None
+) -> bytes:
+    _validate_file_path(path, root=root)
+    fd = _open_verified_descriptor(path)
+    try:
+        if os.fstat(fd).st_size > settings.ingestion_max_file_bytes:
+            raise IngestionLimitError(
+                f"sync file exceeds {settings.ingestion_max_file_bytes} byte limit"
+            )
+        with os.fdopen(fd, "rb") as file:
+            fd = -1
+            contents = file.read(settings.ingestion_max_file_bytes + 1)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+    if len(contents) > settings.ingestion_max_file_bytes:
         raise IngestionLimitError(
             f"sync file exceeds {settings.ingestion_max_file_bytes} byte limit"
         )
+    if expected_checksum and hashlib.sha256(contents).hexdigest() != expected_checksum:
+        raise IngestionFileSecurityError("ingestion file checksum does not match queued content")
+    return contents
+
+
+def _open_verified_descriptor(path: Path) -> int:
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError as exc:
+        raise IngestionFileSecurityError("ingestion path could not be opened safely") from exc
+    if not stat.S_ISREG(os.fstat(fd).st_mode):
+        os.close(fd)
+        raise IngestionFileSecurityError("ingestion path must be a regular file")
+    return fd
+
+
+def _validate_file_path(path: Path, *, root: Optional[Path] = None) -> None:
+    if not path.exists():
+        raise FileNotFoundError(path)
+    if path.is_symlink() or not path.is_file():
+        raise IngestionFileSecurityError("ingestion path must be a regular non-symlink file")
+    resolved = path.resolve(strict=True)
+    if root is not None:
+        resolved_root = root.resolve(strict=True)
+        if resolved_root not in resolved.parents:
+            raise IngestionFileSecurityError("ingestion path escapes the configured root")
+    current = path
+    while current != current.parent:
+        if current.is_symlink():
+            raise IngestionFileSecurityError("ingestion path cannot contain symlink components")
+        if root is not None and current.resolve() == root.resolve():
+            break
+        current = current.parent
 
 
 def enforce_ingestion_limits(raw_contents: bytes, payload: object) -> None:
@@ -118,6 +185,28 @@ def upsert_carrier_identity(
         session.add(identity)
     session.flush()
     return identity
+
+
+def validate_carrier_identity_transition(
+    carrier: Optional[Carrier],
+    mc_number: Optional[str],
+    dot_number: Optional[str],
+) -> None:
+    """Reject a source carrier changing to unrelated identifiers."""
+    if carrier is None:
+        return
+    incoming_mc = normalize_carrier_identifier(mc_number)
+    incoming_dot = normalize_carrier_identifier(dot_number)
+    existing_mc = normalize_carrier_identifier(carrier.mc_number)
+    existing_dot = normalize_carrier_identifier(carrier.dot_number)
+    if incoming_mc is not None and existing_mc is not None and incoming_mc != existing_mc:
+        raise CarrierIdentityConflictError(
+            "MC evidence conflicts with the existing carrier identity"
+        )
+    if incoming_dot is not None and existing_dot is not None and incoming_dot != existing_dot:
+        raise CarrierIdentityConflictError(
+            "DOT evidence conflicts with the existing carrier identity"
+        )
 
 
 def _validate_identity_pair(

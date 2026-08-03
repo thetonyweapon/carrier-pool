@@ -8,6 +8,7 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+from app.auth import issue_authenticated_token
 from app.config import settings
 from app.database import get_db
 from app.main import create_app
@@ -351,6 +352,23 @@ def test_load_list_detail_and_filters_are_broker_scoped(
     assert client.get("/brokers/broker-b/loads/target").status_code == 403
 
 
+def test_admin_route_context_is_the_selected_broker(
+    client: TestClient, db_session: Session
+) -> None:
+    seed_operations(db_session)
+    client.headers["Authorization"] = "Bearer " + issue_authenticated_token(
+        broker_id="broker-a",
+        account_id="account-admin",
+        actor="Demo Sysadmin",
+        subject="admin",
+        is_admin=True,
+    )
+    response = client.get("/brokers/broker-b/loads")
+    assert response.status_code == 200
+    assert response.json()["broker_id"] == "broker-b"
+    assert [item["id"] for item in response.json()["items"]] == ["foreign-load"]
+
+
 @pytest.mark.parametrize("field", ["status", "equipment", "assignment_state"])
 def test_load_list_rejects_empty_enum_filters_but_omitted_filters_work(
     client: TestClient, db_session: Session, field: str
@@ -370,6 +388,7 @@ def test_candidate_detail_supports_canonical_and_identity_ids_and_rejects_foreig
         "recommendation-history",
         status=LoadStatus.COMPLETED,
         carrier_id=seeded["canonical"].id,
+        pickup_date=date(2026, 7, 15),
     )
     db_session.commit()
     canonical = client.get("/brokers/broker-a/carrier-candidates/carrier:canonical-a")
@@ -493,6 +512,38 @@ def test_assignment_rejects_noncanonical_candidate_resolution(
         json={"candidate_id": "identity:missing"},
     )
     assert response.status_code == 422
+
+
+def test_assignment_rejects_mismatched_carrier_and_candidate(
+    client: TestClient, db_session: Session, monkeypatch
+) -> None:
+    seeded = seed_operations(db_session)
+    monkeypatch.setattr(settings, "demo_mode", True)
+    response = client.post(
+        f"/brokers/broker-a/loads/{seeded['target'].id}/assignments",
+        json={
+            "carrier_id": seeded["canonical"].id,
+            "candidate_id": f"carrier:{seeded['identity_carrier'].id}",
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_assignment_accepts_explicit_member_of_identity_candidate(
+    client: TestClient, db_session: Session, monkeypatch
+) -> None:
+    seeded = seed_operations(db_session)
+    monkeypatch.setattr(settings, "demo_mode", True)
+    response = client.post(
+        f"/brokers/broker-a/loads/{seeded['target'].id}/assignments",
+        json={
+            "carrier_id": seeded["identity_carrier"].id,
+            "candidate_id": "identity:identity-a",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["carrier"]["name"] == "Identity Carrier"
 
 
 def test_assignment_idempotency_replays_original_event(

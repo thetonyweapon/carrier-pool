@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Sequence
 
-from sqlalchemy import select
+from sqlalchemy import exists, or_, select
 from sqlalchemy.orm import Session
 
 from app.lane_geography import NORMALIZATION_VERSION
@@ -14,6 +14,7 @@ from app.lane_intelligence import (
     derive_primary_lane,
     validate_normalization_version,
 )
+from app.load_eligibility import LoadNotEligible, LoadNotFound, require_active_uncovered
 from app.load_stops import load_stops
 from app.models import (
     Carrier,
@@ -21,7 +22,6 @@ from app.models import (
     Load,
     LoadStatus,
     LoadStop,
-    PlatformAssignment,
     StopType,
 )
 
@@ -181,7 +181,8 @@ def _origin_stop(stops: Sequence[LoadStop]) -> Optional[LoadStop]:
 def _operational_evidence(stop: Optional[LoadStop]) -> Optional[datetime]:
     if stop is None:
         return None
-    return stop.actual_arrived_at or stop.actual_departed_at
+    values = [value for value in (stop.actual_arrived_at, stop.actual_departed_at) if value]
+    return max(values, default=None)
 
 
 def _completion_month(load: Load, destination: Optional[LoadStop]) -> Optional[str]:
@@ -390,27 +391,31 @@ def get_carrier_recommendations(
     validate_scoring_version(scoring_version)
     validate_normalization_version(normalization_version)
 
-    target = session.scalar(select(Load).where(Load.broker_id == broker_id, Load.id == load_id))
-    if target is None:
+    try:
+        target = require_active_uncovered(session, broker_id, load_id)
+    except LoadNotFound:
         return None
-    if (
-        target.status != LoadStatus.ACTIVE
-        or target.carrier_id is not None
-        or session.scalar(
-            select(PlatformAssignment.id).where(
-                PlatformAssignment.broker_id == broker_id,
-                PlatformAssignment.load_id == load_id,
-            )
-        )
-        is not None
-    ):
-        raise RecommendationNotEligible("load must be active and uncovered")
+    except LoadNotEligible as exc:
+        raise RecommendationNotEligible(str(exc)) from exc
 
     carriers = session.scalars(
         select(Carrier).where(Carrier.broker_id == broker_id).order_by(Carrier.id)
     ).all()
     candidates = _candidate_groups(carriers, target.broker_source_id)
 
+    as_of = _as_utc(target.last_synced_at)
+    future_stop_exists = exists(
+        select(LoadStop.id).where(
+            LoadStop.broker_id == broker_id,
+            LoadStop.load_id == Load.id,
+            or_(
+                LoadStop.scheduled_start_at > as_of,
+                LoadStop.scheduled_end_at > as_of,
+                LoadStop.actual_arrived_at > as_of,
+                LoadStop.actual_departed_at > as_of,
+            ),
+        )
+    )
     historical_loads = session.scalars(
         select(Load)
         .where(
@@ -418,6 +423,18 @@ def get_carrier_recommendations(
             Load.status.in_(ELIGIBLE_HISTORY_STATUSES),
             Load.carrier_id.is_not(None),
             Load.id != load_id,
+            Load.last_synced_at <= as_of,
+            or_(Load.source_created_at.is_(None), Load.source_created_at <= as_of),
+            or_(Load.source_updated_at.is_(None), Load.source_updated_at <= as_of),
+            or_(Load.booked_at.is_(None), Load.booked_at <= as_of),
+            ~exists(
+                select(LoadStop.id).where(
+                    LoadStop.broker_id == broker_id,
+                    LoadStop.load_id == Load.id,
+                    LoadStop.scheduled_date > as_of.date(),
+                )
+            ),
+            ~future_stop_exists,
         )
         .order_by(Load.last_synced_at.desc(), Load.id.desc())
         .limit(HISTORY_LOAD_LIMIT)
@@ -444,6 +461,10 @@ def get_carrier_recommendations(
         if origin is None or destination is None:
             continue
         operational_evidence = _operational_evidence(destination)
+        if operational_evidence is not None and _as_utc(operational_evidence) > _as_utc(
+            target.last_synced_at
+        ):
+            continue
         evidence_by_candidate.setdefault(candidate_id, []).append(
             _HistoricalEvidence(
                 load_id=historical_load.id,
@@ -476,7 +497,7 @@ def get_carrier_recommendations(
             target_lane.metro_key,
             target.equipment_type,
             target.customer_id,
-            _as_utc(target.last_synced_at),
+            as_of,
         )
         for candidate_id, candidate in candidates.items()
         if evidence_by_candidate.get(candidate_id)
@@ -500,7 +521,7 @@ def get_carrier_recommendations(
         load_id=load_id,
         scoring_version=scoring_version,
         normalization_version=normalization_version,
-        data_as_of=_as_utc(target.last_synced_at),
+        data_as_of=as_of,
         eligible_statuses=ELIGIBLE_HISTORY_STATUSES,
         history_limit=HISTORY_LOAD_LIMIT,
         target_lane_exact_key=target_lane.exact_key,

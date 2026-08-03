@@ -100,7 +100,7 @@ def carrier_rate_estimate(
     principal: BrokerPrincipal = Depends(require_broker_principal),
     db: Session = Depends(get_db),
 ) -> RateEstimateResponse:
-    del principal
+    broker_id = principal.broker_id
     try:
         result = estimate_carrier_rate(
             db,

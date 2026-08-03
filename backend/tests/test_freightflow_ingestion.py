@@ -209,6 +209,63 @@ def test_lifecycle_updates_preserve_history_and_first_booking_time(db_session: S
     assert versions[2].normalized_snapshot["carrier_rate"] == "1205.5"
 
 
+def test_newer_sync_does_not_apply_an_older_freightflow_record(
+    db_session: Session,
+) -> None:
+    ingest_contents(
+        db_session,
+        "freightflow-a",
+        "first.json",
+        contents(make_sync("2026-07-06T06:00:00-05:00", status="Booking")),
+    )
+    stale = make_sync("2026-07-06T12:00:00-05:00", status="Completed")
+    stale["loads"][0]["lastModifiedDate"] = "2026-07-06T05:00:00-05:00"
+    ingest_contents(db_session, "freightflow-a", "second.json", contents(stale))
+
+    load = db_session.scalar(select(Load))
+    assert load.status == LoadStatus.ACTIVE
+
+
+def test_carrier_identity_replacement_conflicts_and_missing_ids_preserve_link(
+    db_session: Session,
+) -> None:
+    from app.ingestion.common import CarrierIdentityConflictError
+    from app.ingestion.freightflow import FreightFlowCarrier, _upsert_carrier
+
+    source = db_session.get(BrokerSource, "freightflow-a")
+    observed_at = datetime(2026, 7, 6, tzinfo=timezone.utc)
+    carrier = _upsert_carrier(
+        db_session,
+        source,
+        FreightFlowCarrier(
+            carrierMasterId="carrier-1", name="Carrier", mcNumber="100", dotNumber="200"
+        ),
+        observed_at,
+    )
+    db_session.commit()
+    with pytest.raises(CarrierIdentityConflictError):
+        _upsert_carrier(
+            db_session,
+            source,
+            FreightFlowCarrier(
+                carrierMasterId="carrier-1", name="Carrier", mcNumber="999", dotNumber="200"
+            ),
+            observed_at,
+        )
+    db_session.rollback()
+    stored = db_session.get(Carrier, carrier.id)
+    assert stored.mc_number == "100"
+    assert stored.carrier_identity_id is not None
+
+    _upsert_carrier(
+        db_session,
+        source,
+        FreightFlowCarrier(carrierMasterId="carrier-1", name="Carrier"),
+        observed_at,
+    )
+    assert db_session.get(Carrier, carrier.id).carrier_identity_id == stored.carrier_identity_id
+
+
 def test_ingests_multiple_loads_and_reuses_shared_entities(db_session: Session) -> None:
     carrier = {
         "carrierMasterId": 835692,
