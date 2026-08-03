@@ -1,7 +1,10 @@
 from typing import Optional
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEMO_AUTH_SECRET_FALLBACK = "carrier-pool-compose-demo-auth-secret"
+DEMO_SHARED_POOL_ID_SECRET_FALLBACK = "carrier-pool-compose-demo-shared-secret"
 
 
 class Settings(BaseSettings):
@@ -29,6 +32,23 @@ class Settings(BaseSettings):
     ingestion_max_records: int = Field(1000, validation_alias="INGESTION_MAX_RECORDS", ge=1)
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @model_validator(mode="after")
+    def validate_auth_boundary(self) -> "Settings":
+        if self.demo_mode:
+            if self.auth_mode != "mock" or not self.allow_mock_auth:
+                raise ValueError("DEMO_MODE requires AUTH_MODE=mock and ALLOW_MOCK_AUTH=true")
+            return self
+
+        if self.auth_mode == "mock" or self.allow_mock_auth:
+            raise ValueError("mock authentication is only permitted when DEMO_MODE=true")
+        if self.auth_secret == DEMO_AUTH_SECRET_FALLBACK:
+            raise ValueError("the demo AUTH_SECRET fallback is not allowed outside DEMO_MODE")
+        if self.shared_pool_id_secret == DEMO_SHARED_POOL_ID_SECRET_FALLBACK:
+            raise ValueError(
+                "the demo SHARED_POOL_ID_SECRET fallback is not allowed outside DEMO_MODE"
+            )
+        return self
 
 
 settings = Settings()

@@ -12,6 +12,12 @@ on the fork, with medium-or-higher review findings fixed before merge.**
   and production runbooks.
 - Authentication is provider-neutral in this program. Tests use deterministic
   mock issuer and JWKS responses; no external identity provider is contacted.
+- The current demo deliberately stops at the authentication boundary: mock
+  bearer tokens are valid only when `DEMO_MODE=true`, while non-demo settings
+  reject mock auth and the Compose fallback secrets. A future OIDC/JWT adapter
+  must map a verified tenant or organization claim to `broker_id`; provider
+  selection, JWKS discovery, rotation, revocation, and provider-specific claim
+  mapping remain deferred.
 - Production assumes managed PostgreSQL, a separate non-demo deployment
   profile, a filesystem-polling ingestion worker behind a storage abstraction,
   JSON logs, Prometheus metrics, and OpenTelemetry traces.
