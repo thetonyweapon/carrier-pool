@@ -68,7 +68,9 @@ login or local account flow and requires `AUTH_LOGIN_URL` for the provider login
 - Include the request ID from response headers when escalating an API error.
 - Configure alerts from these concrete signals:
   `carrier_pool_ingestion_failures_total{failure_class=~".*"}` for failures,
-  `carrier_pool_ingestion_jobs_total{outcome="dead_letter"}` for dead letters,
+  `carrier_pool_ingestion_jobs{status="dead_letter"}` for current dead letters
+  and `carrier_pool_ingestion_jobs_total{outcome="dead_letter"}` for transition
+  rate,
   `carrier_pool_source_lag_seconds` for source lag (`-1` means no successful
   sync yet), `carrier_pool_request_duration_seconds_count` and `_sum` for request
   latency, and `carrier_pool_ingestion_transactions_total{outcome="rolled_back"}`
@@ -90,14 +92,34 @@ Keep source files immutable while they are being discovered. Failed jobs remain
 retryable through the job table; dead-lettered jobs require operator review
 before replay. The worker has no public network port.
 
+### Dead-letter replay
+
+After confirming the source file is unchanged and safe to read, replay a
+dead-lettered job with its job ID:
+
+```bash
+docker compose --env-file "$PRODUCTION_ENV_FILE" -f docker-compose.production.yaml \
+  run --rm ingestion-worker python -m scripts.replay_ingestion_job JOB_ID
+```
+
+Verify the resulting job state and worker logs before replaying another job.
+
 ## Database Recovery
 
 1. Stop application writers while preserving the database volume or managed
    database endpoint.
+   ```bash
+   docker compose --env-file "$PRODUCTION_ENV_FILE" -f docker-compose.production.yaml \
+     stop backend ingestion-worker frontend
+   ```
 2. Restore the latest verified backup into an isolated PostgreSQL instance.
 3. Validate Alembic state and representative tenant counts before cutover.
-4. Repoint `DATABASE_URL`, start the backend, and verify `/ready` plus ingestion
-   idempotency before reopening traffic.
+4. Repoint `DATABASE_URL`, then start the complete application stack:
+   ```bash
+   docker compose --env-file "$PRODUCTION_ENV_FILE" -f docker-compose.production.yaml \
+     up -d --no-deps backend ingestion-worker frontend
+   ```
+   Verify `/ready` plus ingestion idempotency before reopening traffic.
 5. Record restore duration, recovered timestamp, and any replayed jobs.
 
 Never use an unreviewed migration downgrade as a recovery mechanism. Restore a
@@ -112,7 +134,7 @@ backup and apply forward migrations instead.
   before scaling the database. The request log event is `request_complete` and
   includes `request_id`, `route`, `status`, and `duration_seconds`.
 - Ingestion backlog: inspect lease age and failure class, then replay only after
-  confirming the source file checksum and idempotency key.
+  confirming the job ID, source filename, and queued checksum.
 - Deployment failure: keep the previous image available, capture migration and
   health logs, and roll traffic back only after confirming schema compatibility.
 

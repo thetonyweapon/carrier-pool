@@ -13,8 +13,9 @@ model, three chronological file-ingestion adapters, deterministic synthetic
 data, on-demand broker-scoped lane intelligence, explainable carrier
 recommendations, carrier rate estimation, a demo operations UI, and an
    authenticated shared-carrier-pool path. Production OIDC/JWKS deployment
-   boundary and PostgreSQL integration gate are delivered; durable local accounts
-   and other hardening work remain planned.
+   boundary, PostgreSQL integration gate, durable worker, observability, resource
+   controls, property tests, CI hardening, and production runbooks are delivered;
+   durable local accounts remain planned.
 
 ## System Boundaries
 
@@ -60,7 +61,7 @@ recommendations, carrier rate estimation, a demo operations UI, and an
 | Carrier rate estimation | Delivered |
 | Broker operations UI | Delivered (demo mode) |
 | Shared carrier pool | Delivered (authenticated demo path) |
-| Platform hardening | In progress |
+| Platform hardening | Delivered (milestones 1-11) |
 
 ## Architecture
 

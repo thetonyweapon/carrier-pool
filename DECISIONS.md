@@ -184,9 +184,7 @@ Weight is `Numeric(12, 1)`, distance is `Numeric(10, 1)` — these are not finan
   Production uses the configured OIDC/JWKS provider; the demo path uses signed
   broker bearer tokens.
 
-## What I'd Do Next With More Time
+## Deferred Work
 
 - Service-layer unit tests for recommendation logic decoupled from HTTP.
-- Property-based tests (Hypothesis) for the ingestion adapter, generating random valid payloads and verifying invariants.
-- A database-level integration test suite that runs against a real Postgres container to validate `FOR UPDATE` locking and trigger behavior (SQLite is not authoritative for these).
 - Benchmark the migration backfill with 100k+ `load_versions` rows to validate the `uuid5` approach at scale (the current bounded retry loop is O(1) for normal cases but acceptable for any realistic dataset).

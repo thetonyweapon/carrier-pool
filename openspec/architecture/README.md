@@ -21,8 +21,8 @@ artifacts.
 
 The diagrams distinguish delivered carrier recommendations, rate estimation,
 demo-mode operations, the authenticated shared-carrier-pool path, and the
-durable ingestion worker from production hardening work that remains planned
-beyond the delivered OIDC and deployment boundary.
+durable ingestion worker from remaining future work such as durable local
+account storage and large-dataset performance benchmarking.
 
 ## Related Documents
 

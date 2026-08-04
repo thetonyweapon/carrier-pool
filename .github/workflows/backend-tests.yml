@@ -79,3 +79,6 @@ jobs:
       - name: Check formatting
         working-directory: backend
         run: ruff format --check .
+      - name: Validate production documentation
+        working-directory: backend
+        run: python scripts/validate_documentation.py
