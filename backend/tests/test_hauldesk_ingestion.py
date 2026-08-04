@@ -636,6 +636,7 @@ def test_hauldesk_rejects_unknown_source_fields(db_session: Session) -> None:
     assert db_session.scalars(select(Load)).all() == []
 
 
+@pytest.mark.postgres
 @pytest.mark.skipif(
     not os.getenv("HAULDESK_POSTGRES_TEST_URL"),
     reason="set HAULDESK_POSTGRES_TEST_URL to run PostgreSQL locking coverage",

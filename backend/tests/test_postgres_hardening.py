@@ -17,6 +17,7 @@ from alembic import command
 from app.auth import BrokerPrincipal
 from app.broker_operations_api import AssignmentRequest, assign_load
 from app.config import settings
+from app.ingestion.hauldesk import ingest_contents
 from app.models import (
     Broker,
     BrokerSource,
@@ -35,6 +36,9 @@ from app.models import (
     SharedPoolQueryAudit,
     TmsType,
 )
+from tests.test_hauldesk_ingestion import contents, make_sync
+
+pytestmark = pytest.mark.postgres
 
 
 @pytest.fixture
@@ -400,6 +404,44 @@ def test_postgres_migration_rollback_isolation_leaves_no_partial_rows(migrated_p
         session.flush()
         session.rollback()
         assert session.get(Broker, "rollback-broker") is None
+
+
+def test_postgres_ingestion_failure_rolls_back_all_rows(migrated_postgres) -> None:
+    engine, _ = migrated_postgres
+    now = datetime.now(timezone.utc)
+    with Session(engine) as session:
+        session.add(Broker(id="ingest-rollback-broker", name="Rollback Broker", created_at=now))
+        session.add(
+            BrokerSource(
+                id="ingest-rollback-source",
+                broker_id="ingest-rollback-broker",
+                tms_type=TmsType.HAULDESK,
+                source_name="Rollback HaulDesk",
+                created_at=now,
+            )
+        )
+        session.commit()
+
+        def fail_before_commit(_: Session) -> None:
+            raise RuntimeError("simulated commit failure")
+
+        with pytest.raises(RuntimeError, match="simulated commit failure"):
+            ingest_contents(
+                session,
+                "ingest-rollback-source",
+                "rollback.json",
+                contents(make_sync()),
+                before_commit=fail_before_commit,
+            )
+
+        assert session.scalar(text("SELECT COUNT(*) FROM ingestion_files")) == 0
+        assert session.scalar(text("SELECT COUNT(*) FROM loads")) == 0
+        assert session.scalar(text("SELECT COUNT(*) FROM carriers")) == 0
+        assert session.scalar(text("SELECT COUNT(*) FROM customers")) == 0
+        assert session.scalar(text("SELECT COUNT(*) FROM carrier_identities")) == 0
+        assert session.scalar(text("SELECT COUNT(*) FROM load_stops")) == 0
+        assert session.scalar(text("SELECT COUNT(*) FROM load_versions")) == 0
+        assert session.scalar(text("SELECT COUNT(*) FROM rate_line_items")) == 0
 
 
 def test_postgres_migration_downgrade_and_reupgrade_round_trip(migrated_postgres) -> None:
