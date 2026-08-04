@@ -42,7 +42,7 @@ jobs:
           npm audit --omit=dev --audit-level=high --json > /tmp/npm-audit.json
           audit_status=$?
           set -e
-          node scripts/check-production-audit.mjs /tmp/npm-audit.json
+          node scripts/check-production-audit.mjs /tmp/npm-audit.json "$audit_status"
           if [ "$audit_status" -ne 0 ]; then
             echo "npm audit reported only the explicitly reviewed upstream exception."
           fi
