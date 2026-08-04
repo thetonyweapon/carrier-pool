@@ -7,9 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test": "VITE_DEMO_MODE=true vitest run --exclude src/production.test.tsx",
+    "test:production": "VITE_DEMO_MODE=false VITE_AUTH_LOGIN_URL=https://issuer.example/authorize VITE_AUTH_CLIENT_ID=carrier-pool VITE_AUTH_REDIRECT_URI=https://app.example.com/login vitest run src/production.test.tsx src/oidc.test.ts",
+    "test:watch": "VITE_DEMO_MODE=true vitest",
+    "test:coverage": "VITE_DEMO_MODE=true vitest run --coverage --exclude src/production.test.tsx",
     "test:e2e": "playwright test"
   },
   "dependencies": {

@@ -42,11 +42,19 @@ jobs:
         working-directory: backend
         env:
           DATABASE_URL: postgresql+psycopg://carrier_pool:carrier_pool@localhost:5432/carrier_pool
+          DEMO_MODE: "true"
+          AUTH_MODE: mock
+          ALLOW_MOCK_AUTH: "true"
+          AUTH_SECRET: ci-demo-secret
         run: alembic upgrade head
       - name: Check migration state
         working-directory: backend
         env:
           DATABASE_URL: postgresql+psycopg://carrier_pool:carrier_pool@localhost:5432/carrier_pool
+          DEMO_MODE: "true"
+          AUTH_MODE: mock
+          ALLOW_MOCK_AUTH: "true"
+          AUTH_SECRET: ci-demo-secret
         run: alembic check
       - name: Run backend tests
         working-directory: backend

@@ -41,10 +41,10 @@ renders the diagrams from source and changes remain reviewable in pull requests.
 
 ## Deferred Architecture
 
-Production identity integration, durable account storage, and platform hardening
-remain deferred. Lane normalization, carrier recommendations, rate estimation,
-and shared-pool results are delivered as on-demand services rather than
-persisted aggregates.
+Durable account storage and parts of platform hardening remain deferred. OIDC
+identity integration and the production deployment boundary are delivered.
+Lane normalization, carrier recommendations, rate estimation, and shared-pool
+results are delivered as on-demand services rather than persisted aggregates.
 
 ## Lane Normalization and Aggregation
 

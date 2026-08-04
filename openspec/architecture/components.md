@@ -2,8 +2,8 @@
 
 **Status: Delivered backend components for the API, demo auth, operations, and shared pool**
 
-This view describes the current backend package boundaries. Production identity
-provider integration remains a future boundary rather than a runtime component.
+This view describes the current backend package boundaries. Demo authentication
+and production OIDC/JWKS verification are separate runtime boundaries.
 
 ```mermaid
 flowchart TB
@@ -88,9 +88,9 @@ flowchart TB
 
 - `main.py` constructs the FastAPI application and registers routers.
 - `health.py` exposes the synchronous database health check.
-- `auth.py` verifies demo bearer tokens and enforces broker/admin scope.
-- `auth_api.py` exposes demo broker discovery, login, account, and profile
-  endpoints; `demo_accounts.py` keeps local account state in process memory.
+- `auth.py` verifies demo or OIDC/JWKS bearer tokens and enforces broker/admin scope.
+- `auth_api.py` exposes demo broker/account/profile endpoints and OIDC-compatible
+  profile context; `demo_accounts.py` keeps local account state in process memory.
 - `broker_operations_api.py` exposes broker-scoped load, carrier, and assignment
   contracts.
 - `shared_carrier_pool.py` and `shared_carrier_pool_api.py` compute and expose
@@ -122,5 +122,4 @@ flowchart TB
 - Rate estimation consumes canonical rate history and lane dimensions.
 - Both services must be broker-scoped and expose explanation metadata.
 - The operations and shared-pool routers use the same authenticated principal
-  boundary; production identity-provider integration replaces only the demo
-  issuer and account layer.
+  boundary; OIDC replaces only the demo issuer and account layer in production.

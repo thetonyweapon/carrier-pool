@@ -5,8 +5,9 @@
 Carrier Pool ingests broker-owned TMS exports into a canonical, tenant-scoped
 data model. The current implementation provides ingestion, lane intelligence,
 carrier recommendations, carrier rate estimates, a demo-mode broker operations
-workflow, and an authenticated shared-pool path. Production hardening remains
-planned.
+workflow, an authenticated shared-pool path, and a production OIDC/JWKS
+deployment boundary. Durable account storage and broader operational hardening
+remain planned.
 
 ```mermaid
 flowchart LR

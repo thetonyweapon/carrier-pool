@@ -113,5 +113,5 @@ flowchart LR
 
 ## Deferred Code Areas
 
-- Production identity-provider integration in place of the demo token issuer and
-  ephemeral local-account layer.
+- Provider-specific OIDC features such as refresh-token rotation, logout
+  revocation, and account lifecycle management beyond verified access tokens.

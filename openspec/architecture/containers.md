@@ -57,12 +57,12 @@ flowchart TB
 ## Deployment Notes
 
 - Docker Compose runs PostgreSQL, the backend, and the React/Vite console.
-- The backend container runs Alembic migrations, reconciles legacy demo display
-  names without changing stable broker/source IDs, bootstraps sync files, and
-  starts Uvicorn.
+- The demo backend container runs Alembic migrations and bootstraps sync files
+  before Uvicorn. Production runs migrations in a separate one-off job and the
+  API process only starts after that job succeeds.
 - The `data/` directory is mounted read-only at `/data`.
 - The default test suite uses SQLite; PostgreSQL is the deployment database.
 - Shared-pool reads are disabled by default. Enabling them requires an opaque-ID
-  secret and broker bearer authentication. Compose uses a demo-only signed token
-  issuer; production should connect this boundary to the platform identity
-  provider.
+  secret and broker bearer authentication. Demo Compose uses a signed mock token
+  issuer; production uses the configured OIDC/JWKS identity provider and
+  verified tenant claim.

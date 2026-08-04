@@ -1,7 +1,12 @@
+import json
 from typing import Optional
+from urllib.error import URLError
+from urllib.parse import urlencode
+from urllib.request import HTTPRedirectHandler, build_opener
+from urllib.request import Request as UrlRequest
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -26,6 +31,16 @@ from app.models import Broker
 router = APIRouter(tags=["authentication"])
 
 
+class _RejectRedirects(HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        raise URLError("identity provider redirects are not allowed")
+
+
+_MAX_IDP_RESPONSE_BYTES = 1_048_576
+_MAX_TOKEN_REQUEST_BYTES = 16_384
+_token_opener = build_opener(_RejectRedirects())
+
+
 class DemoBrokerResponse(BaseModel):
     id: str
     name: str
@@ -44,6 +59,18 @@ class DemoAuthResponse(BaseModel):
     broker_id: str
     account_id: str
     is_admin: bool
+
+
+class OidcTokenRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: str = Field(min_length=1, max_length=4096)
+    code_verifier: str = Field(min_length=43, max_length=128)
+
+
+class OidcTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
 
 
 class AccountCreateRequest(BaseModel):
@@ -80,6 +107,54 @@ class ProfileUpdateRequest(BaseModel):
 def _require_demo() -> None:
     if not settings.demo_mode:
         raise HTTPException(status_code=404, detail="not found")
+
+
+@router.post("/oidc/token", response_model=OidcTokenResponse)
+def exchange_oidc_code(payload: OidcTokenRequest, http_request: Request) -> OidcTokenResponse:
+    if settings.demo_mode or not settings.auth_token_url or not settings.auth_client_id:
+        raise HTTPException(status_code=404, detail="not found")
+    content_length = http_request.headers.get("content-length")
+    if content_length is not None and int(content_length) > _MAX_TOKEN_REQUEST_BYTES:
+        raise HTTPException(status_code=413, detail="request body is too large")
+    form = urlencode(
+        {
+            "grant_type": "authorization_code",
+            "code": payload.code,
+            "code_verifier": payload.code_verifier,
+            "client_id": settings.auth_client_id,
+            "redirect_uri": settings.auth_redirect_uri or "",
+        }
+    ).encode()
+    try:
+        with _token_opener.open(
+            UrlRequest(
+                settings.auth_token_url,
+                data=form,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                method="POST",
+            ),
+            timeout=5,
+        ) as response:
+            body = response.read(_MAX_IDP_RESPONSE_BYTES + 1)
+            if len(body) > _MAX_IDP_RESPONSE_BYTES:
+                raise ValueError("identity provider response is too large")
+            payload = json.loads(body)
+    except (OSError, URLError, ValueError, json.JSONDecodeError) as exc:
+        raise HTTPException(
+            status_code=502, detail="identity provider token exchange failed"
+        ) from exc
+    access_token = payload.get("access_token") if isinstance(payload, dict) else None
+    token_type = payload.get("token_type") if isinstance(payload, dict) else None
+    if not isinstance(access_token, str) or not access_token.strip() or len(access_token) > 8192:
+        raise HTTPException(status_code=502, detail="identity provider returned no access token")
+    if not isinstance(token_type, str) or token_type.casefold() != "bearer":
+        raise HTTPException(
+            status_code=502, detail="identity provider returned an invalid token type"
+        )
+    return OidcTokenResponse(
+        access_token=access_token,
+        token_type=token_type,
+    )
 
 
 def _profile(
@@ -193,13 +268,23 @@ def current_profile(
     db: Session = Depends(get_db),
     accounts: DemoAccountRegistry = Depends(account_registry),
 ) -> ProfileResponse:
-    _require_demo()
     selected_broker_id = broker_id or principal.broker_id
     if not principal.is_admin and selected_broker_id != principal.broker_id:
         raise HTTPException(status_code=403, detail="broker identity mismatch")
     broker = db.get(Broker, selected_broker_id)
     if broker is None:
         raise HTTPException(status_code=404, detail="broker not found")
+    if not settings.demo_mode:
+        return ProfileResponse(
+            account_id=principal.account_id,
+            email=None,
+            name=principal.actor,
+            broker_id=broker.id,
+            broker_name=broker.name,
+            is_admin=principal.is_admin,
+            is_demo=False,
+            profile_locked=True,
+        )
     return _profile(accounts, principal, broker)
 
 

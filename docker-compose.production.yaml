@@ -1,23 +1,28 @@
 services:
-  db:
-    image: postgres:16.8-alpine
+  migrate:
+    build:
+      context: ./backend
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
-      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      DEMO_MODE: "false"
+      AUTH_MODE: ${AUTH_MODE:?AUTH_MODE is required}
+      ALLOW_MOCK_AUTH: "false"
+      AUTH_ISSUER: ${AUTH_ISSUER:?AUTH_ISSUER is required}
+      AUTH_AUDIENCE: ${AUTH_AUDIENCE:?AUTH_AUDIENCE is required}
+      AUTH_JWKS_URL: ${AUTH_JWKS_URL:?AUTH_JWKS_URL is required}
+      AUTH_LOGIN_URL: ${AUTH_LOGIN_URL:?AUTH_LOGIN_URL is required}
+      AUTH_TENANT_CLAIM: ${AUTH_TENANT_CLAIM:-tenant_id}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:?ALLOWED_HOSTS is required}
+      AUTH_TOKEN_URL: ${AUTH_TOKEN_URL:?AUTH_TOKEN_URL is required}
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID:?AUTH_CLIENT_ID is required}
+      AUTH_REDIRECT_URI: ${AUTH_REDIRECT_URI:?AUTH_REDIRECT_URI is required}
+      SHARED_POOL_READ_ENABLED: ${SHARED_POOL_READ_ENABLED:-false}
+      SHARED_POOL_ID_SECRET: ${SHARED_POOL_ID_SECRET:-}
     networks:
       - backend
-    restart: unless-stopped
+    command: ["alembic", "upgrade", "head"]
     read_only: true
     tmpfs:
-      - /run
       - /tmp
     cap_drop:
       - ALL
@@ -32,17 +37,31 @@ services:
       DEMO_MODE: "false"
       AUTH_MODE: ${AUTH_MODE:?AUTH_MODE is required}
       ALLOW_MOCK_AUTH: "false"
-      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
       AUTH_ISSUER: ${AUTH_ISSUER:?AUTH_ISSUER is required}
       AUTH_AUDIENCE: ${AUTH_AUDIENCE:?AUTH_AUDIENCE is required}
+      AUTH_JWKS_URL: ${AUTH_JWKS_URL:?AUTH_JWKS_URL is required}
+      AUTH_LOGIN_URL: ${AUTH_LOGIN_URL:?AUTH_LOGIN_URL is required}
+      AUTH_TENANT_CLAIM: ${AUTH_TENANT_CLAIM:-tenant_id}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:?ALLOWED_HOSTS is required}
+      AUTH_TOKEN_URL: ${AUTH_TOKEN_URL:?AUTH_TOKEN_URL is required}
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID:?AUTH_CLIENT_ID is required}
+      AUTH_REDIRECT_URI: ${AUTH_REDIRECT_URI:?AUTH_REDIRECT_URI is required}
       AUTH_TOKEN_TTL_SECONDS: ${AUTH_TOKEN_TTL_SECONDS:-3600}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-10}
+      DB_POOL_TIMEOUT_SECONDS: ${DB_POOL_TIMEOUT_SECONDS:-30}
+      DB_POOL_RECYCLE_SECONDS: ${DB_POOL_RECYCLE_SECONDS:-1800}
+      DB_STATEMENT_TIMEOUT_MS: ${DB_STATEMENT_TIMEOUT_MS:-30000}
+      DB_IDLE_TRANSACTION_TIMEOUT_MS: ${DB_IDLE_TRANSACTION_TIMEOUT_MS:-60000}
+      INGESTION_MAX_FILE_BYTES: ${INGESTION_MAX_FILE_BYTES:-10485760}
+      INGESTION_MAX_RECORDS: ${INGESTION_MAX_RECORDS:-1000}
       SHARED_POOL_READ_ENABLED: ${SHARED_POOL_READ_ENABLED:-false}
       SHARED_POOL_ID_SECRET: ${SHARED_POOL_ID_SECRET:-}
     expose:
       - "8000"
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - backend
       - edge
@@ -56,19 +75,23 @@ services:
       - no-new-privileges:true
     healthcheck:
       test:
-        ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')"]
+        ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen(urllib.request.Request('http://localhost:8000/ready', headers={'Host': next(host.strip() for host in os.environ['ALLOWED_HOSTS'].split(',') if host.strip())}))"]
       interval: 5s
       timeout: 3s
       start_period: 15s
       retries: 12
-    command: >-
-      sh -c "alembic upgrade head && exec uvicorn app.main:app
-      --host 0.0.0.0 --port 8000 --no-server-header"
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header"]
 
   frontend:
-    build: ./frontend
-    ports:
-      - "${FRONTEND_PORT:-80}:8080"
+    build:
+      context: ./frontend
+      args:
+        VITE_DEMO_MODE: "false"
+        VITE_AUTH_LOGIN_URL: ${AUTH_LOGIN_URL:?AUTH_LOGIN_URL is required}
+        VITE_AUTH_CLIENT_ID: ${AUTH_CLIENT_ID:?AUTH_CLIENT_ID is required}
+        VITE_AUTH_REDIRECT_URI: ${AUTH_REDIRECT_URI:?AUTH_REDIRECT_URI is required}
+    expose:
+      - "8080"
     depends_on:
       backend:
         condition: service_healthy
@@ -90,10 +113,9 @@ services:
       timeout: 3s
       retries: 5
 
-volumes:
-  postgres_data:
-
 networks:
   backend:
-    internal: true
+    # Managed PostgreSQL is outside this Compose project; restrict this network
+    # at the deployment/firewall layer rather than blocking database egress.
+    internal: false
   edge:

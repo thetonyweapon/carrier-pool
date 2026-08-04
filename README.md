@@ -48,7 +48,7 @@ The initial backend foundation requires Docker Compose and exposes the API on
 `http://localhost:8000`.
 
 ```bash
-docker compose up --build
+docker compose --profile demo up --build
 curl http://localhost:8000/health
 ```
 
@@ -58,7 +58,7 @@ and plain sync files under `data/`; without them, database health still works,
 but ingestion commands cannot find their input files.
 
 The health endpoint returns a successful response only when the API can reach
-Postgres. Stop the services with `docker compose down`; add `-v` if the local
+Postgres. Stop the services with `docker compose --profile demo down`; add `-v` if the local
 development database volume should also be removed.
 
 To run the backend checks locally:
@@ -94,9 +94,9 @@ tests, and caches are excluded from the image.
 ## Database Migrations
 
 The backend uses Alembic to maintain the canonical multi-tenant schema. The
-backend container runs `alembic upgrade head` before starting Uvicorn, which is
-appropriate for this single-instance MVP. A production deployment would run
-migrations as a separate, one-off job before rolling out API instances.
+demo Compose profile runs `alembic upgrade head` before starting Uvicorn.
+Production uses a separate, one-off migration job before rolling out API
+instances; the long-running API process never changes the schema.
 
 For local migration commands, run these from `backend/` with `.env` configured:
 
@@ -264,9 +264,9 @@ equipment-compatible counts and data sufficiency metadata. The MVP considers the
 Normalization uses the deterministic `tx-metro-v1` Texas geography map. The
 service is computed on demand from current canonical rows, so corrected stop,
 status, and equipment values are reflected without stale materialized counters.
-Production identity-provider authentication, coordinate-radius matching, and
-persisted lane aggregates remain deferred. Demo authentication gates the
-broker-scoped path in the local evaluation workflow.
+Coordinate-radius matching and persisted lane aggregates remain deferred.
+Production OIDC authentication and demo authentication are separate deployment
+boundaries for the broker-scoped path.
 
 Run the focused tests with:
 
@@ -337,10 +337,11 @@ make the load ineligible for recommendations and rate estimation.
 
 ## Broker Operations UI
 
-The operations console is demo-mode only. `DEMO_MODE=true` enables demo broker
-discovery (`GET /demo/brokers`) and platform assignment creation; it is `false`
-by default. Demo assignments are auditable platform overlays that never write
-back to a TMS, and switching brokers in the UI is not authentication.
+The operations console provides authenticated read and analytics access in both
+demo and production OIDC deployments. `DEMO_MODE=true` additionally enables
+demo broker discovery (`GET /demo/brokers`) and platform assignment creation;
+it is `false` by default. Demo assignments are auditable platform overlays that
+never write back to a TMS, and switching brokers in the UI is not authentication.
 
 ### Guarded shared carrier pool
 
@@ -366,18 +367,16 @@ provider.
 
 ### Authentication boundary
 
-This repository intentionally does not contact an identity provider or any
-other third-party vendor. The local evaluation profile uses the signed mock
-issuer only when `DEMO_MODE=true`, `AUTH_MODE=mock`, and
-`ALLOW_MOCK_AUTH=true`. The `/demo/auth` endpoint is hidden otherwise, and
-mock bearer verification rejects tokens outside demo mode.
+The local evaluation profile uses the signed mock issuer only when
+`DEMO_MODE=true`, `AUTH_MODE=mock`, and `ALLOW_MOCK_AUTH=true`. The `/demo/auth`
+endpoint is hidden otherwise, and mock bearer verification rejects tokens
+outside demo mode. Non-demo deployments use the configured OIDC/JWKS provider.
 
-Non-demo settings reject mock authentication and the documented Compose
-fallback secrets. A future provider integration must derive `broker_id` from a
-verified tenant or organization claim, use `sub` as the actor subject, enforce
-issuer and audience, and never trust a broker ID supplied by the client. OIDC,
-JWKS discovery, key rotation, revocation, and provider-specific claim mapping
-remain deferred; no network calls are required for this demo.
+Non-demo settings reject mock authentication, require HTTPS OIDC issuer/JWKS
+and login URLs, require PostgreSQL and explicit allowed hosts, and reject the
+documented Compose fallback secrets. The OIDC verifier derives `broker_id` from
+the configured verified tenant claim, uses `sub` as the actor subject, and
+enforces issuer, audience, expiry, and JWKS signature validation.
 
 ### Local demo accounts
 
@@ -399,7 +398,7 @@ Transport`), creates `broker-local` for local accounts, and ingests the
 checked-in 180-file dataset before the API starts:
 
 ```bash
-docker compose up --build
+docker compose --profile demo up --build
 ```
 
 The Compose secrets use demo-only fallback values so the sample stack starts
@@ -431,7 +430,11 @@ with `DEMO_MODE` enabled:
 ```bash
 cd backend
 cp .env.example .env
-# Set DEMO_MODE=true in .env (the example defaults to false)
+# Set these demo-only values in .env:
+# DEMO_MODE=true
+# AUTH_MODE=mock
+# ALLOW_MOCK_AUTH=true
+# AUTH_SECRET=local-development-secret
 python -m venv .venv
 source .venv/bin/activate
 pip install -e '.[dev]'
@@ -454,7 +457,7 @@ In a second terminal, start the frontend dev server:
 ```bash
 cd frontend
 npm install
-npm run dev
+VITE_DEMO_MODE=true npm run dev
 ```
 
 Open the URL printed by Vite (default <http://localhost:5173>); the dev server
