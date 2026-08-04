@@ -6,10 +6,12 @@ import argparse
 import hashlib
 import json
 import logging
+import math
+import signal
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Event, Thread
-from typing import Callable
+from typing import Callable, Optional
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
@@ -176,6 +178,28 @@ def run_once(root: Path, worker_id: str) -> tuple[int, int]:
     return discovered, processed
 
 
+def run_forever(
+    root: Path,
+    worker_id: str,
+    poll_interval: float,
+    *,
+    stop_event: Optional[Event] = None,
+) -> None:
+    if not math.isfinite(poll_interval) or poll_interval <= 0:
+        raise ValueError("poll interval must be greater than zero")
+    stop_event = stop_event or Event()
+    while not stop_event.is_set():
+        try:
+            discovered, processed = run_once(root, worker_id)
+            logger.info(
+                "ingestion poll completed",
+                extra={"discovered_jobs": discovered, "processed_jobs": processed},
+            )
+        except Exception:
+            logger.exception("ingestion poll failed")
+        stop_event.wait(poll_interval)
+
+
 def _ingest_contents_for_source(source_id: str) -> Callable:
     for _, _, configured_source_id, tms_type in SOURCE_CONFIG:
         if configured_source_id == source_id:
@@ -213,9 +237,37 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path("/data"))
     parser.add_argument("--worker-id", default=f"worker-{uuid4()}")
+    parser.add_argument("--poll-interval", type=_positive_interval, default=60.0)
+    parser.add_argument(
+        "--one-shot", action="store_true", help="discover and process once, then exit"
+    )
     args = parser.parse_args()
-    discovered, processed = run_once(args.root, args.worker_id)
-    print(f"discovered {discovered} jobs and processed {processed} jobs")
+    if not args.one_shot:
+        stop_event = Event()
+
+        def request_stop(signum, frame) -> None:
+            del frame
+            logger.info("stopping ingestion worker", extra={"signal": signum})
+            stop_event.set()
+
+        signal.signal(signal.SIGINT, request_stop)
+        signal.signal(signal.SIGTERM, request_stop)
+        run_forever(args.root, args.worker_id, args.poll_interval, stop_event=stop_event)
+    else:
+        discovered, processed = run_once(args.root, args.worker_id)
+        print(f"discovered {discovered} jobs and processed {processed} jobs")
+
+
+def _positive_interval(value: str) -> float:
+    try:
+        interval = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "poll interval must be finite and greater than zero"
+        ) from exc
+    if not math.isfinite(interval) or interval <= 0:
+        raise argparse.ArgumentTypeError("poll interval must be finite and greater than zero")
+    return interval
 
 
 if __name__ == "__main__":

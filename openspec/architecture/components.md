@@ -18,6 +18,8 @@ flowchart TB
         database[database.py\nengine and sessions]
         models[models.py\ncanonical entities and constraints]
         common[ingestion/common.py\nshared normalization and identity]
+        jobs[ingestion/jobs.py\nleases, retries, dead letters]
+        worker[scripts/ingestion_worker.py\npolling worker]
         framework[Adapter transaction boundary\nfile tracking, checksum, ordering]
         ff[ingestion/freightflow.py\nFreightFlow adapter]
         hd[ingestion/hauldesk.py\nHaulDesk adapter]
@@ -54,6 +56,11 @@ flowchart TB
     files --> ff
     files --> hd
     files --> bos
+    worker --> jobs
+    worker --> ff
+    worker --> hd
+    worker --> bos
+    jobs --> database
     ff --> framework
     hd --> framework
     bos --> framework
@@ -80,7 +87,7 @@ flowchart TB
     classDef delivered fill:#d9ead3,stroke:#38761d,color:#000;
     classDef planned fill:#f3f3f3,stroke:#666,color:#000,stroke-dasharray: 5 5;
     classDef external fill:#fff2cc,stroke:#bf9000,color:#000;
-    class main,health,auth,accounts,operations,sharedpool,config,database,models,common,framework,ff,hd,bos,migrations,geography,lanes,recommendation,estimation delivered;
+    class main,health,auth,accounts,operations,sharedpool,config,database,models,common,jobs,worker,framework,ff,hd,bos,migrations,geography,lanes,recommendation,estimation delivered;
     class db,files,http,cli external;
 ```
 
@@ -101,6 +108,9 @@ flowchart TB
   financial validation.
 - The adapter transaction boundary records files, enforces checksums/order, and
   provides all-or-nothing persistence.
+- `ingestion/jobs.py` owns durable queue state, per-source ordering, lease
+  fencing, bounded retries, and dead-letter transitions. The worker script polls
+  that queue and dispatches source-specific adapters.
 - `common.py` centralizes carrier identity normalization and shared upserts.
 - Each TMS module owns source schema validation, source-specific mapping, and
   its CLI entry point.

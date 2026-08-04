@@ -100,6 +100,26 @@ def claim_next_job(
             ),
         )
     )
+    expired_jobs = session.scalars(
+        select(IngestionJob)
+        .where(
+            IngestionJob.status == IngestionJobStatus.PROCESSING,
+            IngestionJob.lease_expires_at < now,
+            IngestionJob.attempt_count >= DEFAULT_MAX_ATTEMPTS,
+        )
+        .with_for_update(skip_locked=True)
+    ).all()
+    for expired_job in expired_jobs:
+        expired_job.status = IngestionJobStatus.DEAD_LETTER
+        expired_job.completed_at = now
+        expired_job.lease_owner = None
+        expired_job.lease_expires_at = None
+        expired_job.lease_token = None
+        expired_job.failure_class = "LeaseExpired"
+        expired_job.error_message = "LeaseExpired: ingestion failed"
+    if expired_jobs:
+        session.flush()
+
     job = session.scalar(
         select(IngestionJob)
         .where(
@@ -113,6 +133,7 @@ def claim_next_job(
                 (
                     (IngestionJob.status == IngestionJobStatus.PROCESSING)
                     & (IngestionJob.lease_expires_at < now)
+                    & (IngestionJob.attempt_count < DEFAULT_MAX_ATTEMPTS)
                 ),
             ),
             ~earlier_job_exists,
@@ -121,6 +142,10 @@ def claim_next_job(
         .with_for_update(skip_locked=True)
     )
     if job is None:
+        if expired_jobs:
+            session.commit()
+            for _ in expired_jobs:
+                increment("carrier_pool_ingestion_jobs_total", {"outcome": "dead_letter"})
         return None
 
     job.status = IngestionJobStatus.PROCESSING
@@ -131,6 +156,8 @@ def claim_next_job(
     job.started_at = job.started_at or now
     session.commit()
     increment("carrier_pool_ingestion_attempts_total")
+    for _ in expired_jobs:
+        increment("carrier_pool_ingestion_jobs_total", {"outcome": "dead_letter"})
     return job
 
 

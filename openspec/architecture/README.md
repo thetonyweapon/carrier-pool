@@ -20,9 +20,9 @@ artifacts.
 - The platform boundary excludes source TMS systems and external operators.
 
 The diagrams distinguish delivered carrier recommendations, rate estimation,
-demo-mode operations, and the authenticated shared-carrier-pool path from
-production hardening work that remains planned beyond the delivered OIDC and
-deployment boundary.
+demo-mode operations, the authenticated shared-carrier-pool path, and the
+durable ingestion worker from production hardening work that remains planned
+beyond the delivered OIDC and deployment boundary.
 
 ## Related Documents
 

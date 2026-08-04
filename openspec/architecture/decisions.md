@@ -28,9 +28,9 @@ an explicit, reviewable exception rather than an accidental leak path.
 ## Current Container Boundaries
 
 The FastAPI service exposes health, authentication, broker operations, lane
-intelligence, recommendation, rate estimation, and shared-pool behavior.
-Ingestion is not represented as a background worker because the delivered
-workflow is a CLI processing one file at a time. The UI is a delivered demo
+intelligence, recommendation, rate estimation, and shared-pool behavior. A
+separate polling worker discovers immutable source files and processes them
+through the durable, leased ingestion queue. The UI is a delivered demo
 container. The shared pool is a data-sharing policy that cuts across these
 containers, not a separate runtime container.
 

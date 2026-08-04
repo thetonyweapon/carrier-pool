@@ -11,6 +11,7 @@ with managed secrets and provider-specific commands before deployment.
   `AUTH_REDIRECT_URI`, `ALLOWED_HOSTS`, and the
   resource-control settings documented in `backend/.env.example`.
 - A private filesystem or storage mount for source files under `/data`.
+- `INGESTION_DATA_PATH` set to that private source-data mount for the worker.
 - A deployment identity that can pull the repository and run Docker Compose.
 
 Do not set `DEMO_MODE=true` or `ALLOW_MOCK_AUTH=true` in production. Do not reuse
@@ -37,14 +38,14 @@ external OIDC provider and must not use local demo account state.
 3. Start the application stack after the migration succeeds:
 
    ```bash
-   docker compose -f docker-compose.production.yaml up -d --no-deps backend frontend
+   docker compose -f docker-compose.production.yaml up -d --no-deps backend ingestion-worker frontend
    ```
 
 4. Verify service state and recent logs:
 
    ```bash
    docker compose -f docker-compose.production.yaml ps
-   docker compose -f docker-compose.production.yaml logs --since=10m backend frontend
+   docker compose -f docker-compose.production.yaml logs --since=10m backend ingestion-worker frontend
    ```
 
 The production edge must sit behind an HTTPS load balancer or reverse proxy that
@@ -65,17 +66,18 @@ login or local account flow and requires `AUTH_LOGIN_URL` for the provider login
 
 ## Ingestion Worker
 
-The durable worker performs one discovery and processing pass:
+The durable worker continuously polls for new files, leases jobs in source
+chronological order, renews leases during long processing, retries transient
+failures with bounded backoff, and records permanent failures as dead letters.
+Start it as part of the production Compose stack:
 
 ```bash
-   docker compose -f docker-compose.production.yaml run --rm \
-  -v /srv/carrier-pool/source-data:/data:ro backend \
-  python -m scripts.ingestion_worker --root /data
+   docker compose -f docker-compose.production.yaml up -d ingestion-worker
 ```
 
-Run it from a scheduler appropriate to the deployment. Keep source files
-immutable while they are being discovered. Failed jobs remain retryable through
-the job table; dead-lettered jobs require operator review before replay.
+Keep source files immutable while they are being discovered. Failed jobs remain
+retryable through the job table; dead-lettered jobs require operator review
+before replay. The worker has no public network port.
 
 ## Database Recovery
 
