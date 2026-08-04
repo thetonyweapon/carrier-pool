@@ -3,6 +3,7 @@ from typing import Callable, Tuple, Type
 
 import pytest
 from hypothesis import given
+from hypothesis import settings as hypothesis_settings
 from hypothesis import strategies as st
 
 from app.ingestion import brokeros, freightflow, hauldesk
@@ -25,6 +26,7 @@ json_values = st.recursive(
     ),
     max_leaves=20,
 )
+PROPERTY_SETTINGS = hypothesis_settings(max_examples=50, deadline=None)
 
 
 PARSER_CASES: Tuple[Tuple[Callable[[bytes], object], Type[Exception]], ...] = (
@@ -33,8 +35,19 @@ PARSER_CASES: Tuple[Tuple[Callable[[bytes], object], Type[Exception]], ...] = (
     (brokeros._parse_payload, brokeros.InvalidBrokerOSPayloadError),
 )
 
+REFERENCE_CASES = (
+    (
+        freightflow._parse_payload,
+        make_freightflow_sync("2026-07-06T06:00:00-05:00"),
+        freightflow.InvalidFreightFlowPayloadError,
+    ),
+    (hauldesk._parse_payload, make_hauldesk_sync(), hauldesk.InvalidHaulDeskPayloadError),
+    (brokeros._parse_payload, make_brokeros_sync(), brokeros.InvalidBrokerOSPayloadError),
+)
+
 
 @pytest.mark.parametrize(("parse", "error"), PARSER_CASES)
+@PROPERTY_SETTINGS
 @given(value=json_values)
 def test_adapters_reject_or_normalize_arbitrary_json(parse, error, value) -> None:
     raw_contents = json.dumps(value, allow_nan=False).encode()
@@ -61,3 +74,66 @@ def test_reference_payloads_are_accepted(parse, payload) -> None:
 
     assert parsed_payload == payload
     assert sync is not None
+
+
+@pytest.mark.parametrize(("parse", "payload", "error"), REFERENCE_CASES)
+@PROPERTY_SETTINGS
+@given(extra_key=st.text(min_size=1, max_size=24))
+def test_adapters_reject_arbitrary_unknown_top_level_fields(
+    parse, payload, error, extra_key
+) -> None:
+    if extra_key in payload:
+        return
+    mutated = dict(payload)
+    mutated[extra_key] = None
+
+    try:
+        parsed_payload, normalized = parse(json.dumps(mutated).encode())
+    except error:
+        return
+    # Adapters with permissive source models may normalize away unknown fields.
+    assert parsed_payload == mutated
+    assert extra_key not in normalized.model_dump()
+
+
+@pytest.mark.parametrize(
+    ("parse", "payload", "collection", "error"),
+    (
+        (
+            freightflow._parse_payload,
+            make_freightflow_sync("2026-07-06T06:00:00-05:00"),
+            "loads",
+            freightflow.InvalidFreightFlowPayloadError,
+        ),
+        (
+            hauldesk._parse_payload,
+            make_hauldesk_sync(),
+            "loads",
+            hauldesk.InvalidHaulDeskPayloadError,
+        ),
+        (
+            brokeros._parse_payload,
+            make_brokeros_sync(),
+            "records",
+            brokeros.InvalidBrokerOSPayloadError,
+        ),
+    ),
+)
+@PROPERTY_SETTINGS
+@given(extra_key=st.text(min_size=1, max_size=24))
+def test_adapters_reject_arbitrary_unknown_record_fields(
+    parse, payload, collection, error, extra_key
+) -> None:
+    record = payload[collection][0]
+    if extra_key in record:
+        return
+    mutated = json.loads(json.dumps(payload))
+    mutated[collection][0][extra_key] = None
+
+    try:
+        parsed_payload, normalized = parse(json.dumps(mutated).encode())
+    except error:
+        return
+    normalized_records = getattr(normalized, collection)
+    assert parsed_payload == mutated
+    assert extra_key not in normalized_records[0].model_dump()
