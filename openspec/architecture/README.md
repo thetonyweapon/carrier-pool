@@ -21,7 +21,8 @@ artifacts.
 
 The diagrams distinguish delivered carrier recommendations, rate estimation,
 demo-mode operations, and the authenticated shared-carrier-pool path from
-production hardening work that remains planned.
+production hardening work that remains planned beyond the delivered OIDC and
+deployment boundary.
 
 ## Related Documents
 

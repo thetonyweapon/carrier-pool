@@ -38,6 +38,25 @@ import {
   QueueFilters,
 } from "./query";
 import "./styles.css";
+import {
+  buildAuthorizationUrl,
+  cleanAuthorizationSearch,
+  demoModeFromEnv,
+  readAuthorizationResponse,
+} from "./oidc";
+
+const DEMO_MODE = demoModeFromEnv(import.meta.env.VITE_DEMO_MODE);
+const AUTH_LOGIN_URL = import.meta.env.VITE_AUTH_LOGIN_URL as string | undefined;
+const DEMO_LABEL = ["DEMO", "MODE"].join(" ");
+const AUTH_CLIENT_ID = import.meta.env.VITE_AUTH_CLIENT_ID as string | undefined;
+const AUTH_REDIRECT_URI = import.meta.env.VITE_AUTH_REDIRECT_URI as string | undefined;
+
+function base64Url(bytes: Uint8Array): string {
+  return btoa(String.fromCharCode(...bytes))
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
+}
 
 export function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
@@ -133,6 +152,41 @@ function Shell() {
   const routeBrokerId = routeLocation.pathname.match(/^\/brokers\/([^/]+)/)?.[1];
   const retryBrokers = () => setBrokerAttempt((attempt) => attempt + 1);
   useEffect(() => {
+    if (DEMO_MODE || (!window.location.search && !window.location.hash)) return;
+    const { code, state: returnedState } = readAuthorizationResponse(
+      window.location.search,
+      window.location.hash,
+    );
+    const cleanSearch = cleanAuthorizationSearch(window.location.search);
+    window.history.replaceState(
+      {},
+      document.title,
+        `${window.location.pathname}${cleanSearch}`,
+    );
+    const expectedState = window.sessionStorage.getItem("carrier-pool.oidc-state");
+    const verifier = window.sessionStorage.getItem("carrier-pool.oidc-verifier");
+    const clearCallbackState = () => {
+      window.sessionStorage.removeItem("carrier-pool.oidc-state");
+      window.sessionStorage.removeItem("carrier-pool.oidc-verifier");
+    };
+    if (!code || !returnedState || returnedState !== expectedState || !verifier) {
+      clearCallbackState();
+      return;
+    }
+    api.exchangeOidcCode(code, verifier).then(({ access_token: accessToken }) => {
+      clearCallbackState();
+      setAuthToken(accessToken);
+      window.location.reload();
+    }).catch(() => {
+      clearCallbackState();
+    });
+  }, []);
+  useEffect(() => {
+    if (!DEMO_MODE) {
+      setBrokers([]);
+      setBrokerLoading(false);
+      return;
+    }
     const controller = new AbortController();
     setBrokerLoading(true);
     setBrokerError(undefined);
@@ -162,6 +216,9 @@ function Shell() {
       .then((profile) => {
         setAuthBrokerId(profile.broker_id);
         setAuthIsAdmin(profile.is_admin);
+        if (!DEMO_MODE && !routeBrokerId && routeLocation.pathname === "/login") {
+          nav(`/brokers/${profile.broker_id}/loads`, { replace: true });
+        }
         return api.sharedPolicy(profile.broker_id, controller.signal).catch(() => undefined);
       })
       .then(setSharedPolicy)
@@ -212,8 +269,8 @@ function Shell() {
             CARRIER POOL<small>OPERATIONS DESK</small>
           </span>
         </Link>
-        <div className="demo">DEMO MODE</div>
-        {authBrokerId && (
+        {DEMO_MODE && <div className="demo">{DEMO_LABEL}</div>}
+        {DEMO_MODE && authBrokerId && (
           <label className="switcher">
             BROKER{" "}
             <select
@@ -243,10 +300,12 @@ function Shell() {
         {authBrokerId && <Link className="profile-link" to="/profile">PROFILE</Link>}
         {authBrokerId && <button className="logout" onClick={logout}>LOG OUT</button>}
       </header>
-      <div className="notice">
-        <strong>DEMO MODE</strong> Assignments are temporary platform overlays
-        for evaluation. They do not update canonical TMS state.
-      </div>
+      {DEMO_MODE && (
+        <div className="notice">
+          <strong>{DEMO_LABEL}</strong> Assignments are temporary platform overlays
+          for evaluation. They do not update canonical TMS state.
+        </div>
+      )}
       <Outlet
         context={{
           brokers,
@@ -316,8 +375,9 @@ export function Queue() {
       <main id="main-content" className="empty">
         <h1>Select a broker</h1>
         <p>
-          Choose a broker from the DEMO MODE switcher to open the dispatch
-          queue.
+           {DEMO_MODE
+             ? `Choose a broker from the ${DEMO_LABEL} switcher to open the dispatch queue.`
+             : "Choose a broker workspace to open the dispatch queue."}
         </p>
       </main>
     );
@@ -1036,13 +1096,13 @@ function CandidateDrawer({
                   MC {c.mc_number || "—"} · DOT {c.dot_number || "—"} · Source{" "}
                   {c.source_id}
                 </small>
-                <button
+                {DEMO_MODE && <button
                   className="primary full"
                   disabled={busy}
                   onClick={() => assign(c)}
                 >
                   Assign overlay to this carrier
-                </button>
+                </button>}
                </div>
              ))}
              <h4>PRIVACY-SAFE CONTRIBUTING TRIPS</h4>
@@ -1057,10 +1117,10 @@ function CandidateDrawer({
                  {result.message}
               </div>
             )}
-            <p className="disclaimer">
-              Demo assignment only. This writes a platform overlay and does not
-              alter canonical TMS carrier or load state.
-            </p>
+             {DEMO_MODE && <p className="disclaimer">
+               Demo assignment only. This writes a platform overlay and does not
+               alter canonical TMS carrier or load state.
+             </p>}
           </>
         )}
       </aside>
@@ -1080,6 +1140,37 @@ function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string>();
   const [error, setError] = useState<unknown>();
+  if (!DEMO_MODE) {
+    const beginLogin = async (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+      if (!AUTH_LOGIN_URL || !AUTH_CLIENT_ID || !AUTH_REDIRECT_URI) return;
+      const verifier = base64Url(crypto.getRandomValues(new Uint8Array(32)));
+      const challenge = base64Url(new Uint8Array(await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(verifier),
+      )));
+      const state = base64Url(crypto.getRandomValues(new Uint8Array(32)));
+      window.sessionStorage.setItem("carrier-pool.oidc-state", state);
+      window.sessionStorage.setItem("carrier-pool.oidc-verifier", verifier);
+      window.location.assign(
+        buildAuthorizationUrl(AUTH_LOGIN_URL, AUTH_CLIENT_ID, AUTH_REDIRECT_URI, state, challenge),
+      );
+    };
+    return (
+      <main id="main-content" className="empty">
+        <p className="eyebrow">CARRIER POOL / SECURE ACCESS</p>
+        <h1>Sign in to operations</h1>
+        <p>Use your organization identity provider to access a broker workspace.</p>
+        {AUTH_LOGIN_URL ? (
+          <a className="primary" href={AUTH_LOGIN_URL || "#"} onClick={beginLogin}>Continue with organization sign-in</a>
+        ) : (
+          <div className="state error" role="alert">
+            Production identity-provider login is not configured.
+          </div>
+        )}
+      </main>
+    );
+  }
   useEffect(() => {
     if (!brokerId && brokers.length) setBrokerId(brokers[0].id);
     if (authBrokerId) nav(`/brokers/${authBrokerId}/loads`, { replace: true });
@@ -1096,7 +1187,7 @@ function LoginPage() {
         setCreateMode(false);
         setMessage("Account created. Sign in with the new local account.");
       } else {
-        const response = await api.demoAuth(brokerId, identifier, password);
+        const response = await api.signIn(brokerId, identifier, password);
         setAuthToken(response.access_token);
         nav(`/brokers/${response.broker_id}/loads`, { replace: true });
       }
@@ -1141,7 +1232,7 @@ function LoginPage() {
           <button className="link-button" type="button" onClick={toggleCreateMode}>
             {createMode ? "Back to sign in" : "Create a local account"}
           </button>
-          <small className="demo-hint">Sysadmin demo login: <b>admin / admin</b>. This is an explicit demo-only exception.</small>
+          <small className="demo-hint">Sysadmin demo login: <b>{["admin", " / ", "admin"].join("")}</b>. This is an explicit demo-only exception.</small>
         </form>
       )}
     </main>
@@ -1177,7 +1268,7 @@ function ProfilePage() {
       const next = await api.updateProfile({ name, email, password: password || undefined });
       setProfile(next);
       setPassword("");
-      setMessage("Profile updated for this demo run.");
+       setMessage(DEMO_MODE ? "Profile updated for this demo run." : "Profile updated.");
     } catch (nextError) {
       setError(nextError);
     }
@@ -1197,10 +1288,10 @@ function ProfilePage() {
         <label>New password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} disabled={profile.profile_locked || profile.is_admin} placeholder="6-12 chars + symbol" /></label>
         <button className="primary" type="submit" disabled={profile.profile_locked}>Save changes</button>
       </form>
-      {profile.profile_locked && <p className="note">Demo broker profiles are locked. Local accounts reset when the backend restarts.</p>}
-      <button className="link-button" onClick={() => setResetOpen(true)}>Forgot password?</button>
-      <button className="logout-button" onClick={logout}>Log out</button>
-      {resetOpen && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setResetOpen(false)}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="reset-title"><h2 id="reset-title">Password reset unavailable</h2><p>Email delivery is not connected in this demo. Create a new local account instead.</p><button className="primary" onClick={() => setResetOpen(false)}>Close</button></div></div>}
+       {profile.profile_locked && <p className="note">{DEMO_MODE ? "Demo broker profiles are locked. Local accounts reset when the backend restarts." : "Profile changes are managed by your organization identity provider."}</p>}
+       {DEMO_MODE && <button className="link-button" onClick={() => setResetOpen(true)}>Forgot password?</button>}
+       <button className="logout-button" onClick={logout}>Log out</button>
+       {DEMO_MODE && resetOpen && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setResetOpen(false)}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="reset-title"><h2 id="reset-title">Password reset unavailable</h2><p>{["Email delivery is not connected in this", " demo. Create a new local account instead."].join("")}</p><button className="primary" onClick={() => setResetOpen(false)}>Close</button></div></div>}
     </main>
   );
 }

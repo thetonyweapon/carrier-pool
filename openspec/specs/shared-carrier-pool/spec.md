@@ -2,9 +2,9 @@
 
 **Status: Delivered (authenticated demo path)**
 
-The authenticated demo path is implemented behind `SHARED_POOL_READ_ENABLED`.
-Production deployments still need to replace the demo token issuer with the
-platform identity provider.
+The authenticated path is implemented behind `SHARED_POOL_READ_ENABLED`.
+Demo deployments use the signed mock issuer; production deployments use the
+configured OIDC/JWKS identity provider.
 
 ## Intended Outcome
 

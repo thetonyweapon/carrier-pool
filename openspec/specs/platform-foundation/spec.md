@@ -44,7 +44,7 @@
 
 ## Limitations
 
-- Production identity-provider integration, background scheduling, and
-  production-scale deployment orchestration are not implemented. Demo
-  authentication and broker authorization are delivered behind the explicit
-  demo-mode boundary.
+- Background scheduling and production-scale deployment orchestration remain
+  outside this foundation spec. Demo authentication and broker authorization
+  are delivered behind the explicit demo-mode boundary; production uses the
+  configured OIDC/JWKS identity provider.

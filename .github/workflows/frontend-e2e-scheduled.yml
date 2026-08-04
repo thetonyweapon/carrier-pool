@@ -32,7 +32,7 @@ jobs:
         run: npx playwright install --with-deps chromium webkit
       - name: Start demo stack
         working-directory: .
-        run: docker compose up --build -d
+        run: docker compose --profile demo up --build -d
       - name: Wait for demo stack
         working-directory: .
         run: |

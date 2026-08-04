@@ -5,10 +5,16 @@ import hmac
 import json
 import time
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Optional
+from urllib.parse import urlparse
+from urllib.request import HTTPRedirectHandler, build_opener
+from urllib.request import Request as UrlRequest
 
+import jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt import PyJWKClient
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -16,6 +22,27 @@ from app.database import get_db
 from app.models import Broker
 
 _bearer = HTTPBearer(auto_error=False)
+_MAX_IDP_RESPONSE_BYTES = 1_048_576
+
+
+class _RejectRedirects(HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        raise ValueError("identity provider redirects are not allowed")
+
+
+_jwks_opener = build_opener(_RejectRedirects())
+_OIDC_ALLOWED_ALGORITHMS = (
+    "RS256",
+    "RS384",
+    "RS512",
+    "PS256",
+    "PS384",
+    "PS512",
+    "ES256",
+    "ES384",
+    "ES512",
+    "EdDSA",
+)
 
 
 @dataclass(frozen=True)
@@ -69,6 +96,8 @@ def get_current_principal(
 ) -> BrokerPrincipal:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=401, detail="bearer authentication required")
+    if settings.auth_mode == "oidc":
+        return _get_oidc_principal(credentials.credentials)
     if (
         not settings.demo_mode
         or settings.auth_mode != "mock"
@@ -119,6 +148,29 @@ def get_current_principal(
     )
 
 
+def _get_oidc_principal(token: str) -> BrokerPrincipal:
+    try:
+        signing_key = _jwks_client(settings.auth_jwks_url or "").get_signing_key_from_jwt(token)
+        decoded = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=_OIDC_ALLOWED_ALGORITHMS,
+            audience=settings.auth_audience,
+            issuer=settings.auth_issuer,
+            options={"require": ["exp", "iss", "aud", "sub"]},
+        )
+        subject = _required_claim(decoded, "sub")
+        broker_id = _required_claim(decoded, settings.auth_tenant_claim)
+    except (jwt.PyJWTError, KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(status_code=401, detail="invalid bearer token") from exc
+    return BrokerPrincipal(
+        broker_id=broker_id,
+        actor=subject,
+        subject=subject,
+        account_id=subject,
+    )
+
+
 def get_optional_principal(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
 ) -> Optional[BrokerPrincipal]:
@@ -161,3 +213,34 @@ def _signature(payload: str) -> str:
     return hmac.new(
         (settings.auth_secret or "").encode(), payload.encode(), hashlib.sha256
     ).hexdigest()
+
+
+def _required_claim(payload: dict[str, object], claim_name: str) -> str:
+    value = payload[claim_name]
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{claim_name} must be a non-empty string")
+    return value
+
+
+@lru_cache(maxsize=8)
+def _jwks_client(url: str) -> PyJWKClient:
+    return _SecureJWKClient(url, timeout=5)
+
+
+class _SecureJWKClient(PyJWKClient):
+    def fetch_data(self) -> dict:
+        configured = urlparse(self.uri)
+        try:
+            with _jwks_opener.open(UrlRequest(self.uri), timeout=5) as response:
+                final = urlparse(response.geturl())
+                if final.scheme != "https" or final.hostname != configured.hostname:
+                    raise ValueError("JWKS endpoint redirected to an untrusted URL")
+                body = response.read(_MAX_IDP_RESPONSE_BYTES + 1)
+                if len(body) > _MAX_IDP_RESPONSE_BYTES:
+                    raise ValueError("JWKS response is too large")
+                payload = json.loads(body)
+        except Exception as exc:
+            raise jwt.PyJWKClientError("JWKS fetch failed") from exc
+        if not isinstance(payload, dict):
+            raise jwt.PyJWKClientError("JWKS response was not an object")
+        return payload

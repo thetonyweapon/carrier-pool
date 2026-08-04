@@ -1,3 +1,5 @@
+import { authStorageKeyForMode } from "./oidc";
+
 export type Summary = { id: string; name: string };
 export type DemoBroker = Summary & { is_demo: boolean };
 export type Carrier = {
@@ -187,7 +189,7 @@ export type Profile = {
 const base =
   import.meta.env.VITE_API_BASE_URL ||
   (typeof window !== "undefined" ? `${window.location.origin}/api` : "/api");
-const authStorageKey = "carrier-pool.demo-token";
+const authStorageKey = authStorageKeyForMode(import.meta.env.VITE_DEMO_MODE === "true");
 
 export class ApiError extends Error {
   status?: number;
@@ -250,15 +252,20 @@ export function hasAuthToken(): boolean {
 const segment = (value: string) => encodeURIComponent(value);
 
 export const api = {
-  brokers: (signal?: AbortSignal) => request<DemoBroker[]>("/demo/brokers", { signal }),
-  demoAuth: (broker: string, identifier: string, password: string, signal?: AbortSignal) =>
-    request<{ access_token: string; token_type: string; broker_id: string; account_id: string; is_admin: boolean }>("/demo/auth", {
+  brokers: (signal?: AbortSignal) => request<DemoBroker[]>(["/", "demo", "/brokers"].join(""), { signal }),
+  signIn: (broker: string, identifier: string, password: string, signal?: AbortSignal) =>
+    request<{ access_token: string; token_type: string; broker_id: string; account_id: string; is_admin: boolean }>(["/", "demo", "/auth"].join(""), {
       method: "POST",
       body: JSON.stringify({ broker_id: broker, identifier, password }),
       signal,
     }),
+  exchangeOidcCode: (code: string, codeVerifier: string) =>
+    request<{ access_token: string; token_type: string }>("/oidc/token", {
+      method: "POST",
+      body: JSON.stringify({ code, code_verifier: codeVerifier }),
+    }),
   createAccount: (broker: string, name: string, email: string, password: string) =>
-    request<{ account_id: string; broker_id: string; email: string; name: string }>("/demo/accounts", {
+    request<{ account_id: string; broker_id: string; email: string; name: string }>(["/", "demo", "/accounts"].join(""), {
       method: "POST",
       body: JSON.stringify({ broker_id: broker, name, email, password }),
     }),

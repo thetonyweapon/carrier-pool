@@ -5,8 +5,10 @@ with managed secrets and provider-specific commands before deployment.
 
 ## Prerequisites
 
-- PostgreSQL 16 with backups enabled and a 15-minute recovery point objective.
-- A secret manager supplying `DATABASE_URL`, `POSTGRES_*`, `AUTH_*`, and the
+- Managed PostgreSQL 16 with backups enabled and a 15-minute recovery point objective.
+- A secret manager supplying `DATABASE_URL`, `AUTH_ISSUER`, `AUTH_AUDIENCE`,
+  `AUTH_JWKS_URL`, `AUTH_LOGIN_URL`, `AUTH_TOKEN_URL`, `AUTH_CLIENT_ID`,
+  `AUTH_REDIRECT_URI`, `ALLOWED_HOSTS`, and the
   resource-control settings documented in `backend/.env.example`.
 - A private filesystem or storage mount for source files under `/data`.
 - A deployment identity that can pull the repository and run Docker Compose.
@@ -15,37 +17,47 @@ Do not set `DEMO_MODE=true` or `ALLOW_MOCK_AUTH=true` in production. Do not reus
 the fallback secrets from the demo Compose file.
 
 The in-memory demo accounts and `admin` / `admin` credential are not available
-in the production profile. Production authentication remains an external
-provider integration boundary and must not use local demo account state.
+in the production profile. Production authentication uses the configured
+external OIDC provider and must not use local demo account state.
 
 ## Deploy
 
 1. Validate the environment and Compose configuration:
 
    ```bash
-   docker compose -f docker-compose.production.yaml config
+   docker compose -f docker-compose.production.yaml config --quiet
    ```
 
-2. Build and start the stack:
+2. Build the images and run the one-off migration job:
 
    ```bash
-   docker compose -f docker-compose.production.yaml up --build -d
+   docker compose -f docker-compose.production.yaml build
+   docker compose -f docker-compose.production.yaml run --rm migrate
+
+3. Start the application stack after the migration succeeds:
+
+   ```bash
+   docker compose -f docker-compose.production.yaml up -d --no-deps backend frontend
    ```
 
-3. Verify service state and recent logs:
+4. Verify service state and recent logs:
 
    ```bash
    docker compose -f docker-compose.production.yaml ps
    docker compose -f docker-compose.production.yaml logs --since=10m backend frontend
    ```
 
-The backend container applies Alembic migrations before starting Uvicorn. Review
-the migration output before directing traffic to the frontend.
+The production edge must sit behind an HTTPS load balancer or reverse proxy that
+redirects HTTP to HTTPS and forwards only the approved public host. The database
+URL must use `postgresql+psycopg` with `sslmode=require` or stronger. Do not expose
+the backend or database directly. The frontend production build contains no demo
+login or local account flow and requires `AUTH_LOGIN_URL` for the provider login.
 
 ## Health And Observability
 
 - `/live` verifies that the process is running.
-- `/ready` verifies database readiness.
+- `/ready` verifies database readiness; application startup also rejects invalid
+  production auth and database configuration.
 - `/metrics` exposes Prometheus metrics and must remain on the private edge.
 - Include the request ID from response headers when escalating an API error.
 - Alert on ingestion failures, dead letters, source lag, database pool timeout,
@@ -56,7 +68,7 @@ the migration output before directing traffic to the frontend.
 The durable worker performs one discovery and processing pass:
 
 ```bash
-docker compose -f docker-compose.production.yaml run --rm \
+   docker compose -f docker-compose.production.yaml run --rm \
   -v /srv/carrier-pool/source-data:/data:ro backend \
   python -m scripts.ingestion_worker --root /data
 ```

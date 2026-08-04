@@ -10,14 +10,11 @@ on the fork, with medium-or-higher review findings fixed before merge.**
   integration coverage, durable ingestion, observability, assignment
   concurrency, scale controls, property-based tests, CI/supply-chain controls,
   and production runbooks.
-- Authentication is provider-neutral in this program. Tests use deterministic
-  mock issuer and JWKS responses; no external identity provider is contacted.
-- The current demo deliberately stops at the authentication boundary: mock
-  bearer tokens are valid only when `DEMO_MODE=true`, while non-demo settings
-  reject mock auth and the Compose fallback secrets. A future OIDC/JWT adapter
-  must map a verified tenant or organization claim to `broker_id`; provider
-  selection, JWKS discovery, rotation, revocation, and provider-specific claim
-  mapping remain deferred.
+- Authentication is provider-neutral in this program. Demo tests use a
+  deterministic mock issuer; production uses a configured OIDC/JWKS provider.
+- Mock bearer tokens are valid only when `DEMO_MODE=true`. Non-demo settings
+  require OIDC, HTTPS issuer/JWKS/login URLs, PostgreSQL, explicit allowed
+  hosts, and a verified tenant claim mapped to `broker_id`.
 - Issue #37 adds an in-memory local-account layer for demo UX only. The seeded
   TMS brokers are marked demo-locked and a non-demo local sandbox broker is
   bootstrapped for editable profile flows. `admin` / `admin` is an explicit
@@ -42,7 +39,8 @@ on the fork, with medium-or-higher review findings fixed before merge.**
 - Synchronous routes initially. FastAPI runs synchronous endpoints in a worker thread, deferring async SQLAlchemy machinery until it's genuinely needed (WebSocket, long-polling).
 - Environment-driven config via `pydantic-settings`. No hardcoded database URLs.
 - Python 3.12-slim base image. Docker Compose mounts `./data:/data:ro` — the ingestion adapter must never modify source files.
-- Migrations run at container startup (`alembic upgrade head` before Uvicorn) as a single-instance MVP convenience. Production would run migrations as a separate deployment step.
+- Demo migrations run at container startup as a single-instance convenience.
+  Production runs a separate one-off migration job before API instances.
 
 *Alternatives rejected:* Fully async SQLAlchemy from the start (premature complexity); hardcoded database URLs (security risk); modifying source files in place (destructive, unreplayable).
 
@@ -172,8 +170,8 @@ Weight is `Numeric(12, 1)`, distance is `Numeric(10, 1)` — these are not finan
 - The dataset intentionally expands beyond the minimum requested examples so the demo exercises the shared carrier pool, cold-start/unscored carriers, assigned completed history, active uncovered recommendations, thin and sufficient lane history, recent operational loads, and planned future work. This is demo coverage, not a claim that these synthetic scenarios represent production market distributions.
 - **Frontend.** The broker operations console is delivered in explicit demo mode
   with a broker switcher, lifecycle queue, analytics workspace, carrier drawer,
-  and platform assignment overlays. Production authentication and non-demo writes
-  remain deferred to platform hardening.
+  and platform assignment overlays. Production uses OIDC authentication; durable
+  account storage and non-demo platform writes remain deferred.
 - **Shared carrier pool.** The delivered backend keeps broker-owned identities
   broker-scoped and matches only normalized MC/DOT evidence across opted-in
   brokers. It returns a separate redacted recommendation list with public
@@ -183,8 +181,8 @@ Weight is `Numeric(12, 1)`, distance is `Numeric(10, 1)` — these are not finan
   revocation effective immediately. Shared rates and UI presentation are
   delivered in the authenticated demo path; shared candidates remain
   informational and cannot be assigned through the local assignment endpoint.
-  Production identity-provider integration remains deferred to platform
-  hardening; the demo path uses signed broker bearer tokens.
+  Production uses the configured OIDC/JWKS provider; the demo path uses signed
+  broker bearer tokens.
 
 ## What I'd Do Next With More Time
 

@@ -1,9 +1,9 @@
 # Platform Hardening
 
-**Status: Planned**
+**Status: Partially delivered**
 
-This is a placeholder engineering capability for reliability and scale work
-after the core product workflow exists.
+The production authentication and deployment boundary are delivered. Remaining
+reliability and scale work continues after the core product workflow.
 
 ## Execution Contract
 
@@ -31,8 +31,8 @@ fixed, all lower-severity findings MUST be filed as GitHub issues on the fork
 unless an existing issue already covers them, and required CI MUST be green.
 
 The hardening implementation uses a provider-neutral authentication boundary
-with deterministic mock issuer/JWKS responses for tests. It does not connect to
-an external identity provider in this program.
+with deterministic mock issuer/JWKS responses for tests and a configured
+OIDC/JWKS verifier for the production deployment.
 
 Production defaults are managed PostgreSQL, a separate production deployment
 profile from demo Compose, a filesystem-polling ingestion worker behind a
@@ -82,5 +82,4 @@ without changing source semantics or tenant boundaries.
 
 - This document does not claim production availability, capacity, or SLO
   compliance; the targets above are engineering verification targets.
-- This program does not implement a real external identity-provider
-  integration, TMS API clients, or a hosted queue service.
+- This program does not implement TMS API clients or a hosted queue service.

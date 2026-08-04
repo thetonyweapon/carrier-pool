@@ -31,13 +31,15 @@ jobs:
         run: npm run typecheck
       - name: Component and integration tests
         run: npm test -- --coverage
+      - name: Production authentication tests
+        run: npm run test:production
       - name: Build frontend
         run: npm run build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Start demo stack
         working-directory: .
-        run: docker compose up --build -d
+        run: docker compose --profile demo up --build -d
       - name: Wait for demo stack
         working-directory: .
         run: |
