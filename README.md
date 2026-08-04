@@ -73,12 +73,13 @@ pytest
 ruff check .
 ```
 
-The default tests use isolated in-memory SQLite databases. To run the
-PostgreSQL-specific HaulDesk row-lock test, set `HAULDESK_POSTGRES_TEST_URL`
-to a reachable PostgreSQL URL and run:
+The default tests use isolated in-memory SQLite databases. PostgreSQL
+integration tests cover migrations, append-only triggers, composite tenant
+constraints, ingestion rollback, assignment idempotency, and source/broker row
+locks. Set `HAULDESK_POSTGRES_TEST_URL` to a reachable PostgreSQL URL and run:
 
 ```bash
-HAULDESK_POSTGRES_TEST_URL=postgresql+psycopg://carrier_pool:carrier_pool@localhost:5432/carrier_pool pytest
+HAULDESK_POSTGRES_TEST_URL=postgresql+psycopg://carrier_pool:carrier_pool@localhost:5432/carrier_pool pytest -m postgres
 ```
 
 That test creates and removes a temporary schema, so it does not modify the

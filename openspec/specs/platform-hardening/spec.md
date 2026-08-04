@@ -2,8 +2,9 @@
 
 **Status: Partially delivered**
 
-The production authentication and deployment boundary are delivered. Remaining
-reliability and scale work continues after the core product workflow.
+The production authentication and deployment boundary, plus the PostgreSQL
+integration gate, are delivered. Remaining reliability and scale work continues
+after the core product workflow.
 
 ## Execution Contract
 

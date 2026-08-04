@@ -12,9 +12,9 @@ The delivered baseline covers the backend foundation, canonical multi-tenant
 model, three chronological file-ingestion adapters, deterministic synthetic
 data, on-demand broker-scoped lane intelligence, explainable carrier
 recommendations, carrier rate estimation, a demo operations UI, and an
-  authenticated shared-carrier-pool path. Production OIDC/JWKS deployment
-  boundary is delivered; durable local accounts and other hardening work remain
-  planned.
+   authenticated shared-carrier-pool path. Production OIDC/JWKS deployment
+   boundary and PostgreSQL integration gate are delivered; durable local accounts
+   and other hardening work remain planned.
 
 ## System Boundaries
 
@@ -60,7 +60,7 @@ recommendations, carrier rate estimation, a demo operations UI, and an
 | Carrier rate estimation | Delivered |
 | Broker operations UI | Delivered (demo mode) |
 | Shared carrier pool | Delivered (authenticated demo path) |
-| Platform hardening | Planned |
+| Platform hardening | In progress |
 
 ## Architecture
 

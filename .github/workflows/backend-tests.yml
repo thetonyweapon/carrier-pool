@@ -56,11 +56,16 @@ jobs:
           ALLOW_MOCK_AUTH: "true"
           AUTH_SECRET: ci-demo-secret
         run: alembic check
-      - name: Run backend tests
+      - name: Run SQLite backend tests
         working-directory: backend
         env:
           HAULDESK_POSTGRES_TEST_URL: postgresql+psycopg://carrier_pool:carrier_pool@localhost:5432/carrier_pool
-        run: pytest
+        run: pytest -m "not postgres"
+      - name: Run PostgreSQL integration tests
+        working-directory: backend
+        env:
+          HAULDESK_POSTGRES_TEST_URL: postgresql+psycopg://carrier_pool:carrier_pool@localhost:5432/carrier_pool
+        run: pytest -m postgres
       - name: Run lint
         working-directory: backend
         run: ruff check .
