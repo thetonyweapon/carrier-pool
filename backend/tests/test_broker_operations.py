@@ -348,6 +348,8 @@ def test_load_list_detail_and_filters_are_broker_scoped(
     assert response.status_code == 200
     assert body["total"] == 4
     assert [item["id"] for item in body["items"]] == ["canonical-load", "planned"]
+    assert client.get("/brokers/broker-a/loads", params={"page_size": 101}).status_code == 422
+    assert client.get("/brokers/broker-a/loads", params={"page": 10_001}).status_code == 422
     item = client.get("/brokers/broker-a/loads/target").json()
     assert item["customer"] == {"id": "customer-broker-a", "name": "Customer broker-a"}
     assert item["source"] == {"id": "source-broker-a", "name": "TMS broker-a"}

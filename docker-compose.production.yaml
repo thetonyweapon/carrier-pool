@@ -28,6 +28,11 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: ${MIGRATION_CPU_LIMIT:-0.50}
+          memory: ${MIGRATION_MEMORY_LIMIT:-256M}
 
   backend:
     build:
@@ -73,6 +78,11 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: ${BACKEND_CPU_LIMIT:-1.00}
+          memory: ${BACKEND_MEMORY_LIMIT:-1G}
     healthcheck:
       test:
         ["CMD", "python", "-c", "import os, urllib.request; urllib.request.urlopen(urllib.request.Request('http://localhost:8000/ready', headers={'Host': next(host.strip() for host in os.environ['ALLOWED_HOSTS'].split(',') if host.strip())}))"]
@@ -125,6 +135,11 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: ${WORKER_CPU_LIMIT:-1.00}
+          memory: ${WORKER_MEMORY_LIMIT:-1G}
     command: ["python", "-m", "scripts.ingestion_worker", "--root", "/data", "--poll-interval", "${INGESTION_POLL_INTERVAL_SECONDS:-60}"]
 
   frontend:
@@ -152,6 +167,11 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: ${FRONTEND_CPU_LIMIT:-0.50}
+          memory: ${FRONTEND_MEMORY_LIMIT:-256M}
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/"]
       interval: 5s
