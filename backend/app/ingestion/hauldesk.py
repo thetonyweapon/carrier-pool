@@ -19,6 +19,7 @@ from app.ingestion.common import (
     IngestionLimitError,
     enforce_ingestion_file_size,
     enforce_ingestion_limits,
+    ingestion_transaction,
     read_verified_file,
     upsert_carrier_identity,
     validate_carrier_identity_transition,
@@ -162,7 +163,7 @@ def ingest_contents(
     checksum = hashlib.sha256(raw_contents).hexdigest()
 
     try:
-        with session.begin():
+        with ingestion_transaction(session, "hauldesk"):
             source = session.scalar(
                 select(BrokerSource).where(BrokerSource.id == broker_source_id).with_for_update()
             )

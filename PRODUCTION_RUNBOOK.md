@@ -61,8 +61,14 @@ login or local account flow and requires `AUTH_LOGIN_URL` for the provider login
   production auth and database configuration.
 - `/metrics` exposes Prometheus metrics and must remain on the private edge.
 - Include the request ID from response headers when escalating an API error.
-- Alert on ingestion failures, dead letters, source lag, database pool timeout,
-  and elevated request latency.
+- Configure alerts from these concrete signals:
+  `carrier_pool_ingestion_failures_total{failure_class=~".*"}` for failures,
+  `carrier_pool_ingestion_jobs_total{outcome="dead_letter"}` for dead letters,
+  `carrier_pool_source_lag_seconds` for source lag (`-1` means no successful
+  sync yet), `carrier_pool_request_duration_seconds_count` and `_sum` for request
+  latency, and `carrier_pool_ingestion_transactions_total{outcome="rolled_back"}`
+  for transaction failures. Also alert on database connection-pool errors in
+  database logs and the worker's `ingestion poll failed` event.
 
 ## Ingestion Worker
 
@@ -96,8 +102,10 @@ backup and apply forward migrations instead.
 
 - Authentication or tenant-isolation concern: remove traffic, preserve logs,
   rotate affected secrets, and invalidate tokens.
-- Database saturation: reduce worker concurrency, inspect pool timeout metrics,
-  and stop expensive ad hoc queries before scaling the database.
+- Database saturation: reduce worker concurrency, inspect database connection
+  errors and the request/ingestion metrics, and stop expensive ad hoc queries
+  before scaling the database. The request log event is `request_complete` and
+  includes `request_id`, `route`, `status`, and `duration_seconds`.
 - Ingestion backlog: inspect lease age and failure class, then replay only after
   confirming the source file checksum and idempotency key.
 - Deployment failure: keep the previous image available, capture migration and

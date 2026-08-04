@@ -16,6 +16,7 @@ from app.ingestion.jobs import (
     replay_dead_letter,
 )
 from app.models import Base, Broker, BrokerSource, IngestionJobStatus, TmsType
+from app.observability import render_metrics, reset_metrics
 
 NOW = datetime(2026, 8, 1, 12, tzinfo=timezone.utc)
 
@@ -217,6 +218,7 @@ def test_expired_lease_cannot_be_completed_or_renewed(db_session: Session) -> No
 
 
 def test_repeated_expired_leases_dead_letter_after_max_attempts(db_session: Session) -> None:
+    reset_metrics()
     job = enqueue(db_session)
     for attempt in range(5):
         claimed = claim_next_job(
@@ -233,6 +235,8 @@ def test_repeated_expired_leases_dead_letter_after_max_attempts(db_session: Sess
     db_session.refresh(job)
     assert job.status == IngestionJobStatus.DEAD_LETTER
     assert job.failure_class == "LeaseExpired"
+    assert 'failure_class="LeaseExpired"' in render_metrics()
+    reset_metrics()
 
 
 def test_exhausted_lease_does_not_block_later_source_job(db_session: Session) -> None:

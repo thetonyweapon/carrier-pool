@@ -35,6 +35,7 @@ from app.ingestion.jobs import (
     renew_lease,
 )
 from app.models import BrokerSource, IngestionJobStatus, TmsType
+from app.observability import increment, record_ingestion_failure
 
 SOURCE_CONFIG = (
     ("tms_a_freightflow", "broker-a", "source-a", TmsType.FREIGHTFLOW),
@@ -57,11 +58,13 @@ def discover_jobs(root: Path) -> int:
             if source is None:
                 raise ValueError(f"configured broker source not found: {source_id}")
             for path in sorted((root / directory_name).glob("*.json")):
-                raw_contents = read_verified_file(path, root=root / directory_name)
-                checksum = hashlib.sha256(raw_contents).hexdigest()
                 try:
+                    raw_contents = read_verified_file(path, root=root / directory_name)
+                    checksum = hashlib.sha256(raw_contents).hexdigest()
                     synced_at = _synced_at(json.loads(raw_contents), tms_type)
                 except Exception as error:
+                    checksum = _discovery_failure_checksum(path, error)
+                    synced_at = _file_mtime(path)
                     job = enqueue_job(
                         session,
                         broker_id=broker_id,
@@ -69,12 +72,15 @@ def discover_jobs(root: Path) -> int:
                         filename=path.name,
                         file_path=path,
                         checksum=checksum,
-                        synced_at=datetime.fromtimestamp(path.stat().st_mtime, timezone.utc),
+                        synced_at=synced_at,
                     )
-                    job.status = IngestionJobStatus.DEAD_LETTER
-                    job.failure_class = error.__class__.__name__
-                    job.error_message = f"{error.__class__.__name__}: ingestion failed"
-                    job.completed_at = datetime.now(timezone.utc)
+                    if job.status != IngestionJobStatus.DEAD_LETTER:
+                        job.status = IngestionJobStatus.DEAD_LETTER
+                        job.failure_class = error.__class__.__name__
+                        job.error_message = f"{error.__class__.__name__}: ingestion failed"
+                        job.completed_at = datetime.now(timezone.utc)
+                        increment("carrier_pool_ingestion_jobs_total", {"outcome": "dead_letter"})
+                        record_ingestion_failure(error.__class__.__name__, tms_type.value)
                     session.flush()
                 else:
                     enqueue_job(
@@ -89,6 +95,22 @@ def discover_jobs(root: Path) -> int:
                 discovered += 1
         session.commit()
     return discovered
+
+
+def _discovery_failure_checksum(path: Path, error: BaseException) -> str:
+    try:
+        metadata = path.stat()
+        marker = f"{path}:{error.__class__.__name__}:{metadata.st_size}:{metadata.st_mtime_ns}"
+    except OSError:
+        marker = f"{path}:{error.__class__.__name__}"
+    return hashlib.sha256(marker.encode()).hexdigest()
+
+
+def _file_mtime(path: Path) -> datetime:
+    try:
+        return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc)
+    except OSError:
+        return datetime.now(timezone.utc)
 
 
 def _validate_source_root(root: Path) -> Path:

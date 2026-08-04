@@ -2,12 +2,12 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import PlainTextResponse
-from sqlalchemy import func, select, text
+from sqlalchemy import and_, func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import BrokerSource, IngestionFile, IngestionStatus
+from app.models import BrokerSource, IngestionFile, IngestionJob, IngestionStatus
 from app.observability import render_metrics
 
 router = APIRouter(tags=["health"])
@@ -48,16 +48,28 @@ def metrics(db: Session = Depends(get_db)) -> str:
     try:
         latest = db.execute(
             select(BrokerSource.id, func.max(IngestionFile.synced_at))
-            .join(IngestionFile, IngestionFile.broker_source_id == BrokerSource.id)
-            .where(IngestionFile.status == IngestionStatus.SUCCEEDED)
+            .join(
+                IngestionFile,
+                and_(
+                    IngestionFile.broker_source_id == BrokerSource.id,
+                    IngestionFile.status == IngestionStatus.SUCCEEDED,
+                ),
+                isouter=True,
+            )
             .group_by(BrokerSource.id)
+        ).all()
+        job_rows = db.execute(
+            select(IngestionJob.status, func.count()).group_by(IngestionJob.status)
         ).all()
     except SQLAlchemyError:
         latest = []
+        job_rows = []
     source_lags = {
-        source_id: (now - _as_utc(synced_at)).total_seconds() for source_id, synced_at in latest
+        source_id: None if synced_at is None else (now - _as_utc(synced_at)).total_seconds()
+        for source_id, synced_at in latest
     }
-    return render_metrics(source_lags)
+    job_states = {status.value: count for status, count in job_rows}
+    return render_metrics(source_lags, job_states)
 
 
 def _as_utc(value: datetime) -> datetime:

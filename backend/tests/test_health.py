@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.database import get_db
 from app.main import create_app
+from app.models import IngestionJobStatus
 from app.observability import increment, reset_metrics
 
 
@@ -65,6 +67,17 @@ def test_liveness_and_request_id_do_not_require_database(
     session.execute.assert_not_called()
 
 
+def test_invalid_request_id_is_replaced_before_response_and_logging(
+    client: tuple[TestClient, MagicMock],
+) -> None:
+    test_client, session = client
+    response = test_client.get("/live", headers={"X-Request-ID": "raw secret\nvalue"})
+
+    assert response.status_code == 200
+    assert response.headers["X-Request-ID"] != "raw secret\nvalue"
+    session.execute.assert_not_called()
+
+
 def test_metrics_endpoint_renders_counters_and_source_lag(
     client: tuple[TestClient, MagicMock],
 ) -> None:
@@ -77,6 +90,39 @@ def test_metrics_endpoint_renders_counters_and_source_lag(
     assert response.status_code == 200
     assert 'carrier_pool_test_total{outcome="ok"} 1' in response.text
     reset_metrics()
+
+
+def test_metrics_endpoint_renders_ingestion_job_states(
+    client: tuple[TestClient, MagicMock],
+) -> None:
+    test_client, session = client
+    source_result = MagicMock()
+    source_result.all.return_value = [
+        ("source-a", datetime.now(timezone.utc)),
+    ]
+    job_result = MagicMock()
+    job_result.all.return_value = [(IngestionJobStatus.QUEUED, 3)]
+    session.execute.side_effect = [source_result, job_result]
+
+    response = test_client.get("/metrics")
+
+    assert response.status_code == 200
+    assert 'carrier_pool_ingestion_jobs{status="queued"} 3' in response.text
+
+
+def test_metrics_endpoint_marks_sources_without_successful_sync(
+    client: tuple[TestClient, MagicMock],
+) -> None:
+    test_client, session = client
+    source_result = MagicMock()
+    source_result.all.return_value = [("source-a", None)]
+    job_result = MagicMock()
+    job_result.all.return_value = []
+    session.execute.side_effect = [source_result, job_result]
+
+    response = test_client.get("/metrics")
+
+    assert 'carrier_pool_source_lag_seconds{source_id="source-a"} -1.000' in response.text
 
 
 def test_metrics_remains_available_when_database_is_down(
