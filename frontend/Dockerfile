@@ -1,4 +1,4 @@
-FROM node:22.14.0-alpine3.21 AS build
+FROM node:22.14.0-alpine3.21@sha256:9bef0ef1e268f60627da9ba7d7605e8831d5b56ad07487d24d1aa386336d1944 AS build
 WORKDIR /app
 ARG VITE_DEMO_MODE=false
 ARG VITE_AUTH_LOGIN_URL=
@@ -12,6 +12,6 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
-FROM nginxinc/nginx-unprivileged:1.27.4-alpine
+FROM nginxinc/nginx-unprivileged:1.27.4-alpine@sha256:62a904036bfc0e4a4f2b556e34cbf17bc136b47fde8cdb4628762725f48c5782
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
