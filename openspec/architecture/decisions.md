@@ -6,12 +6,12 @@ TMS integrations begin at downloaded JSON files rather than external API
 clients. This matches the assignment boundary, makes replay deterministic, and
 keeps source systems outside the platform runtime.
 
-## CLI Adapter Boundary
+## Adapter Boundary
 
-The delivered adapters are Python modules with CLI entry points. They process
-one chronological file at a time and share transaction, idempotency, ordering,
-and normalization behavior. A scheduler or ingestion API can be added later
-without changing source-specific mapping contracts.
+The delivered adapters are Python modules with one-shot CLI entry points and a
+durable polling worker. They process one chronological file at a time and share
+transaction, idempotency, ordering, and normalization behavior. The worker
+dispatches the same adapter contracts without changing source-specific mapping.
 
 ## Canonical Database as System of Record
 

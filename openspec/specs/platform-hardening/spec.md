@@ -1,10 +1,12 @@
 # Platform Hardening
 
-**Status: Partially delivered**
+**Status: Delivered with performance benchmarking deferred**
 
-The production authentication and deployment boundary, plus the PostgreSQL
-integration gate, are delivered. Remaining reliability and scale work continues
-after the core product workflow.
+Milestones 1-11 are delivered: production authentication/deployment, PostgreSQL
+integration, durable ingestion, observability, concurrency, scale controls,
+property tests, CI/supply-chain checks, and runbooks. This does not claim
+production availability or completed performance benchmarking beyond the stated
+engineering targets.
 
 ## Execution Contract
 
@@ -52,27 +54,18 @@ and RTO 1 hour; these are engineering targets, not infrastructure guarantees.
 Increase confidence in production behavior, performance, and operational safety
 without changing source semantics or tenant boundaries.
 
-## Planned Requirements
+## Remaining Verification
 
-- Real PostgreSQL integration tests MUST cover row locks, triggers, migrations,
-  and transaction rollback behavior.
-- Property-based tests SHOULD exercise valid and invalid adapter payloads.
 - Recommendation and estimation logic SHOULD have service-layer tests separate
   from HTTP tests.
 - Migration backfills MUST be benchmarked with representative large datasets.
-- Observability SHOULD expose ingestion duration, failure class, source lag, and
-  transaction outcomes without logging sensitive raw payloads.
-- Operational failures MUST be retryable only when idempotency guarantees make
-  retries safe.
 
-## Open Decisions
+## Deferred Decisions
 
-- CI matrix for Python, PostgreSQL, and migration versions.
 - Load-test dataset size and performance targets.
-- Metrics, tracing, and alerting stack.
-- Retry and dead-letter policy for scheduled ingestion.
+- Production alert routing and retention policy.
 
-## Planned Scenarios
+## Verified Scenarios
 
 - Concurrent PostgreSQL ingestions for one source serialize without duplicate
   or out-of-order state.
