@@ -12,6 +12,9 @@ with managed secrets and provider-specific commands before deployment.
   resource-control settings documented in `backend/.env.example`.
 - A private filesystem or storage mount for source files under `/data`.
 - `INGESTION_DATA_PATH` set to that private source-data mount for the worker.
+- Resource limits set for `BACKEND_*`, `WORKER_*`, `FRONTEND_*`, and
+  `MIGRATION_*` CPU/memory variables, with bounded database and ingestion limits
+  from `backend/.env.example`.
 - A deployment identity that can pull the repository and run Docker Compose.
 
 Do not set `DEMO_MODE=true` or `ALLOW_MOCK_AUTH=true` in production. Do not reuse
@@ -23,29 +26,31 @@ external OIDC provider and must not use local demo account state.
 
 ## Deploy
 
-1. Validate the environment and Compose configuration:
+   1. Validate the environment and Compose configuration:
 
    ```bash
-   docker compose -f docker-compose.production.yaml config --quiet
+   PRODUCTION_ENV_FILE=${PRODUCTION_ENV_FILE:-.env}
+   python3 backend/scripts/validate_resource_limits.py --env-file "$PRODUCTION_ENV_FILE"
+   docker compose --env-file "$PRODUCTION_ENV_FILE" -f docker-compose.production.yaml config --quiet
    ```
 
 2. Build the images and run the one-off migration job:
 
    ```bash
-   docker compose -f docker-compose.production.yaml build
-   docker compose -f docker-compose.production.yaml run --rm migrate
+    docker compose --env-file "$PRODUCTION_ENV_FILE" -f docker-compose.production.yaml build
+    docker compose --env-file "$PRODUCTION_ENV_FILE" -f docker-compose.production.yaml run --rm migrate
 
 3. Start the application stack after the migration succeeds:
 
    ```bash
-   docker compose -f docker-compose.production.yaml up -d --no-deps backend ingestion-worker frontend
+    docker compose --env-file "$PRODUCTION_ENV_FILE" -f docker-compose.production.yaml up -d --no-deps backend ingestion-worker frontend
    ```
 
 4. Verify service state and recent logs:
 
    ```bash
-   docker compose -f docker-compose.production.yaml ps
-   docker compose -f docker-compose.production.yaml logs --since=10m backend ingestion-worker frontend
+    docker compose --env-file "$PRODUCTION_ENV_FILE" -f docker-compose.production.yaml ps
+    docker compose --env-file "$PRODUCTION_ENV_FILE" -f docker-compose.production.yaml logs --since=10m backend ingestion-worker frontend
    ```
 
 The production edge must sit behind an HTTPS load balancer or reverse proxy that
@@ -78,7 +83,7 @@ failures with bounded backoff, and records permanent failures as dead letters.
 Start it as part of the production Compose stack:
 
 ```bash
-   docker compose -f docker-compose.production.yaml up -d ingestion-worker
+   docker compose --env-file "$PRODUCTION_ENV_FILE" -f docker-compose.production.yaml up -d ingestion-worker
 ```
 
 Keep source files immutable while they are being discovered. Failed jobs remain

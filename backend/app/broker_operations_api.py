@@ -33,6 +33,7 @@ from app.observability import canonical_request_id
 
 router = APIRouter(tags=["broker operations"])
 MAX_CANDIDATE_EVIDENCE = 20
+MAX_LOAD_PAGE = 10_000
 
 
 class Summary(BaseModel):
@@ -305,7 +306,7 @@ def _related(db: Session, load: Load):
 @router.get("/brokers/{broker_id}/loads", response_model=LoadListResponse)
 def loads(
     broker_id: str,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=MAX_LOAD_PAGE),
     page_size: int = Query(25, ge=1, le=100),
     status: Optional[LoadStatus] = None,
     equipment: Optional[EquipmentType] = None,

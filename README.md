@@ -420,10 +420,11 @@ Production deployment and recovery procedures are documented in
 The backend uses bounded PostgreSQL connection pools and applies statement and
 idle-transaction timeouts to each PostgreSQL connection. Ingestion rejects files
 larger than `INGESTION_MAX_FILE_BYTES` or payloads with more than
-`INGESTION_MAX_RECORDS`; these default to 10 MiB and 1,000 records. Tune the
-`DB_*` and `INGESTION_*` settings for workload capacity while keeping the p95
-targets documented in `openspec/specs/platform-hardening/spec.md` as acceptance
-criteria.
+`INGESTION_MAX_RECORDS`; these default to 10 MiB and 1,000 records. Production
+Compose also applies CPU and memory limits to migration, API, worker, and
+frontend services. Tune the `DB_*`, `INGESTION_*`, and service limit settings
+within their documented bounds while keeping the p95 targets in
+`openspec/specs/platform-hardening/spec.md` as acceptance criteria.
 
 ### Option B: Standalone backend + frontend
 
