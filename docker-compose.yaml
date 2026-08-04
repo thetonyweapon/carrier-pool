@@ -48,6 +48,33 @@ services:
       sh -c "alembic upgrade head && python -m scripts.bootstrap_demo --root /data
       && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
+  ingestion-worker:
+    profiles: ["demo"]
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://carrier_pool:carrier_pool@db:5432/carrier_pool
+      DEMO_MODE: "true"
+      AUTH_MODE: "mock"
+      ALLOW_MOCK_AUTH: "true"
+      AUTH_SECRET: ${AUTH_SECRET:-carrier-pool-compose-demo-auth-secret}
+      SHARED_POOL_READ_ENABLED: "true"
+      SHARED_POOL_ID_SECRET: ${SHARED_POOL_ID_SECRET:-carrier-pool-compose-demo-shared-secret}
+    volumes:
+      - ./data:/data:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    command: ["python", "-m", "scripts.ingestion_worker", "--root", "/data", "--poll-interval", "60"]
+
   frontend:
     profiles: ["demo"]
     ports:

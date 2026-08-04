@@ -12,6 +12,8 @@ repository rather than repeating the parent assignment.
 ## Delivered Capabilities
 
 - Transactional, chronological ingestion for FreightFlow, HaulDesk, and BrokerOS.
+- Durable polling ingestion worker with ordered leases, bounded retries, and
+  dead-letter handling.
 - Canonical broker-scoped records with preserved source snapshots and append-only
   financial history.
 - On-demand lane intelligence, carrier recommendations, and rate estimation.

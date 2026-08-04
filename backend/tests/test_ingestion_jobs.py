@@ -216,6 +216,51 @@ def test_expired_lease_cannot_be_completed_or_renewed(db_session: Session) -> No
         )
 
 
+def test_repeated_expired_leases_dead_letter_after_max_attempts(db_session: Session) -> None:
+    job = enqueue(db_session)
+    for attempt in range(5):
+        claimed = claim_next_job(
+            db_session,
+            f"worker-{attempt}",
+            now=NOW + timedelta(seconds=attempt * 2),
+            lease_seconds=1,
+        )
+        assert claimed is not None
+        if attempt < 4:
+            assert claimed.attempt_count == attempt + 1
+
+    assert claim_next_job(db_session, "worker-final", now=NOW + timedelta(seconds=10)) is None
+    db_session.refresh(job)
+    assert job.status == IngestionJobStatus.DEAD_LETTER
+    assert job.failure_class == "LeaseExpired"
+
+
+def test_exhausted_lease_does_not_block_later_source_job(db_session: Session) -> None:
+    db_session.autoflush = False
+    first = enqueue(db_session, "first.json")
+    later = enqueue_job(
+        db_session,
+        broker_id="broker-a",
+        broker_source_id="source-a",
+        filename="later.json",
+        file_path="/data/later.json",
+        checksum="later".ljust(64, "0"),
+        synced_at=NOW + timedelta(seconds=1),
+        now=NOW,
+    )
+    claimed = claim_next_job(db_session, "worker-a", now=NOW, lease_seconds=1)
+    assert claimed.id == first.id
+    first.attempt_count = 5
+    first.lease_expires_at = NOW - timedelta(seconds=1)
+    db_session.commit()
+
+    next_job = claim_next_job(db_session, "worker-b", now=NOW)
+
+    assert next_job.id == later.id
+    db_session.refresh(first)
+    assert first.status == IngestionJobStatus.DEAD_LETTER
+
+
 def test_source_head_uses_sync_time_not_enqueue_time(db_session: Session) -> None:
     late = enqueue_job(
         db_session,
