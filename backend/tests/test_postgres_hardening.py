@@ -9,6 +9,7 @@ from uuid import uuid4
 
 import pytest
 from alembic.config import Config
+from fastapi import HTTPException
 from sqlalchemy import create_engine, delete, text, update
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
@@ -356,6 +357,17 @@ def test_postgres_assignment_idempotency_race_returns_one_event(migrated_postgre
             )
         )
         session.add(
+            Carrier(
+                id="race-carrier-b",
+                broker_id="race-broker",
+                broker_source_id="race-source",
+                source_carrier_id="RACE-CARRIER-B",
+                name="Race Carrier B",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.add(
             Load(
                 id="race-load",
                 broker_id="race-broker",
@@ -391,9 +403,74 @@ def test_postgres_assignment_idempotency_race_returns_one_event(migrated_postgre
         settings.demo_mode = previous_demo_mode
 
     assert [response.load_id for response in responses] == ["race-load", "race-load"]
+    assert responses[0] == responses[1]
+    assert responses[0].assignment_version == 1
+    assert responses[0].candidate_id == "race-carrier"
     with Session(engine) as session:
         assert session.query(PlatformAssignment).count() == 1
         assert session.query(PlatformAssignmentEvent).count() == 1
+        event = session.query(PlatformAssignmentEvent).one()
+        assert event.idempotency_key == "race-key"
+        assert event.assignment_version == 1
+
+    replacement_barrier = Barrier(2)
+
+    def replace_once(arguments: tuple[str, str]):
+        key, carrier_id = arguments
+        replacement_barrier.wait()
+        with Session(engine) as session:
+            try:
+                return assign_load(
+                    "race-broker",
+                    "race-load",
+                    AssignmentRequest(
+                        carrier_id=carrier_id,
+                        idempotency_key=key,
+                        expected_assignment_version=1,
+                    ),
+                    principal,
+                    session,
+                )
+            except HTTPException as error:
+                return error.status_code
+
+    previous_demo_mode = settings.demo_mode
+    settings.demo_mode = True
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            replacement_results = list(
+                executor.map(
+                    replace_once,
+                    (("replacement-a", "race-carrier"), ("replacement-b", "race-carrier-b")),
+                )
+            )
+    finally:
+        settings.demo_mode = previous_demo_mode
+
+    successful = [result for result in replacement_results if not isinstance(result, int)]
+    assert len(successful) == 1
+    assert successful[0].assignment_version == 2
+    assert sorted(
+        200 if not isinstance(result, int) else result for result in replacement_results
+    ) == [200, 409]
+    with Session(engine) as session:
+        assignment = session.query(PlatformAssignment).one()
+        assert assignment.assignment_version == 2
+        assert assignment.carrier_id == successful[0].carrier.id
+        events = (
+            session.query(PlatformAssignmentEvent)
+            .order_by(PlatformAssignmentEvent.assignment_version)
+            .all()
+        )
+        winning_key = (
+            "replacement-a" if successful[0].carrier.id == "race-carrier" else "replacement-b"
+        )
+        assert [
+            (event.idempotency_key, event.assignment_version, event.carrier_id) for event in events
+        ] == [
+            ("race-key", 1, "race-carrier"),
+            (winning_key, 2, successful[0].carrier.id),
+        ]
 
 
 def test_postgres_migration_rollback_isolation_leaves_no_partial_rows(migrated_postgres) -> None:
