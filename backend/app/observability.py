@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 import threading
 import time
@@ -16,6 +17,25 @@ from starlette.responses import Response
 
 _logger = logging.getLogger("carrier_pool.request")
 _REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
+_METRIC_NAME_PATTERN = re.compile(r"^[a-zA-Z_:][a-zA-Z0-9_:]*$")
+_LABEL_NAME_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+_MAX_METRIC_NAME_LENGTH = 128
+_MAX_LABEL_NAME_LENGTH = 64
+_MAX_LABEL_VALUE_LENGTH = 128
+_FAILURE_CLASS_LABELS = frozenset(
+    {
+        "DBAPIError",
+        "ConnectionError",
+        "FileAccessError",
+        "IncrementalFailure",
+        "IntegrityError",
+        "InvalidPayload",
+        "LeaseExpired",
+        "OperationalError",
+        "TimeoutError",
+        "Other",
+    }
+)
 _tracer = trace.get_tracer("carrier-pool")
 _lock = threading.Lock()
 _counters: defaultdict[tuple[str, tuple[tuple[str, str], ...]], int] = defaultdict(int)
@@ -25,19 +45,30 @@ _timers: defaultdict[tuple[str, tuple[tuple[str, str], ...]], list[float]] = def
 
 
 def increment(name: str, labels: Optional[Mapping[str, object]] = None, value: int = 1) -> None:
+    if len(name) > _MAX_METRIC_NAME_LENGTH or not _METRIC_NAME_PATTERN.fullmatch(name):
+        raise ValueError("invalid metric name")
+    if not math.isfinite(value) or value < 0:
+        raise ValueError("metric increment must be non-negative")
     key = (name, _label_key(labels))
     with _lock:
         _counters[key] += value
 
 
 def observe_seconds(name: str, value: float, labels: Optional[Mapping[str, object]] = None) -> None:
+    if len(name) > _MAX_METRIC_NAME_LENGTH or not _METRIC_NAME_PATTERN.fullmatch(name):
+        raise ValueError("invalid metric name")
+    if not math.isfinite(value) or value < 0:
+        raise ValueError("metric duration must be finite and non-negative")
     key = (name, _label_key(labels))
     with _lock:
         _timers[key][0] += 1
         _timers[key][1] += value
 
 
-def render_metrics(source_lags: Optional[Mapping[str, float]] = None) -> str:
+def render_metrics(
+    source_lags: Optional[Mapping[str, Optional[float]]] = None,
+    job_states: Optional[Mapping[str, int]] = None,
+) -> str:
     lines: list[str] = []
     with _lock:
         counters = list(_counters.items())
@@ -48,9 +79,12 @@ def render_metrics(source_lags: Optional[Mapping[str, float]] = None) -> str:
         lines.append(f"{name}_count{_render_labels(labels)} {count}")
         lines.append(f"{name}_sum{_render_labels(labels)} {total:.6f}")
     for source_id, lag in sorted((source_lags or {}).items()):
-        lines.append(
-            f'carrier_pool_source_lag_seconds{{source_id="{_escape(source_id)}"}} {max(lag, 0):.3f}'
-        )
+        source_labels = _render_labels(_label_key({"source_id": source_id}))
+        rendered_lag = -1 if lag is None or not math.isfinite(lag) else max(lag, 0)
+        lines.append(f"carrier_pool_source_lag_seconds{source_labels} {rendered_lag:.3f}")
+    for state, count in sorted((job_states or {}).items()):
+        state_labels = _render_labels(_label_key({"status": state}))
+        lines.append(f"carrier_pool_ingestion_jobs{state_labels} {max(count, 0)}")
     return "\n".join(lines) + "\n"
 
 
@@ -58,6 +92,27 @@ def reset_metrics() -> None:
     with _lock:
         _counters.clear()
         _timers.clear()
+
+
+def record_ingestion_failure(failure_class: str, tms_type: Optional[str] = None) -> None:
+    labels: dict[str, object] = {"failure_class": normalize_failure_class(failure_class)}
+    if tms_type is not None:
+        labels["tms"] = tms_type
+    increment("carrier_pool_ingestion_failures_total", labels)
+
+
+def normalize_failure_class(failure_class: str) -> str:
+    if failure_class in _FAILURE_CLASS_LABELS:
+        return failure_class
+    if failure_class.endswith("PayloadError"):
+        return "InvalidPayload"
+    if failure_class in {"ValueError", "ValidationError"}:
+        return "InvalidPayload"
+    if failure_class.endswith("FileSecurityError") or failure_class == "FileNotFoundError":
+        return "FileAccessError"
+    if failure_class.endswith("IngestionError"):
+        return "IncrementalFailure"
+    return "Other"
 
 
 def configure_logging() -> None:
@@ -128,7 +183,15 @@ class _JsonFormatter(logging.Formatter):
 
 
 def _label_key(labels: Optional[Mapping[str, object]]) -> tuple[tuple[str, str], ...]:
-    return tuple(sorted((key, str(value)) for key, value in (labels or {}).items()))
+    normalized = []
+    for key, value in (labels or {}).items():
+        if len(key) > _MAX_LABEL_NAME_LENGTH or not _LABEL_NAME_PATTERN.fullmatch(key):
+            raise ValueError("invalid metric label name")
+        label_value = str(value)
+        if key == "failure_class":
+            label_value = normalize_failure_class(label_value)
+        normalized.append((key, label_value[:_MAX_LABEL_VALUE_LENGTH]))
+    return tuple(sorted(normalized))
 
 
 def _render_labels(labels: tuple[tuple[str, str], ...]) -> str:

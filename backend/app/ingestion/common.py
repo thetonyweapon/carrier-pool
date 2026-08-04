@@ -2,6 +2,7 @@ import hashlib
 import os
 import re
 import stat
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import Broker, Carrier, CarrierIdentity
+from app.observability import increment
 
 
 class CarrierIdentityConflictError(ValueError):
@@ -23,6 +25,28 @@ class IngestionLimitError(ValueError):
 
 class IngestionFileSecurityError(ValueError):
     """A queued source file is not a safe regular file."""
+
+
+@contextmanager
+def ingestion_transaction(session: Session, tms_type: str):
+    try:
+        with session.begin():
+            yield
+    except Exception as exc:
+        increment(
+            "carrier_pool_ingestion_transactions_total",
+            {
+                "tms": tms_type,
+                "outcome": "rolled_back",
+                "failure_class": exc.__class__.__name__,
+            },
+        )
+        raise
+    else:
+        increment(
+            "carrier_pool_ingestion_transactions_total",
+            {"tms": tms_type, "outcome": "committed"},
+        )
 
 
 def enforce_ingestion_file_size(path: Path) -> None:

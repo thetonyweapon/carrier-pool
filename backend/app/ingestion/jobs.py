@@ -10,7 +10,7 @@ from sqlalchemy.exc import DBAPIError, IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from app.models import IngestionJob, IngestionJobStatus
-from app.observability import increment, observe_seconds
+from app.observability import increment, observe_seconds, record_ingestion_failure
 
 DEFAULT_LEASE_SECONDS = 300
 DEFAULT_MAX_ATTEMPTS = 5
@@ -146,6 +146,7 @@ def claim_next_job(
             session.commit()
             for _ in expired_jobs:
                 increment("carrier_pool_ingestion_jobs_total", {"outcome": "dead_letter"})
+                record_ingestion_failure("LeaseExpired")
         return None
 
     job.status = IngestionJobStatus.PROCESSING
@@ -158,6 +159,7 @@ def claim_next_job(
     increment("carrier_pool_ingestion_attempts_total")
     for _ in expired_jobs:
         increment("carrier_pool_ingestion_jobs_total", {"outcome": "dead_letter"})
+        record_ingestion_failure("LeaseExpired")
     return job
 
 
@@ -242,6 +244,7 @@ def fail_job(
         "carrier_pool_ingestion_jobs_total",
         {"outcome": "retry_wait" if job.status == IngestionJobStatus.RETRY_WAIT else "dead_letter"},
     )
+    record_ingestion_failure(job.failure_class or "Unknown")
     if job.started_at is not None:
         observe_seconds(
             "carrier_pool_ingestion_job_duration_seconds",
