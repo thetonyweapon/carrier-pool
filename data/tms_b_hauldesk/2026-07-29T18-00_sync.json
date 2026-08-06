@@ -62,7 +62,7 @@
       "code": "ADJUSTMENT",
       "created_at": "2026-07-29 18:00:00",
       "load_num": "HD-201",
-      "rate_id": "RATE-0027",
+      "rate_id": "RATE-0041",
       "side": "bill"
     },
     {
@@ -70,7 +70,7 @@
       "code": "ADJUSTMENT",
       "created_at": "2026-07-29 18:00:00",
       "load_num": "HD-201",
-      "rate_id": "RATE-0028",
+      "rate_id": "RATE-0042",
       "side": "pay"
     }
   ],

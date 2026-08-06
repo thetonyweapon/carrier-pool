@@ -52,19 +52,36 @@
       "del_state": "TX",
       "del_zip": "75039",
       "dist_km": "370.15",
-      "entered_at": "2026-07-30 00:00:00",
+      "entered_at": "2026-07-30 06:00:00",
       "equip": "F",
       "load_num": "HD-203",
       "pu_city": "Georgetown",
       "pu_date": "2026-07-30",
-      "pu_departed_at": "2026-07-30 18:00:00",
+      "pu_departed_at": null,
       "pu_state": "TX",
       "pu_zip": "78626",
-      "status_code": 40,
+      "status_code": 30,
       "updated_at": "2026-07-30 18:00:00",
       "weight_kg": "15875.73"
     }
   ],
-  "rates": [],
+  "rates": [
+    {
+      "amount_usd": "2480.00",
+      "code": "LINEHAUL",
+      "created_at": "2026-07-30 18:00:00",
+      "load_num": "HD-203",
+      "rate_id": "RATE-0045",
+      "side": "bill"
+    },
+    {
+      "amount_usd": "1850.00",
+      "code": "LINEHAUL",
+      "created_at": "2026-07-30 18:00:00",
+      "load_num": "HD-203",
+      "rate_id": "RATE-0046",
+      "side": "pay"
+    }
+  ],
   "synced_at": "2026-07-30 18:00:00"
 }

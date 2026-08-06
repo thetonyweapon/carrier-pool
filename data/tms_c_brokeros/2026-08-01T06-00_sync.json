@@ -9,7 +9,7 @@
       "bos__Carrier__c": null,
       "bos__Customer_Rate__c": "2860.00",
       "bos__Customer__c": "CUST-302",
-      "bos__Distance_Miles__c": "265.0",
+      "bos__Distance_Miles__c": "265.5",
       "bos__Equipment_Type__c": "Reefer",
       "bos__Line_Items__r": [
         {

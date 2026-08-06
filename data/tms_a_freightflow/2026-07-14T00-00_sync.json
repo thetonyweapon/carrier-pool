@@ -2,28 +2,70 @@
   "loads": [
     {
       "carrier": {
-        "carrierMasterId": "CARR-DELTA",
-        "dotNumber": "DOT-310004",
-        "mcNumber": "MC-120004",
-        "name": "Hill Country Carriers",
+        "carrierMasterId": "CARR-ALPHA",
+        "dotNumber": "DOT-310001",
+        "mcNumber": "MC-120001",
+        "name": "Lone Star Logistics",
         "phoneNumber": "214-555-1010"
       },
-      "createdDate": "2026-07-13T06:00:00-05:00",
+      "createdDate": "2026-07-13T00:00:00-05:00",
       "customer": {
-        "customerId": "CUST-NORTH",
-        "name": "Northstar Retail"
+        "customerId": "CUST-SOUTH",
+        "name": "Alamo Industrial"
       },
-      "equipment": "Dry Van",
+      "equipment": "Reefer",
       "lastModifiedDate": "2026-07-14T00:00:00-05:00",
-      "mileage": "260.0",
-      "shipmentId": "FF-010",
-      "status": "En Route",
+      "mileage": "72.0",
+      "shipmentId": "FF-015",
+      "status": "Delivered",
       "stops": [
         {
           "actualDepartureDateTime": "2026-07-14T00:00:00-05:00",
+          "city": "San Marcos",
+          "estimatedCloseDateTime": "2026-07-13T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-13T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "78666"
+        },
+        {
+          "actualDepartureDateTime": "2026-07-14T00:00:00-05:00",
+          "city": "Temple",
+          "estimatedCloseDateTime": "2026-07-14T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-14T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "76501"
+        }
+      ],
+      "totalBuy": "980.00",
+      "totalSell": "1420.00",
+      "weightTotal": "28000.0"
+    },
+    {
+      "carrier": {
+        "carrierMasterId": "CARR-BRAVO",
+        "dotNumber": "DOT-310002",
+        "mcNumber": "MC-120002",
+        "name": "Prairie State Freight",
+        "phoneNumber": "214-555-1024"
+      },
+      "createdDate": "2026-07-13T12:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-GULF",
+        "name": "Gulf Coast Foods"
+      },
+      "equipment": "Dry Van",
+      "lastModifiedDate": "2026-07-14T00:00:00-05:00",
+      "mileage": "253.0",
+      "shipmentId": "FF-016",
+      "status": "Dispatched",
+      "stops": [
+        {
+          "actualDepartureDateTime": null,
           "city": "Dallas",
-          "estimatedCloseDateTime": "2026-07-14T02:00:00-05:00",
-          "estimatedReadyDateTime": "2026-07-13T18:00:00-05:00",
+          "estimatedCloseDateTime": "2026-07-14T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-14T00:00:00-05:00",
           "state": "TX",
           "stopType": "Pickup",
           "zipCode": "75201"
@@ -31,16 +73,52 @@
         {
           "actualDepartureDateTime": null,
           "city": "Houston",
-          "estimatedCloseDateTime": "2026-07-14T14:00:00-05:00",
-          "estimatedReadyDateTime": "2026-07-14T06:00:00-05:00",
+          "estimatedCloseDateTime": "2026-07-14T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-14T12:00:00-05:00",
           "state": "TX",
           "stopType": "Dropoff",
           "zipCode": "77002"
         }
       ],
-      "totalBuy": "2100.00",
-      "totalSell": "2675.00",
-      "weightTotal": "35000.0"
+      "totalBuy": "1975.00",
+      "totalSell": "2610.00",
+      "weightTotal": "35500.0"
+    },
+    {
+      "carrier": null,
+      "createdDate": "2026-07-14T00:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-NORTH",
+        "name": "Northstar Retail"
+      },
+      "equipment": "Flatbed",
+      "lastModifiedDate": "2026-07-14T00:00:00-05:00",
+      "mileage": "29.0",
+      "shipmentId": "FF-017",
+      "status": "Quoting",
+      "stops": [
+        {
+          "actualDepartureDateTime": null,
+          "city": "Frisco",
+          "estimatedCloseDateTime": "2026-07-14T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-14T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "75034"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "Denton",
+          "estimatedCloseDateTime": "2026-07-15T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-15T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "76201"
+        }
+      ],
+      "totalBuy": null,
+      "totalSell": "1680.00",
+      "weightTotal": "31000.0"
     }
   ],
   "syncedAt": "2026-07-14T00:00:00-05:00"

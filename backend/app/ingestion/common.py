@@ -262,6 +262,15 @@ def _merge_identity(
 ) -> None:
     _validate_identity_pair(identity, normalized_mc, normalized_dot)
     _validate_identity_pair(duplicate, normalized_mc, normalized_dot)
+    if (
+        identity.shared_display_name
+        and duplicate.shared_display_name
+        and identity.shared_display_name != duplicate.shared_display_name
+    ):
+        raise CarrierIdentityConflictError(
+            "carrier identities have conflicting approved shared display names"
+        )
+    shared_display_name = identity.shared_display_name or duplicate.shared_display_name
     for carrier in session.scalars(
         select(Carrier).where(Carrier.carrier_identity_id == duplicate.id)
     ):
@@ -271,4 +280,5 @@ def _merge_identity(
     session.flush()
     identity.normalized_mc_number = normalized_mc
     identity.normalized_dot_number = normalized_dot
+    identity.shared_display_name = shared_display_name
     identity.updated_at = observed_at

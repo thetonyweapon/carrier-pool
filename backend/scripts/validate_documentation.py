@@ -42,6 +42,9 @@ REQUIRED_RUNBOOK_TEXT = (
     "stop backend ingestion-worker frontend",
 )
 MARKDOWN_LINK = re.compile(r"\[[^]]+\]\(([^)]+)\)")
+REQUIRED_VERIFICATION_TEXT = {
+    "README.md": ("npm run test:production",),
+}
 
 
 def validate_documentation() -> None:
@@ -58,9 +61,20 @@ def validate_documentation() -> None:
     project = (ROOT / "openspec/project.md").read_text()
     if "Delivered (milestones 1-11)" not in project:
         raise ValueError("project capability status is stale")
+    fence_files = set(REQUIRED_FILES)
+    fence_files.update(str(path.relative_to(ROOT)) for path in (ROOT / "openspec").rglob("*.md"))
+    for relative in sorted(fence_files):
+        document = ROOT / relative
+        content = document.read_text()
+        if content.count("```") % 2:
+            raise ValueError(f"unclosed Markdown code fence in {relative}")
     for relative in REQUIRED_FILES:
         document = ROOT / relative
-        for target in MARKDOWN_LINK.findall(document.read_text()):
+        content = document.read_text()
+        for required in REQUIRED_VERIFICATION_TEXT.get(relative, ()):
+            if required not in content:
+                raise ValueError(f"missing verification command in {relative}: {required}")
+        for target in MARKDOWN_LINK.findall(content):
             target = target.split("#", 1)[0]
             if target and not target.startswith(("http://", "https://")):
                 if not (document.parent / target).resolve().is_file():

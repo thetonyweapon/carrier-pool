@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Optional, Sequence
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, exists, or_, select
 from sqlalchemy.orm import Session
 
 from app.lane_geography import NORMALIZATION_VERSION
@@ -229,6 +229,19 @@ def _load_observations(
     target_load_id: str,
     as_of: datetime,
 ) -> tuple[list[tuple[Load, BrokerSource]], int]:
+    future_stop_exists = exists(
+        select(LoadStop.id).where(
+            LoadStop.broker_id == broker_id,
+            LoadStop.load_id == Load.id,
+            or_(
+                LoadStop.scheduled_date > as_of.date(),
+                LoadStop.scheduled_start_at > as_of,
+                LoadStop.scheduled_end_at > as_of,
+                LoadStop.actual_arrived_at > as_of,
+                LoadStop.actual_departed_at > as_of,
+            ),
+        )
+    )
     rows = session.execute(
         select(Load, BrokerSource)
         .join(
@@ -244,6 +257,10 @@ def _load_observations(
             Load.status.in_(HISTORY_STATUSES),
             Load.carrier_id.is_not(None),
             Load.last_synced_at <= as_of,
+            or_(Load.source_created_at.is_(None), Load.source_created_at <= as_of),
+            or_(Load.source_updated_at.is_(None), Load.source_updated_at <= as_of),
+            or_(Load.booked_at.is_(None), Load.booked_at <= as_of),
+            ~future_stop_exists,
         )
         .order_by(Load.last_synced_at.desc(), Load.id.desc())
         .limit(HISTORY_LOAD_LIMIT)
@@ -291,7 +308,7 @@ def _build_observations(
                 equipment_type=load.equipment_type,
                 carrier_pay=_money(load.carrier_rate),
                 distance_miles=load.distance_miles,
-                rate_date=min(_rate_date(load), as_of),
+                rate_date=_rate_date(load),
                 source_type=source.tms_type,
             )
         )
@@ -321,7 +338,7 @@ def estimate_carrier_rate(
     except LoadNotEligible as exc:
         raise RateEstimationNotEligible(str(exc)) from exc
 
-    as_of = _as_utc(target.last_synced_at)
+    as_of = datetime.now(timezone.utc)
     rows, candidate_count = _load_observations(session, broker_id, target.id, as_of)
     stops_by_load = load_stops(session, broker_id, [target.id, *(load.id for load, _ in rows)])
     target_lane = derive_primary_lane(stops_by_load.get(target.id, []))

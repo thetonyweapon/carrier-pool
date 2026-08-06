@@ -30,8 +30,7 @@ flowchart LR
     platform -->|Canonical records and audit history| postgres
     platform --> recommendations
     platform --> estimates
-    pool -.-> recommendations
-    pool -.-> estimates
+    platform --> pool
 
     subgraph boundary[Carrier Pool system]
         platform

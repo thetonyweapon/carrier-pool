@@ -39,6 +39,7 @@ external OIDC provider and must not use local demo account state.
    ```bash
     docker compose --env-file "$PRODUCTION_ENV_FILE" -f docker-compose.production.yaml build
     docker compose --env-file "$PRODUCTION_ENV_FILE" -f docker-compose.production.yaml run --rm migrate
+    ```
 
 3. Start the application stack after the migration succeeds:
 

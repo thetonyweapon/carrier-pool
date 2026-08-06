@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from typing import Optional
 
 import pytest
 from fastapi.testclient import TestClient
@@ -75,6 +76,9 @@ def add_load(
     origin: tuple[str, str, str],
     destination: tuple[str, str, str],
     equipment: EquipmentType = EquipmentType.DRY_VAN,
+    last_synced_at: datetime = NOW,
+    source_updated_at: Optional[datetime] = None,
+    scheduled_date: Optional[date] = None,
 ) -> Load:
     source_id = f"source-{broker_id}"
     load = Load(
@@ -87,7 +91,8 @@ def add_load(
         customer_id=f"customer-{broker_id}",
         equipment_type=equipment,
         first_seen_at=NOW,
-        last_synced_at=NOW,
+        source_updated_at=source_updated_at,
+        last_synced_at=last_synced_at,
     )
     session.add(load)
     session.add_all(
@@ -109,11 +114,59 @@ def add_load(
                 city=destination[0],
                 state=destination[1],
                 postal_code=destination[2],
+                scheduled_date=scheduled_date,
             ),
         ]
     )
     session.flush()
     return load
+
+
+def test_lane_history_uses_later_ingestion_and_excludes_future_evidence(
+    db_session: Session,
+) -> None:
+    add_broker(db_session, "broker-a")
+    add_load(
+        db_session,
+        "broker-a",
+        "target",
+        LoadStatus.ACTIVE,
+        ("Dallas", "TX", "75201"),
+        ("Houston", "TX", "77002"),
+        last_synced_at=NOW - timedelta(days=30),
+    )
+    add_load(
+        db_session,
+        "broker-a",
+        "later-history",
+        LoadStatus.COMPLETED,
+        ("Dallas", "TX", "75201"),
+        ("Houston", "TX", "77002"),
+    )
+    add_load(
+        db_session,
+        "broker-a",
+        "future-source",
+        LoadStatus.COMPLETED,
+        ("Dallas", "TX", "75201"),
+        ("Houston", "TX", "77002"),
+        source_updated_at=datetime(2099, 1, 1, tzinfo=timezone.utc),
+    )
+    add_load(
+        db_session,
+        "broker-a",
+        "future-stop",
+        LoadStatus.COMPLETED,
+        ("Dallas", "TX", "75201"),
+        ("Houston", "TX", "77002"),
+        scheduled_date=date(2099, 1, 1),
+    )
+    db_session.commit()
+
+    result = get_lane_intelligence(db_session, "broker-a", "target")
+
+    assert result is not None
+    assert result.history.exact_count == 1
 
 
 def test_normalize_location_prefers_zip_and_corrects_austin_area() -> None:

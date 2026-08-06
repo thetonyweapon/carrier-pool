@@ -1,22 +1,61 @@
 {
   "records": [
     {
-      "CreatedDate": "2026-07-14T17:00:00.000+0000",
-      "Id": "BROKEROS-011",
+      "CreatedDate": "2026-07-14T05:00:00.000+0000",
+      "Id": "BROKEROS-017",
       "LastModifiedDate": "2026-07-15T05:00:00.000+0000",
-      "Name": "BOS000011",
-      "bos__Carrier_Rate__c": "1920.00",
-      "bos__Carrier__c": "CARRIER-11",
-      "bos__Customer_Rate__c": "2460.00",
-      "bos__Customer__c": "CUST-11",
-      "bos__Distance_Miles__c": "240.0",
-      "bos__Equipment_Type__c": "Dry Van",
+      "Name": "BOS000017",
+      "bos__Carrier_Rate__c": "1210.00",
+      "bos__Carrier__c": "CARRIER-CARR-DELTA",
+      "bos__Customer_Rate__c": "1680.00",
+      "bos__Customer__c": "CUST-17",
+      "bos__Distance_Miles__c": "29.0",
+      "bos__Equipment_Type__c": "Flatbed",
       "bos__Line_Items__r": [
         {
           "bos__Commodity__c": "General freight",
           "bos__Pallet_Count__c": "20",
           "bos__Weight_Units__c": "pounds",
-          "bos__Weight__c": "32000.0"
+          "bos__Weight__c": "31000.0"
+        }
+      ],
+      "bos__Load_Status__c": "Delivered",
+      "bos__Stops__r": [
+        {
+          "bos__Arrival_Time__c": "2026-07-15T05:00:00.000+0000",
+          "bos__Is_Dropoff__c": false,
+          "bos__Is_Pickup__c": true,
+          "bos__Location__c": "LOC-17-P",
+          "bos__Number__c": "1",
+          "bos__Scheduled_Date__c": "2026-07-14"
+        },
+        {
+          "bos__Arrival_Time__c": "2026-07-15T05:00:00.000+0000",
+          "bos__Is_Dropoff__c": true,
+          "bos__Is_Pickup__c": false,
+          "bos__Location__c": "LOC-17-D",
+          "bos__Number__c": "2",
+          "bos__Scheduled_Date__c": "2026-07-15"
+        }
+      ]
+    },
+    {
+      "CreatedDate": "2026-07-14T17:00:00.000+0000",
+      "Id": "BROKEROS-018",
+      "LastModifiedDate": "2026-07-15T05:00:00.000+0000",
+      "Name": "BOS000018",
+      "bos__Carrier_Rate__c": "1320.00",
+      "bos__Carrier__c": "CARRIER-CARR-ECHO",
+      "bos__Customer_Rate__c": "1860.00",
+      "bos__Customer__c": "CUST-18",
+      "bos__Distance_Miles__c": "24.0",
+      "bos__Equipment_Type__c": "Reefer",
+      "bos__Line_Items__r": [
+        {
+          "bos__Commodity__c": "General freight",
+          "bos__Pallet_Count__c": "20",
+          "bos__Weight_Units__c": "pounds",
+          "bos__Weight__c": "30000.0"
         }
       ],
       "bos__Load_Status__c": "Booked",
@@ -25,7 +64,7 @@
           "bos__Arrival_Time__c": null,
           "bos__Is_Dropoff__c": false,
           "bos__Is_Pickup__c": true,
-          "bos__Location__c": "LOC-11-P",
+          "bos__Location__c": "LOC-18-P",
           "bos__Number__c": "1",
           "bos__Scheduled_Date__c": "2026-07-15"
         },
@@ -33,7 +72,7 @@
           "bos__Arrival_Time__c": null,
           "bos__Is_Dropoff__c": true,
           "bos__Is_Pickup__c": false,
-          "bos__Location__c": "LOC-11-D",
+          "bos__Location__c": "LOC-18-D",
           "bos__Number__c": "2",
           "bos__Scheduled_Date__c": "2026-07-15"
         }
@@ -41,27 +80,51 @@
     }
   ],
   "referenced_records": {
-    "CARRIER-11": {
+    "CARRIER-CARR-DELTA": {
+      "Name": "Hill Country Carriers",
+      "record_type": "Carrier",
+      "type": "Account"
+    },
+    "CARRIER-CARR-ECHO": {
       "Name": "Bluebonnet Transport",
       "record_type": "Carrier",
       "type": "Account"
     },
-    "CUST-11": {
+    "CUST-17": {
+      "Name": "Northstar Retail",
+      "record_type": "Customer",
+      "type": "Account"
+    },
+    "CUST-18": {
       "Name": "Gulf Coast Foods",
       "record_type": "Customer",
       "type": "Account"
     },
-    "LOC-11-D": {
-      "Name": "Houston Distribution",
-      "bos__City__c": "Houston",
-      "bos__Postal_Code__c": "77002",
+    "LOC-17-D": {
+      "Name": "Denton Distribution",
+      "bos__City__c": "Denton",
+      "bos__Postal_Code__c": "76201",
       "bos__State__c": "TX",
       "type": "Location"
     },
-    "LOC-11-P": {
-      "Name": "Dallas Crossdock",
-      "bos__City__c": "Dallas",
-      "bos__Postal_Code__c": "75201",
+    "LOC-17-P": {
+      "Name": "Frisco Crossdock",
+      "bos__City__c": "Frisco",
+      "bos__Postal_Code__c": "75034",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-18-D": {
+      "Name": "Pasadena Distribution",
+      "bos__City__c": "Pasadena",
+      "bos__Postal_Code__c": "77506",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-18-P": {
+      "Name": "Baytown Crossdock",
+      "bos__City__c": "Baytown",
+      "bos__Postal_Code__c": "77520",
       "bos__State__c": "TX",
       "type": "Location"
     }

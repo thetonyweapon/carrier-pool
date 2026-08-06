@@ -264,13 +264,6 @@ def _ingest_load(
     carrier_rate = _validate_currency(source_load.carrier_rate, "bos__Carrier_Rate__c")
     distance_miles = _validate_distance(source_load.distance_miles)
     weight_lbs = _aggregate_weight(source_load.line_items)
-    if (
-        load is not None
-        and load.source_updated_at is not None
-        and source_updated_at < _as_utc(load.source_updated_at)
-    ):
-        return
-
     customer = _upsert_customer(
         session, source, source_load.customer_ref, customer_reference, ingestion_file.synced_at
     )

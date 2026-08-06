@@ -47,149 +47,251 @@ class Scenario:
     forced_status: Optional[str] = None
 
 
+def historical_scenario(
+    number: int,
+    pickup: Tuple[str, str, str, str],
+    delivery: Tuple[str, str, str, str],
+    equipment: str,
+    customer: str,
+    carrier: str,
+    distance_miles: str,
+    weight_lbs: str,
+    sell: str,
+    buy: str,
+) -> Scenario:
+    return Scenario(
+        number,
+        pickup,
+        delivery,
+        equipment,
+        customer,
+        carrier,
+        Decimal(distance_miles),
+        Decimal(weight_lbs),
+        Decimal(sell),
+        Decimal(buy),
+        (number - 1) * 2,
+    )
+
+
+# One load starts every two syncs. Each is exported through all six lifecycle states,
+# so every historical file contains only records that were created or substantively changed.
 SCENARIOS = (
-    Scenario(
+    historical_scenario(
         1,
         ("Sugar Land", "TX", "77478", "Houston"),
         ("Carrollton", "TX", "75006", "DFW"),
         "Reefer",
         "CUST-GULF",
         "CARR-ALPHA",
-        Decimal("244.0"),
-        Decimal("42000.0"),
-        Decimal("2850.00"),
-        Decimal("2200.00"),
-        0,
+        "244.0",
+        "42000.0",
+        "2850.00",
+        "2200.00",
     ),
-    Scenario(
+    historical_scenario(
         2,
-        ("Plano", "TX", "75024", "DFW"),
-        ("Katy", "TX", "77494", "Houston"),
+        ("Dallas", "TX", "75201", "DFW"),
+        ("Houston", "TX", "77002", "Houston"),
         "Dry Van",
         "CUST-NORTH",
         "CARR-BRAVO",
-        Decimal("271.0"),
-        Decimal("36000.0"),
-        Decimal("2525.00"),
-        Decimal("1900.00"),
-        0,
+        "250.0",
+        "34000.0",
+        "2525.00",
+        "1900.00",
     ),
-    Scenario(
+    historical_scenario(
         3,
         ("Pearland", "TX", "77584", "Houston"),
         ("Schertz", "TX", "78154", "San Antonio"),
-        "Flatbed",
+        "Reefer",
         "CUST-GULF",
-        "CARR-CHARLIE",
-        Decimal("205.0"),
-        Decimal("38000.0"),
-        Decimal("2310.00"),
-        Decimal("1725.00"),
-        6,
+        "CARR-ALPHA",
+        "205.0",
+        "38000.0",
+        "2310.00",
+        "1725.00",
     ),
-    Scenario(
+    historical_scenario(
         4,
-        ("New Braunfels", "TX", "78130", "San Antonio"),
-        ("McKinney", "TX", "75070", "DFW"),
+        ("Dallas", "TX", "75201", "DFW"),
+        ("Houston", "TX", "77002", "Houston"),
         "Dry Van",
-        "CUST-SOUTH",
-        "CARR-DELTA",
-        Decimal("286.0"),
-        Decimal("33000.0"),
-        Decimal("2680.00"),
-        Decimal("2050.00"),
-        6,
+        "CUST-NORTH",
+        "CARR-BRAVO",
+        "252.0",
+        "35000.0",
+        "2575.00",
+        "1950.00",
     ),
-    Scenario(
+    historical_scenario(
         5,
         ("Arlington", "TX", "76011", "DFW"),
         ("Missouri City", "TX", "77459", "Houston"),
         "Reefer",
         "CUST-NORTH",
         "CARR-ALPHA",
-        Decimal("248.0"),
-        Decimal("41000.0"),
-        Decimal("2910.00"),
-        Decimal("2260.00"),
-        12,
+        "248.0",
+        "41000.0",
+        "2910.00",
+        "2260.00",
     ),
-    Scenario(
+    historical_scenario(
         6,
-        ("Cypress", "TX", "77429", "Houston"),
-        ("Boerne", "TX", "78006", "San Antonio"),
+        ("Dallas", "TX", "75201", "DFW"),
+        ("Houston", "TX", "77002", "Houston"),
         "Dry Van",
         "CUST-GULF",
-        "CARR-ECHO",
-        Decimal("218.0"),
-        Decimal("29000.0"),
-        Decimal("2195.00"),
-        Decimal("1640.00"),
-        12,
+        "CARR-BRAVO",
+        "247.0",
+        "32000.0",
+        "2490.00",
+        "1880.00",
     ),
-    Scenario(
+    historical_scenario(
         7,
-        ("Georgetown", "TX", "78626", "San Antonio"),
+        ("Georgetown", "TX", "78626", "Austin"),
         ("Irving", "TX", "75039", "DFW"),
         "Flatbed",
         "CUST-SOUTH",
-        "CARR-DELTA",
-        Decimal("242.0"),
-        Decimal("35000.0"),
-        Decimal("2490.00"),
-        Decimal("1840.00"),
-        18,
+        "CARR-ALPHA",
+        "230.0",
+        "35000.0",
+        "2490.00",
+        "1840.00",
     ),
-    Scenario(
+    historical_scenario(
         8,
-        ("The Woodlands", "TX", "77380", "Houston"),
-        ("Round Rock", "TX", "78664", "DFW"),
-        "Reefer",
-        "CUST-GULF",
-        "CARR-CHARLIE",
-        Decimal("190.0"),
-        Decimal("39000.0"),
-        Decimal("2380.00"),
-        Decimal("1780.00"),
-        18,
-    ),
-    Scenario(
-        9,
         ("Dallas", "TX", "75201", "DFW"),
         ("Houston", "TX", "77002", "Houston"),
         "Dry Van",
         "CUST-NORTH",
         "CARR-BRAVO",
-        Decimal("250.0"),
-        Decimal("34000.0"),
-        Decimal("2550.00"),
-        Decimal("2000.00"),
-        24,
+        "255.0",
+        "36000.0",
+        "2625.00",
+        "1980.00",
     ),
-    Scenario(
+    historical_scenario(
+        9,
+        ("The Woodlands", "TX", "77380", "Houston"),
+        ("Round Rock", "TX", "78664", "Austin"),
+        "Reefer",
+        "CUST-GULF",
+        "CARR-ALPHA",
+        "190.0",
+        "39000.0",
+        "2380.00",
+        "1780.00",
+    ),
+    historical_scenario(
         10,
         ("Dallas", "TX", "75201", "DFW"),
         ("Houston", "TX", "77002", "Houston"),
         "Dry Van",
         "CUST-NORTH",
-        "CARR-DELTA",
-        Decimal("260.0"),
-        Decimal("35000.0"),
-        Decimal("2675.00"),
-        Decimal("2100.00"),
-        29,
+        "CARR-BRAVO",
+        "249.0",
+        "33000.0",
+        "2540.00",
+        "1910.00",
     ),
-    Scenario(
+    historical_scenario(
         11,
+        ("Cypress", "TX", "77429", "Houston"),
+        ("Boerne", "TX", "78006", "San Antonio"),
+        "Reefer",
+        "CUST-GULF",
+        "CARR-ALPHA",
+        "218.0",
+        "29000.0",
+        "2195.00",
+        "1640.00",
+    ),
+    historical_scenario(
+        12,
         ("Dallas", "TX", "75201", "DFW"),
         ("Houston", "TX", "77002", "Houston"),
         "Dry Van",
         "CUST-GULF",
+        "CARR-BRAVO",
+        "251.0",
+        "37000.0",
+        "2595.00",
+        "1960.00",
+    ),
+    historical_scenario(
+        13,
+        ("New Braunfels", "TX", "78130", "San Antonio"),
+        ("McKinney", "TX", "75070", "DFW"),
+        "Flatbed",
+        "CUST-SOUTH",
+        "CARR-ALPHA",
+        "286.0",
+        "33000.0",
+        "2680.00",
+        "2050.00",
+    ),
+    historical_scenario(
+        14,
+        ("Dallas", "TX", "75201", "DFW"),
+        ("Houston", "TX", "77002", "Houston"),
+        "Dry Van",
+        "CUST-NORTH",
+        "CARR-BRAVO",
+        "246.0",
+        "34500.0",
+        "2510.00",
+        "1890.00",
+    ),
+    historical_scenario(
+        15,
+        ("San Marcos", "TX", "78666", "Austin"),
+        ("Temple", "TX", "76501", "Austin"),
+        "Reefer",
+        "CUST-SOUTH",
+        "CARR-ALPHA",
+        "72.0",
+        "28000.0",
+        "1420.00",
+        "980.00",
+    ),
+    historical_scenario(
+        16,
+        ("Dallas", "TX", "75201", "DFW"),
+        ("Houston", "TX", "77002", "Houston"),
+        "Dry Van",
+        "CUST-GULF",
+        "CARR-BRAVO",
+        "253.0",
+        "35500.0",
+        "2610.00",
+        "1975.00",
+    ),
+    historical_scenario(
+        17,
+        ("Frisco", "TX", "75034", "DFW"),
+        ("Denton", "TX", "76201", "DFW"),
+        "Flatbed",
+        "CUST-NORTH",
+        "CARR-DELTA",
+        "29.0",
+        "31000.0",
+        "1680.00",
+        "1210.00",
+    ),
+    historical_scenario(
+        18,
+        ("Baytown", "TX", "77520", "Houston"),
+        ("Pasadena", "TX", "77506", "Houston"),
+        "Reefer",
+        "CUST-GULF",
         "CARR-ECHO",
-        Decimal("240.0"),
-        Decimal("32000.0"),
-        Decimal("2460.00"),
-        Decimal("1920.00"),
-        34,
+        "24.0",
+        "30000.0",
+        "1860.00",
+        "1320.00",
     ),
 )
 
@@ -260,7 +362,7 @@ OPERATIONAL_SCENARIOS = (
         Decimal("35000.0"),
         Decimal("2480.00"),
         Decimal("1850.00"),
-        96,
+        97,
     ),
     Scenario(
         301,
@@ -375,8 +477,7 @@ def utc_compact(value: datetime) -> str:
 
 
 def active_scenarios(slot: int) -> List[Scenario]:
-    candidates = [item for item in SCENARIOS if item.start_slot <= slot < item.start_slot + 6]
-    return candidates or list(SCENARIOS[-2:])
+    return [item for item in SCENARIOS if item.start_slot <= slot < item.start_slot + 6]
 
 
 def lifecycle(slot: int, start: int, forced_status: Optional[str] = None) -> Tuple[str, int]:
@@ -414,6 +515,13 @@ def scenario_rates(scenario: Scenario, slot: int) -> Tuple[Decimal, Decimal]:
     return scenario.sell + sell_correction, scenario.buy + pay_correction
 
 
+def scenario_distance(scenario: Scenario, slot: int) -> Decimal:
+    distance = scenario.distance_miles
+    if scenario.forced_status == "active" or scenario.start_slot == 40:
+        distance += Decimal(slot - scenario.start_slot) / Decimal("2.0")
+    return distance
+
+
 def scheduled_times(scenario: Scenario) -> Tuple[datetime, datetime]:
     created = slot_datetime(scenario.start_slot) + timedelta(days=scenario.schedule_offset_days)
     return created + timedelta(hours=12), created + timedelta(hours=24)
@@ -449,7 +557,7 @@ def freightflow_payload(slot: int, records: Sequence[Scenario]) -> dict:
                     "delivered": "Delivered",
                     "completed": "Completed",
                 }[status],
-                "mileage": scenario.distance_miles
+                "mileage": scenario_distance(scenario, slot)
                 + (Decimal("2.0") if scenario.number == 1 and slot >= 3 else Decimal("0.0")),
                 "totalSell": sell,
                 "totalBuy": None if status in {"planned", "active"} else buy,
@@ -516,9 +624,9 @@ def hauldesk_payload(slot: int, records: Sequence[Scenario], known_rates: Dict[s
                 "weight_kg": (scenario.weight_lbs / Decimal("2.2046226218487757")).quantize(
                     Decimal("0.01")
                 ),
-                "dist_km": (scenario.distance_miles / Decimal("0.621371192237334")).quantize(
-                    Decimal("0.01")
-                ),
+                "dist_km": (
+                    scenario_distance(scenario, slot) / Decimal("0.621371192237334")
+                ).quantize(Decimal("0.01")),
                 "pu_city": scenario.pickup[0],
                 "pu_state": scenario.pickup[1],
                 "pu_zip": scenario.pickup[2],
@@ -643,7 +751,7 @@ def brokeros_payload(slot: int, records: Sequence[Scenario]) -> dict:
             }
         )
         if slot - scenario.start_slot >= 2:
-            references[f"CARRIER-{scenario.number}"] = {
+            references[f"CARRIER-{scenario.carrier}"] = {
                 "type": "Account",
                 "record_type": "Carrier",
                 "Name": carrier_name(scenario.carrier),
@@ -665,9 +773,9 @@ def brokeros_payload(slot: int, records: Sequence[Scenario]) -> dict:
                     "delivered": "Delivered",
                     "completed": "Paid",
                 }[status],
-                "bos__Distance_Miles__c": scenario.distance_miles,
+                "bos__Distance_Miles__c": scenario_distance(scenario, slot),
                 "bos__Customer__c": f"CUST-{scenario.number}",
-                "bos__Carrier__c": f"CARRIER-{scenario.number}"
+                "bos__Carrier__c": f"CARRIER-{scenario.carrier}"
                 if status not in {"planned", "active"}
                 else None,
                 "bos__Equipment_Type__c": scenario.equipment,
@@ -748,7 +856,7 @@ def records_for_slot(slot: int) -> List[Scenario]:
     recent = [
         scenario
         for scenario in OPERATIONAL_SCENARIOS
-        if 201 <= scenario.number <= 203 and scenario.start_slot <= slot <= scenario.start_slot + 6
+        if 201 <= scenario.number <= 203 and scenario.start_slot <= slot < scenario.start_slot + 6
     ]
     current = [
         scenario

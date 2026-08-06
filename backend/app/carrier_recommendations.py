@@ -403,7 +403,7 @@ def get_carrier_recommendations(
     ).all()
     candidates = _candidate_groups(carriers, target.broker_source_id)
 
-    as_of = _as_utc(target.last_synced_at)
+    as_of = datetime.now(timezone.utc)
     future_stop_exists = exists(
         select(LoadStop.id).where(
             LoadStop.broker_id == broker_id,
@@ -461,9 +461,7 @@ def get_carrier_recommendations(
         if origin is None or destination is None:
             continue
         operational_evidence = _operational_evidence(destination)
-        if operational_evidence is not None and _as_utc(operational_evidence) > _as_utc(
-            target.last_synced_at
-        ):
+        if operational_evidence is not None and _as_utc(operational_evidence) > as_of:
             continue
         evidence_by_candidate.setdefault(candidate_id, []).append(
             _HistoricalEvidence(

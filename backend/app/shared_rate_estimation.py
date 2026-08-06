@@ -114,20 +114,19 @@ def get_shared_rate_estimate(
     ).all()
     participant_ids = [policy.broker_id for policy in policies]
     scope_digest = _participant_scope_digest(policies)
-    historical_loads = _historical_loads(session, participant_ids, _as_utc(target.last_synced_at))
+    as_of = datetime.now(timezone.utc)
+    historical_loads = _historical_loads(session, participant_ids, as_of)
     stops_by_load = _load_stops_by_scope(
         session,
         participant_ids,
         [load.id for load in historical_loads],
     )
     observations = [
-        item
-        for item in _observations(historical_loads, stops_by_load)
-        if item.rate_date <= _as_utc(target.last_synced_at)
+        item for item in _observations(historical_loads, stops_by_load) if item.rate_date <= as_of
     ]
     selected = None
     for lookback_days in (PRIMARY_LOOKBACK_DAYS, EXTENDED_LOOKBACK_DAYS):
-        cutoff = _as_utc(target.last_synced_at) - timedelta(days=lookback_days)
+        cutoff = as_of - timedelta(days=lookback_days)
         recent = [item for item in observations if item.rate_date >= cutoff]
         for tier in TIERS:
             matched = [

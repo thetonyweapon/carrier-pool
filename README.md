@@ -109,10 +109,11 @@ alembic upgrade head
 alembic downgrade base
 ```
 
-The initial migration creates broker-scoped canonical records, audit versions,
-append-only rate line items, and idempotent ingestion-file tracking. It
-enforces cross-tenant relationships with composite foreign keys; shared carrier
-identity across brokers is intentionally deferred to the opt-in pool design.
+The migration chain creates broker-scoped canonical records, audit and financial
+history, carrier identities, platform assignments, shared-pool policy/audit
+records, and durable ingestion jobs. Later revisions add concurrency fencing,
+actor/request provenance, demo metadata, and approved shared display names.
+Production applies the complete chain in the one-off migration job.
 
 The BrokerOS migration adds append-only `load_rate_observations` for mutable
 snapshot totals, plus date-only scheduling and source-location metadata on
@@ -219,7 +220,8 @@ into HaulDesk's additive `RateLineItem` journal.
 ## Synthetic Dataset
 
 The checked-in synthetic dataset covers July 6-16, 2026 at the required
-six-hour cadence: 44 files per TMS, or 132 files total. It includes complete
+six-hour cadence, plus the July 29-August 1 operational window: 60 files per
+TMS, or 180 files total. It includes complete
 lifecycles, corrections, rich and thin Texas Triangle lanes, experienced and
 sparse carriers, and fresh Day 11 loads that remain uncovered.
 
@@ -251,10 +253,19 @@ replacement totals with append-only observations.
 ## Lane Intelligence
 
 Lane Intelligence is available for an active or historical load through the
-broker-scoped endpoint below:
+broker-scoped endpoint below. First acquire a demo token from the Compose demo
+stack; the same header is required by the other broker-scoped examples:
 
 ```bash
-curl 'http://localhost:8000/brokers/<broker-id>/loads/<load-id>/lane-intelligence'
+DEMO_TOKEN=$(curl -fsS -X POST http://localhost:8000/demo/auth \
+  -H 'Content-Type: application/json' \
+  -d '{"broker_id":"broker-a","identifier":"admin","password":"admin"}' \
+  | python3 -c 'import json, sys; print(json.load(sys.stdin)["access_token"])')
+```
+
+```bash
+curl -H "Authorization: Bearer $DEMO_TOKEN" \
+  'http://localhost:8000/brokers/<broker-id>/loads/<load-id>/lane-intelligence'
 ```
 
 The response derives a directional lane using the first pickup-capable and final
@@ -283,7 +294,8 @@ python3 -m pytest tests/test_lane_intelligence.py -q
 Carrier rate estimates are available for active, uncovered loads:
 
 ```bash
-curl 'http://localhost:8000/brokers/<broker-id>/loads/<load-id>/carrier-rate-estimate'
+curl -H "Authorization: Bearer $DEMO_TOKEN" \
+  'http://localhost:8000/brokers/<broker-id>/loads/<load-id>/carrier-rate-estimate'
 ```
 
 The response estimates all-in USD carrier pay using one effective current total
@@ -305,7 +317,8 @@ python3 -m pytest tests/test_rate_estimation.py -q
 Carrier recommendations are available for active, uncovered loads:
 
 ```bash
-curl 'http://localhost:8000/brokers/<broker-id>/loads/<load-id>/carrier-recommendations'
+curl -H "Authorization: Bearer $DEMO_TOKEN" \
+  'http://localhost:8000/brokers/<broker-id>/loads/<load-id>/carrier-recommendations'
 ```
 
 The response ranks broker-owned logical carriers using deterministic
@@ -325,9 +338,12 @@ is computed from current canonical rows.
 The broker operations API is broker scoped and exposes the complete lifecycle:
 
 ```bash
-curl 'http://localhost:8000/brokers/<broker-id>/loads?page=1&page_size=25'
-curl 'http://localhost:8000/brokers/<broker-id>/loads/<load-id>'
-curl 'http://localhost:8000/brokers/<broker-id>/carrier-candidates/carrier:<carrier-id>'
+curl -H "Authorization: Bearer $DEMO_TOKEN" \
+  'http://localhost:8000/brokers/<broker-id>/loads?page=1&page_size=25'
+curl -H "Authorization: Bearer $DEMO_TOKEN" \
+  'http://localhost:8000/brokers/<broker-id>/loads/<load-id>'
+curl -H "Authorization: Bearer $DEMO_TOKEN" \
+  'http://localhost:8000/brokers/<broker-id>/carrier-candidates/carrier:<carrier-id>'
 ```
 
 List filters are `status`, `equipment`, `assignment_state` (`assigned` or
@@ -352,14 +368,21 @@ The shared-pool workflow is disabled by default. Compose enables its
 demo-authenticated path with `SHARED_POOL_READ_ENABLED=true`, `AUTH_SECRET`, and
 `SHARED_POOL_ID_SECRET`:
 
-```text
-GET /brokers/<broker-id>/loads/<load-id>/shared-carrier-recommendations
-GET /brokers/<broker-id>/loads/<load-id>/shared-carrier-rate-estimate
+```bash
+curl -H "Authorization: Bearer $DEMO_TOKEN" \
+  'http://localhost:8000/brokers/<broker-id>/loads/<load-id>/shared-carrier-recommendations'
+curl -H "Authorization: Bearer $DEMO_TOKEN" \
+  'http://localhost:8000/brokers/<broker-id>/loads/<load-id>/shared-carrier-rate-estimate'
 ```
 
 Opted-in brokers contribute only normalized MC/DOT-linked history. Results need
-evidence from at least three distinct opted-in brokers and expose only a public
-carrier name, coarse match/evidence buckets, and an opaque candidate ID. They
+evidence from at least three distinct opted-in brokers and expose only an
+explicitly approved shared display name, coarse evidence buckets, and an
+opaque candidate ID. Ordinary ingestion does not approve source carrier names.
+Broker-authenticated operators
+approve or revoke a name through `PUT` or `DELETE` on
+`/brokers/<broker-id>/carrier-identities/<identity-id>/shared-display-name`; the
+demo bootstrap explicitly approves only its configured demo identities. Shared results
 omit MC/DOT values, source broker identity, customers, rates, raw payloads,
 exact source lanes, and precise timestamps. Shared candidates are informational
 only and cannot be assigned through the local assignment endpoint. Policy
@@ -484,6 +507,7 @@ Run the component and integration suite from `frontend/`:
 npm ci
 npm run typecheck
 npm test
+npm run test:production
 npm run test:coverage
 npm run build
 ```

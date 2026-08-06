@@ -10,8 +10,15 @@ from app.database import SessionLocal
 from app.ingestion.brokeros import ingest_file as ingest_brokeros
 from app.ingestion.freightflow import ingest_file as ingest_freightflow
 from app.ingestion.hauldesk import ingest_file as ingest_hauldesk
-from app.models import Broker, BrokerSource, SharedPoolPolicy, TmsType
-from app.shared_carrier_pool import set_shared_pool_policy
+from app.models import (
+    Broker,
+    BrokerSource,
+    Carrier,
+    CarrierIdentity,
+    SharedPoolPolicy,
+    TmsType,
+)
+from app.shared_carrier_pool import set_shared_display_name, set_shared_pool_policy
 
 SOURCE_CONFIG = (
     (
@@ -154,6 +161,30 @@ def bootstrap(root: Path) -> int:
                 result = ingest(session, source_id, path)
                 if not result.duplicate:
                     ingested += 1
+        demo_broker_ids = {item[1] for item in SOURCE_CONFIG}
+        identities = session.scalars(
+            select(CarrierIdentity)
+            .join(Broker, Broker.id == CarrierIdentity.broker_id)
+            .where(
+                CarrierIdentity.broker_id.in_(demo_broker_ids),
+                Broker.is_demo.is_(True),
+            )
+            .order_by(CarrierIdentity.broker_id, CarrierIdentity.id)
+        ).all()
+        for identity in identities:
+            if identity.shared_display_name:
+                continue
+            carrier = session.scalar(
+                select(Carrier)
+                .where(
+                    Carrier.broker_id == identity.broker_id,
+                    Carrier.carrier_identity_id == identity.id,
+                )
+                .order_by(Carrier.updated_at.desc(), Carrier.id)
+            )
+            if carrier is not None:
+                set_shared_display_name(session, identity.broker_id, identity.id, carrier.name)
+        session.commit()
         return ingested
 
 

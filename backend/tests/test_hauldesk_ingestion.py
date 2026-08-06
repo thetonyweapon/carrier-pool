@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from alembic import command
 from app.config import settings
-from app.ingestion.common import upsert_carrier_identity
+from app.ingestion.common import CarrierIdentityConflictError, upsert_carrier_identity
 from app.ingestion.hauldesk import (
     ConflictingHaulDeskFileError,
     InvalidHaulDeskPayloadError,
@@ -427,25 +427,34 @@ def test_zero_sum_rate_correction_is_stored_as_zero_not_null(db_session: Session
     assert versions[-1].normalized_snapshot["carrier_rate"] == "0.00"
 
 
-def test_newer_sync_does_not_apply_an_older_hauldesk_record(db_session: Session) -> None:
+def test_later_file_applies_correction_with_regressed_hauldesk_timestamp(
+    db_session: Session,
+) -> None:
     ingest_contents(db_session, "hauldesk-a", "first.json", contents(make_sync(status_code=20)))
-    stale = make_sync(
+    corrected = make_sync(
         synced_at="2026-07-06 12:00:00",
         status_code=90,
         updated_at="2026-07-05 12:00:00",
     )
-    stale["loads"][0]["customer_name"] = "Older Customer"
-    stale["carriers"][0]["carrier_name"] = "OLDER CARRIER"
-    stale["rates"][0]["rate_id"] = 910233
-    stale["rates"][0]["amount_usd"] = 1.00
-    stale["rates"][1]["rate_id"] = 910234
-    ingest_contents(db_session, "hauldesk-a", "second.json", contents(stale))
+    corrected["loads"][0]["customer_name"] = "Corrected Customer"
+    corrected["carriers"][0]["carrier_name"] = "CORRECTED CARRIER"
+    corrected["rates"] = []
+    ingest_contents(db_session, "hauldesk-a", "second.json", contents(corrected))
 
-    assert db_session.scalar(select(Load)).status == LoadStatus.ACTIVE
-    assert db_session.scalar(select(Customer)).name == "Alamo Building Supply"
-    assert db_session.scalar(select(Carrier)).name == "DELTA PRIME LLC"
-    rate = db_session.scalar(select(RateLineItem).where(RateLineItem.side == "pay"))
-    assert rate.amount == Decimal("1035.00")
+    load = db_session.scalar(select(Load))
+    versions = db_session.scalars(select(LoadVersion).order_by(LoadVersion.version_number)).all()
+    assert load.status == LoadStatus.COMPLETED
+    assert load.source_updated_at.replace(tzinfo=timezone.utc) == datetime(
+        2026, 7, 5, 17, tzinfo=timezone.utc
+    )
+    assert load.last_synced_at.replace(tzinfo=timezone.utc) == datetime(
+        2026, 7, 6, 17, tzinfo=timezone.utc
+    )
+    assert db_session.scalar(select(Customer)).name == "Corrected Customer"
+    assert db_session.scalar(select(Carrier)).name == "CORRECTED CARRIER"
+    assert [version.version_number for version in versions] == [1, 2]
+    assert versions[1].raw_payload["load"]["updated_at"] == "2026-07-05 12:00:00"
+    assert versions[1].normalized_snapshot["source_updated_at"] == "2026-07-05T17:00:00+00:00"
 
 
 def test_carrier_identity_normalizes_mc_and_dot_across_sources(db_session: Session) -> None:
@@ -564,6 +573,57 @@ def test_complementary_identities_merge_and_repoint_carriers(db_session: Session
     )
     assert merged.normalized_mc_number == "884201"
     assert merged.normalized_dot_number == "2551377"
+
+
+@pytest.mark.parametrize("approved_on_survivor", [True, False])
+def test_complementary_identity_merge_preserves_approved_name(
+    db_session: Session, approved_on_survivor: bool
+) -> None:
+    mc_only = upsert_carrier_identity(
+        db_session, "broker-a", "884201", None, datetime(2026, 7, 6, tzinfo=timezone.utc)
+    )
+    dot_only = upsert_carrier_identity(
+        db_session, "broker-a", None, "2551377", datetime(2026, 7, 6, tzinfo=timezone.utc)
+    )
+    approved = mc_only if approved_on_survivor else dot_only
+    approved.shared_display_name = "Approved Carrier"
+    db_session.flush()
+
+    merged = upsert_carrier_identity(
+        db_session,
+        "broker-a",
+        "884201",
+        "2551377",
+        datetime(2026, 7, 7, tzinfo=timezone.utc),
+    )
+
+    assert merged.shared_display_name == "Approved Carrier"
+    assert len(db_session.scalars(select(CarrierIdentity)).all()) == 1
+
+
+def test_complementary_identity_merge_rejects_conflicting_approved_names(
+    db_session: Session,
+) -> None:
+    mc_only = upsert_carrier_identity(
+        db_session, "broker-a", "884201", None, datetime(2026, 7, 6, tzinfo=timezone.utc)
+    )
+    dot_only = upsert_carrier_identity(
+        db_session, "broker-a", None, "2551377", datetime(2026, 7, 6, tzinfo=timezone.utc)
+    )
+    mc_only.shared_display_name = "First Approved Name"
+    dot_only.shared_display_name = "Second Approved Name"
+    db_session.flush()
+
+    with pytest.raises(CarrierIdentityConflictError, match="conflicting approved"):
+        upsert_carrier_identity(
+            db_session,
+            "broker-a",
+            "884201",
+            "2551377",
+            datetime(2026, 7, 7, tzinfo=timezone.utc),
+        )
+
+    assert len(db_session.scalars(select(CarrierIdentity)).all()) == 2
 
 
 def test_conflicting_identity_pair_rejects_without_partial_writes(db_session: Session) -> None:

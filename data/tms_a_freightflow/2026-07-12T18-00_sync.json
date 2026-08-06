@@ -8,22 +8,100 @@
         "name": "Prairie State Freight",
         "phoneNumber": "214-555-1024"
       },
+      "createdDate": "2026-07-11T12:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-GULF",
+        "name": "Gulf Coast Foods"
+      },
+      "equipment": "Dry Van",
+      "lastModifiedDate": "2026-07-12T18:00:00-05:00",
+      "mileage": "251.0",
+      "shipmentId": "FF-012",
+      "status": "Completed",
+      "stops": [
+        {
+          "actualDepartureDateTime": "2026-07-12T18:00:00-05:00",
+          "city": "Dallas",
+          "estimatedCloseDateTime": "2026-07-12T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-12T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "75201"
+        },
+        {
+          "actualDepartureDateTime": "2026-07-12T18:00:00-05:00",
+          "city": "Houston",
+          "estimatedCloseDateTime": "2026-07-12T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-12T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "77002"
+        }
+      ],
+      "totalBuy": "1960.00",
+      "totalSell": "2595.00",
+      "weightTotal": "37000.0"
+    },
+    {
+      "carrier": {
+        "carrierMasterId": "CARR-ALPHA",
+        "dotNumber": "DOT-310001",
+        "mcNumber": "MC-120001",
+        "name": "Lone Star Logistics",
+        "phoneNumber": "214-555-1010"
+      },
       "createdDate": "2026-07-12T00:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-SOUTH",
+        "name": "Alamo Industrial"
+      },
+      "equipment": "Flatbed",
+      "lastModifiedDate": "2026-07-12T18:00:00-05:00",
+      "mileage": "286.0",
+      "shipmentId": "FF-013",
+      "status": "En Route",
+      "stops": [
+        {
+          "actualDepartureDateTime": "2026-07-12T18:00:00-05:00",
+          "city": "New Braunfels",
+          "estimatedCloseDateTime": "2026-07-12T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-12T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "78130"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "McKinney",
+          "estimatedCloseDateTime": "2026-07-13T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-13T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "75070"
+        }
+      ],
+      "totalBuy": "2050.00",
+      "totalSell": "2680.00",
+      "weightTotal": "33000.0"
+    },
+    {
+      "carrier": null,
+      "createdDate": "2026-07-12T12:00:00-05:00",
       "customer": {
         "customerId": "CUST-NORTH",
         "name": "Northstar Retail"
       },
       "equipment": "Dry Van",
       "lastModifiedDate": "2026-07-12T18:00:00-05:00",
-      "mileage": "250.0",
-      "shipmentId": "FF-009",
-      "status": "En Route",
+      "mileage": "246.0",
+      "shipmentId": "FF-014",
+      "status": "Booking",
       "stops": [
         {
-          "actualDepartureDateTime": "2026-07-12T18:00:00-05:00",
+          "actualDepartureDateTime": null,
           "city": "Dallas",
-          "estimatedCloseDateTime": "2026-07-12T20:00:00-05:00",
-          "estimatedReadyDateTime": "2026-07-12T12:00:00-05:00",
+          "estimatedCloseDateTime": "2026-07-13T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-13T00:00:00-05:00",
           "state": "TX",
           "stopType": "Pickup",
           "zipCode": "75201"
@@ -31,16 +109,16 @@
         {
           "actualDepartureDateTime": null,
           "city": "Houston",
-          "estimatedCloseDateTime": "2026-07-13T08:00:00-05:00",
-          "estimatedReadyDateTime": "2026-07-13T00:00:00-05:00",
+          "estimatedCloseDateTime": "2026-07-13T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-13T12:00:00-05:00",
           "state": "TX",
           "stopType": "Dropoff",
           "zipCode": "77002"
         }
       ],
-      "totalBuy": "2000.00",
-      "totalSell": "2550.00",
-      "weightTotal": "34000.0"
+      "totalBuy": null,
+      "totalSell": "2510.00",
+      "weightTotal": "34500.0"
     }
   ],
   "syncedAt": "2026-07-12T18:00:00-05:00"

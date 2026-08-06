@@ -86,8 +86,8 @@ flowchart LR
     stops --> database
     files --> database
     migrations --> database
-    raw --> generate
-    generate -.-> ingest
+    generate --> raw
+    raw -.-> ingest
 
     classDef delivered fill:#d9ead3,stroke:#38761d,color:#000;
     classDef planned fill:#f3f3f3,stroke:#666,color:#000,stroke-dasharray: 5 5;

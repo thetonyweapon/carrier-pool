@@ -9,7 +9,7 @@
       },
       "equipment": "Dry Van",
       "lastModifiedDate": "2026-07-16T12:00:00-05:00",
-      "mileage": "239.0",
+      "mileage": "240.0",
       "shipmentId": "FF-101",
       "status": "Booking",
       "stops": [
@@ -45,7 +45,7 @@
       },
       "equipment": "Reefer",
       "lastModifiedDate": "2026-07-16T12:00:00-05:00",
-      "mileage": "214.0",
+      "mileage": "215.0",
       "shipmentId": "FF-102",
       "status": "Booking",
       "stops": [

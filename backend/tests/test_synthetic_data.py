@@ -1,5 +1,6 @@
 import hashlib
 import json
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -46,10 +47,49 @@ def test_generated_dataset_is_complete_and_schema_valid() -> None:
         assert len(files) == len(SYNC_SLOTS)
         assert [path.name for path in files] == [filename(slot) for slot in SYNC_SLOTS]
         previous = None
-        for path in files:
+        previous_records = {}
+        historical_statuses = defaultdict(list)
+        for file_index, path in enumerate(files):
             payload = json.loads(path.read_bytes())
-            count = len(payload["records"] if tms_type == TmsType.BROKEROS else payload["loads"])
+            records = payload["records"] if tms_type == TmsType.BROKEROS else payload["loads"]
+            count = len(records)
             assert 1 <= count <= 3
+            for record in records:
+                if tms_type == TmsType.FREIGHTFLOW:
+                    record_id = record["shipmentId"]
+                    fingerprint = (
+                        record["status"],
+                        record["mileage"],
+                        record["totalSell"],
+                        record["totalBuy"],
+                        record["carrier"],
+                        record["stops"],
+                    )
+                elif tms_type == TmsType.HAULDESK:
+                    record_id = record["load_num"]
+                    fingerprint = (
+                        record["status_code"],
+                        record["dist_km"],
+                        record["carrier_ref"],
+                        record["pu_departed_at"],
+                        record["del_arrived_at"],
+                    )
+                else:
+                    record_id = record["Id"]
+                    fingerprint = (
+                        record["bos__Load_Status__c"],
+                        record["bos__Distance_Miles__c"],
+                        record["bos__Customer_Rate__c"],
+                        record["bos__Carrier_Rate__c"],
+                        record["bos__Carrier__c"],
+                        record["bos__Stops__r"],
+                    )
+                assert (
+                    record_id not in previous_records or fingerprint != previous_records[record_id]
+                ), f"{path} contains a timestamp-only update for {record_id}"
+                previous_records[record_id] = fingerprint
+                if file_index < 40:
+                    historical_statuses[record_id].append(fingerprint[0])
             if path.name == "2026-07-16T00-00_sync.json":
                 if tms_type == TmsType.FREIGHTFLOW:
                     assert {load["status"] for load in payload["loads"]} == {"Booking"}
@@ -129,6 +169,27 @@ def test_generated_dataset_is_complete_and_schema_valid() -> None:
                 current = sync.synced_at
             assert previous is None or current > previous
             previous = current
+        expected_lifecycle = {
+            TmsType.FREIGHTFLOW: [
+                "Quoting",
+                "Booking",
+                "Dispatched",
+                "En Route",
+                "Delivered",
+                "Completed",
+            ],
+            TmsType.HAULDESK: [10, 20, 30, 40, 50, 90],
+            TmsType.BROKEROS: [
+                "Quotes Requested",
+                "Ready to Book",
+                "Booked",
+                "In Transit",
+                "Delivered",
+                "Paid",
+            ],
+        }[tms_type]
+        assert len(historical_statuses) == 18
+        assert all(statuses == expected_lifecycle for statuses in historical_statuses.values())
 
 
 def test_generated_dataset_ingests_in_chronological_order() -> None:
@@ -217,6 +278,24 @@ def test_generated_dataset_ingests_in_chronological_order() -> None:
         ).all()
         assert completed_loads
         assert all(load.carrier_id is not None for load in completed_loads)
+
+        for _, _, source_id, _ in SOURCE_CONFIG:
+            historical_loads = [
+                load
+                for load in session.scalars(
+                    select(Load).where(Load.broker_source_id == source_id)
+                ).all()
+                if int(load.source_load_id.rsplit("-", 1)[1]) <= 18
+            ]
+            experience = Counter(
+                session.get(Carrier, load.carrier_id).name for load in historical_loads
+            )
+            assert experience == {
+                "Lone Star Logistics": 8,
+                "Prairie State Freight": 8,
+                "Hill Country Carriers": 1,
+                "Bluebonnet Transport": 1,
+            }
 
         hauldesk_rates = session.scalars(
             select(RateLineItem).where(RateLineItem.load_id == hauldesk_load.id)
@@ -329,7 +408,7 @@ def test_generated_dataset_ingests_in_chronological_order() -> None:
         assert get_carrier_recommendations(session, "broker-a", today_target.id) is not None
         assert estimate_carrier_rate(session, "broker-a", today_target.id).status == "estimated"
 
-        for source_id, source_load_id, broker_id in day11_targets[::2]:
+        for source_id, source_load_id, broker_id in day11_targets:
             target = session.scalar(
                 select(Load).where(
                     Load.broker_source_id == source_id, Load.source_load_id == source_load_id
@@ -338,8 +417,13 @@ def test_generated_dataset_ingests_in_chronological_order() -> None:
             recommendations = get_carrier_recommendations(session, broker_id, target.id)
             assert recommendations is not None
             assert recommendations.recommendations
-            if source_id == "source-a":
+            if source_load_id.endswith("101"):
                 assert recommendations.recommendations[0].name == "Prairie State Freight"
+                # Eight Day 1-10 loads plus the completed recent operational load.
+                assert recommendations.recommendations[0].exact_same_equipment_count == 9
+            else:
+                assert recommendations.recommendations[0].name == "Lone Star Logistics"
+                assert recommendations.recommendations[0].same_equipment_count == 6
 
         for source_id, source_load_id, broker_id in day11_targets:
             target = session.scalar(
@@ -352,10 +436,10 @@ def test_generated_dataset_ingests_in_chronological_order() -> None:
             assert estimate.status == "estimated"
             if source_load_id.endswith("101"):
                 assert estimate.selected_tier == "exact_lane_equipment"
-                assert estimate.sample_size == 3
+                assert estimate.sample_size == 9
             else:
                 assert estimate.selected_tier == "broker_equipment"
-                assert estimate.sample_size == 3
+                assert estimate.sample_size == 8
 
         source_brokers = {"source-a": "broker-a", "source-b": "broker-b", "source-c": "broker-c"}
         for model in (Customer, Carrier, Load, LoadVersion, RateLineItem, LoadRateObservation):

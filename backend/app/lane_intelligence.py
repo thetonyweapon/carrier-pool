@@ -1,7 +1,8 @@
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Optional, Sequence
 
-from sqlalchemy import select
+from sqlalchemy import exists, or_, select
 from sqlalchemy.orm import Session
 
 from app.lane_geography import (
@@ -172,12 +173,31 @@ def get_lane_intelligence(
     if target is None:
         return None
 
+    as_of = datetime.now(timezone.utc)
+    future_stop_exists = exists(
+        select(LoadStop.id).where(
+            LoadStop.broker_id == broker_id,
+            LoadStop.load_id == Load.id,
+            or_(
+                LoadStop.scheduled_date > as_of.date(),
+                LoadStop.scheduled_start_at > as_of,
+                LoadStop.scheduled_end_at > as_of,
+                LoadStop.actual_arrived_at > as_of,
+                LoadStop.actual_departed_at > as_of,
+            ),
+        )
+    )
     history_loads = session.scalars(
         select(Load)
         .where(
             Load.broker_id == broker_id,
             Load.status.in_(ELIGIBLE_HISTORY_STATUSES),
             Load.id != load_id,
+            Load.last_synced_at <= as_of,
+            or_(Load.source_created_at.is_(None), Load.source_created_at <= as_of),
+            or_(Load.source_updated_at.is_(None), Load.source_updated_at <= as_of),
+            or_(Load.booked_at.is_(None), Load.booked_at <= as_of),
+            ~future_stop_exists,
         )
         .order_by(Load.last_synced_at.desc(), Load.id.desc())
         .limit(HISTORY_LOAD_LIMIT + 1)

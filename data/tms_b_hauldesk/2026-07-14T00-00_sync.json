@@ -1,39 +1,109 @@
 {
   "carriers": [
     {
-      "carrier_id": "CARR-DELTA",
-      "carrier_name": "Hill Country Carriers",
-      "dot_no": "DOT-310004",
-      "home_city": "New Braunfels",
+      "carrier_id": "CARR-ALPHA",
+      "carrier_name": "Lone Star Logistics",
+      "dot_no": "DOT-310001",
+      "home_city": "Houston",
       "home_state": "TX",
-      "mc_no": "MC-120004",
+      "mc_no": "MC-120001",
       "phone": "214-555-1010"
+    },
+    {
+      "carrier_id": "CARR-BRAVO",
+      "carrier_name": "Prairie State Freight",
+      "dot_no": "DOT-310002",
+      "home_city": "Plano",
+      "home_state": "TX",
+      "mc_no": "MC-120002",
+      "phone": "214-555-1024"
     }
   ],
   "loads": [
     {
-      "carrier_ref": "CARR-DELTA",
-      "customer_code": "CUST-NORTH",
-      "customer_name": "Northstar Retail",
+      "carrier_ref": "CARR-ALPHA",
+      "customer_code": "CUST-SOUTH",
+      "customer_name": "Alamo Industrial",
+      "del_arrived_at": "2026-07-14 00:00:00",
+      "del_city": "Temple",
+      "del_date": "2026-07-14",
+      "del_state": "TX",
+      "del_zip": "76501",
+      "dist_km": "115.87",
+      "entered_at": "2026-07-13 00:00:00",
+      "equip": "R",
+      "load_num": "HD-015",
+      "pu_city": "San Marcos",
+      "pu_date": "2026-07-13",
+      "pu_departed_at": "2026-07-14 00:00:00",
+      "pu_state": "TX",
+      "pu_zip": "78666",
+      "status_code": 50,
+      "updated_at": "2026-07-14 00:00:00",
+      "weight_kg": "12700.59"
+    },
+    {
+      "carrier_ref": "CARR-BRAVO",
+      "customer_code": "CUST-GULF",
+      "customer_name": "Gulf Coast Foods",
       "del_arrived_at": null,
       "del_city": "Houston",
       "del_date": "2026-07-14",
       "del_state": "TX",
       "del_zip": "77002",
-      "dist_km": "418.43",
-      "entered_at": "2026-07-13 06:00:00",
+      "dist_km": "407.16",
+      "entered_at": "2026-07-13 12:00:00",
       "equip": "V",
-      "load_num": "HD-010",
+      "load_num": "HD-016",
       "pu_city": "Dallas",
-      "pu_date": "2026-07-13",
-      "pu_departed_at": "2026-07-14 00:00:00",
+      "pu_date": "2026-07-14",
+      "pu_departed_at": null,
       "pu_state": "TX",
       "pu_zip": "75201",
-      "status_code": 40,
+      "status_code": 30,
       "updated_at": "2026-07-14 00:00:00",
-      "weight_kg": "15875.73"
+      "weight_kg": "16102.53"
+    },
+    {
+      "carrier_ref": null,
+      "customer_code": "CUST-NORTH",
+      "customer_name": "Northstar Retail",
+      "del_arrived_at": null,
+      "del_city": "Denton",
+      "del_date": "2026-07-15",
+      "del_state": "TX",
+      "del_zip": "76201",
+      "dist_km": "46.67",
+      "entered_at": "2026-07-14 00:00:00",
+      "equip": "F",
+      "load_num": "HD-017",
+      "pu_city": "Frisco",
+      "pu_date": "2026-07-14",
+      "pu_departed_at": null,
+      "pu_state": "TX",
+      "pu_zip": "75034",
+      "status_code": 10,
+      "updated_at": "2026-07-14 00:00:00",
+      "weight_kg": "14061.36"
     }
   ],
-  "rates": [],
+  "rates": [
+    {
+      "amount_usd": "2610.00",
+      "code": "LINEHAUL",
+      "created_at": "2026-07-14 00:00:00",
+      "load_num": "HD-016",
+      "rate_id": "RATE-0033",
+      "side": "bill"
+    },
+    {
+      "amount_usd": "1975.00",
+      "code": "LINEHAUL",
+      "created_at": "2026-07-14 00:00:00",
+      "load_num": "HD-016",
+      "rate_id": "RATE-0034",
+      "side": "pay"
+    }
+  ],
   "synced_at": "2026-07-14 00:00:00"
 }

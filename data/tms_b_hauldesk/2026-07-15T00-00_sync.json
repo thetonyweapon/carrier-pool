@@ -1,6 +1,15 @@
 {
   "carriers": [
     {
+      "carrier_id": "CARR-DELTA",
+      "carrier_name": "Hill Country Carriers",
+      "dot_no": "DOT-310004",
+      "home_city": "New Braunfels",
+      "home_state": "TX",
+      "mc_no": "MC-120004",
+      "phone": "214-555-1010"
+    },
+    {
       "carrier_id": "CARR-ECHO",
       "carrier_name": "Bluebonnet Transport",
       "dot_no": "DOT-310005",
@@ -12,43 +21,65 @@
   ],
   "loads": [
     {
+      "carrier_ref": "CARR-DELTA",
+      "customer_code": "CUST-NORTH",
+      "customer_name": "Northstar Retail",
+      "del_arrived_at": "2026-07-15 00:00:00",
+      "del_city": "Denton",
+      "del_date": "2026-07-15",
+      "del_state": "TX",
+      "del_zip": "76201",
+      "dist_km": "46.67",
+      "entered_at": "2026-07-14 00:00:00",
+      "equip": "F",
+      "load_num": "HD-017",
+      "pu_city": "Frisco",
+      "pu_date": "2026-07-14",
+      "pu_departed_at": "2026-07-15 00:00:00",
+      "pu_state": "TX",
+      "pu_zip": "75034",
+      "status_code": 50,
+      "updated_at": "2026-07-15 00:00:00",
+      "weight_kg": "14061.36"
+    },
+    {
       "carrier_ref": "CARR-ECHO",
       "customer_code": "CUST-GULF",
       "customer_name": "Gulf Coast Foods",
       "del_arrived_at": null,
-      "del_city": "Houston",
+      "del_city": "Pasadena",
       "del_date": "2026-07-15",
       "del_state": "TX",
-      "del_zip": "77002",
-      "dist_km": "386.24",
+      "del_zip": "77506",
+      "dist_km": "38.62",
       "entered_at": "2026-07-14 12:00:00",
-      "equip": "V",
-      "load_num": "HD-011",
-      "pu_city": "Dallas",
+      "equip": "R",
+      "load_num": "HD-018",
+      "pu_city": "Baytown",
       "pu_date": "2026-07-15",
       "pu_departed_at": null,
       "pu_state": "TX",
-      "pu_zip": "75201",
+      "pu_zip": "77520",
       "status_code": 30,
       "updated_at": "2026-07-15 00:00:00",
-      "weight_kg": "14514.96"
+      "weight_kg": "13607.77"
     }
   ],
   "rates": [
     {
-      "amount_usd": "2460.00",
+      "amount_usd": "1860.00",
       "code": "LINEHAUL",
       "created_at": "2026-07-15 00:00:00",
-      "load_num": "HD-011",
-      "rate_id": "RATE-0023",
+      "load_num": "HD-018",
+      "rate_id": "RATE-0037",
       "side": "bill"
     },
     {
-      "amount_usd": "1920.00",
+      "amount_usd": "1320.00",
       "code": "LINEHAUL",
       "created_at": "2026-07-15 00:00:00",
-      "load_num": "HD-011",
-      "rate_id": "RATE-0024",
+      "load_num": "HD-018",
+      "rate_id": "RATE-0038",
       "side": "pay"
     }
   ],

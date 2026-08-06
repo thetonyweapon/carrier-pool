@@ -6,7 +6,7 @@
       "LastModifiedDate": "2026-07-06T17:00:00.000+0000",
       "Name": "BOS000001",
       "bos__Carrier_Rate__c": "2200.00",
-      "bos__Carrier__c": "CARRIER-1",
+      "bos__Carrier__c": "CARRIER-CARR-ALPHA",
       "bos__Customer_Rate__c": "2850.00",
       "bos__Customer__c": "CUST-1",
       "bos__Distance_Miles__c": "244.0",
@@ -40,25 +40,25 @@
       ]
     },
     {
-      "CreatedDate": "2026-07-06T05:00:00.000+0000",
+      "CreatedDate": "2026-07-06T17:00:00.000+0000",
       "Id": "BROKEROS-002",
       "LastModifiedDate": "2026-07-06T17:00:00.000+0000",
       "Name": "BOS000002",
-      "bos__Carrier_Rate__c": "1900.00",
-      "bos__Carrier__c": "CARRIER-2",
+      "bos__Carrier_Rate__c": null,
+      "bos__Carrier__c": null,
       "bos__Customer_Rate__c": "2525.00",
       "bos__Customer__c": "CUST-2",
-      "bos__Distance_Miles__c": "271.0",
+      "bos__Distance_Miles__c": "250.0",
       "bos__Equipment_Type__c": "Dry Van",
       "bos__Line_Items__r": [
         {
           "bos__Commodity__c": "General freight",
           "bos__Pallet_Count__c": "20",
           "bos__Weight_Units__c": "pounds",
-          "bos__Weight__c": "36000.0"
+          "bos__Weight__c": "34000.0"
         }
       ],
-      "bos__Load_Status__c": "Booked",
+      "bos__Load_Status__c": "Quotes Requested",
       "bos__Stops__r": [
         {
           "bos__Arrival_Time__c": null,
@@ -66,7 +66,7 @@
           "bos__Is_Pickup__c": true,
           "bos__Location__c": "LOC-2-P",
           "bos__Number__c": "1",
-          "bos__Scheduled_Date__c": "2026-07-06"
+          "bos__Scheduled_Date__c": "2026-07-07"
         },
         {
           "bos__Arrival_Time__c": null,
@@ -80,13 +80,8 @@
     }
   ],
   "referenced_records": {
-    "CARRIER-1": {
+    "CARRIER-CARR-ALPHA": {
       "Name": "Lone Star Logistics",
-      "record_type": "Carrier",
-      "type": "Account"
-    },
-    "CARRIER-2": {
-      "Name": "Prairie State Freight",
       "record_type": "Carrier",
       "type": "Account"
     },
@@ -115,16 +110,16 @@
       "type": "Location"
     },
     "LOC-2-D": {
-      "Name": "Katy Distribution",
-      "bos__City__c": "Katy",
-      "bos__Postal_Code__c": "77494",
+      "Name": "Houston Distribution",
+      "bos__City__c": "Houston",
+      "bos__Postal_Code__c": "77002",
       "bos__State__c": "TX",
       "type": "Location"
     },
     "LOC-2-P": {
-      "Name": "Plano Crossdock",
-      "bos__City__c": "Plano",
-      "bos__Postal_Code__c": "75024",
+      "Name": "Dallas Crossdock",
+      "bos__City__c": "Dallas",
+      "bos__Postal_Code__c": "75201",
       "bos__State__c": "TX",
       "type": "Location"
     }

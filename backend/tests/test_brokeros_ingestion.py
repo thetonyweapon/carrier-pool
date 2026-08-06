@@ -188,13 +188,26 @@ def test_ingests_crm_record_references_multistop_and_weight(db_session: Session)
     assert db_session.scalars(select(RateLineItem)).all() == []
 
 
-def test_newer_sync_does_not_apply_an_older_brokeros_record(db_session: Session) -> None:
+def test_later_file_applies_correction_with_regressed_brokeros_timestamp(
+    db_session: Session,
+) -> None:
     ingest_contents(db_session, "brokeros-a", "first.json", contents(make_sync()))
-    stale = make_sync(synced_at="2026-07-06T17:00:00.000+0000", status="Invoiced")
-    stale["records"][0]["LastModifiedDate"] = "2026-07-06T08:00:00.000+0000"
-    ingest_contents(db_session, "brokeros-a", "second.json", contents(stale))
+    corrected = make_sync(synced_at="2026-07-06T17:00:00.000+0000", status="Invoiced")
+    corrected["records"][0]["LastModifiedDate"] = "2026-07-06T08:00:00.000+0000"
+    ingest_contents(db_session, "brokeros-a", "second.json", contents(corrected))
 
-    assert db_session.scalar(select(Load)).status == LoadStatus.ACTIVE
+    load = db_session.scalar(select(Load))
+    versions = db_session.scalars(select(LoadVersion).order_by(LoadVersion.version_number)).all()
+    assert load.status == LoadStatus.COMPLETED
+    assert load.source_updated_at.replace(tzinfo=timezone.utc) == datetime(
+        2026, 7, 6, 8, tzinfo=timezone.utc
+    )
+    assert load.last_synced_at.replace(tzinfo=timezone.utc) == datetime(
+        2026, 7, 6, 17, tzinfo=timezone.utc
+    )
+    assert [version.version_number for version in versions] == [1, 2]
+    assert versions[1].raw_payload["record"]["LastModifiedDate"] == ("2026-07-06T08:00:00.000+0000")
+    assert versions[1].normalized_snapshot["source_updated_at"] == "2026-07-06T08:00:00+00:00"
 
 
 def test_status_equipment_and_null_weight_mappings(db_session: Session) -> None:

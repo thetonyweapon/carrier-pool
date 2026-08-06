@@ -13,7 +13,8 @@
   NOT hardcode deployment database credentials.
 - Docker Compose MUST provide the backend and PostgreSQL services for local
   operation.
-- The backend container MUST run database migrations before starting the API.
+- The demo backend container MUST run migrations before starting its API.
+  Production MUST use a separate one-off migration job before API rollout.
 
 ### Source-file boundary
 

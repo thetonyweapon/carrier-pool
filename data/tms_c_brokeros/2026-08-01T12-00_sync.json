@@ -9,7 +9,7 @@
       "bos__Carrier__c": null,
       "bos__Customer_Rate__c": "2765.00",
       "bos__Customer__c": "CUST-303",
-      "bos__Distance_Miles__c": "275.0",
+      "bos__Distance_Miles__c": "275.5",
       "bos__Equipment_Type__c": "Flatbed",
       "bos__Line_Items__r": [
         {

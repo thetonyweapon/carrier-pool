@@ -2,6 +2,48 @@
   "loads": [
     {
       "carrier": {
+        "carrierMasterId": "CARR-DELTA",
+        "dotNumber": "DOT-310004",
+        "mcNumber": "MC-120004",
+        "name": "Hill Country Carriers",
+        "phoneNumber": "214-555-1010"
+      },
+      "createdDate": "2026-07-14T00:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-NORTH",
+        "name": "Northstar Retail"
+      },
+      "equipment": "Flatbed",
+      "lastModifiedDate": "2026-07-15T00:00:00-05:00",
+      "mileage": "29.0",
+      "shipmentId": "FF-017",
+      "status": "Delivered",
+      "stops": [
+        {
+          "actualDepartureDateTime": "2026-07-15T00:00:00-05:00",
+          "city": "Frisco",
+          "estimatedCloseDateTime": "2026-07-14T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-14T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "75034"
+        },
+        {
+          "actualDepartureDateTime": "2026-07-15T00:00:00-05:00",
+          "city": "Denton",
+          "estimatedCloseDateTime": "2026-07-15T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-15T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "76201"
+        }
+      ],
+      "totalBuy": "1210.00",
+      "totalSell": "1680.00",
+      "weightTotal": "31000.0"
+    },
+    {
+      "carrier": {
         "carrierMasterId": "CARR-ECHO",
         "dotNumber": "DOT-310005",
         "mcNumber": "MC-120005",
@@ -13,34 +55,34 @@
         "customerId": "CUST-GULF",
         "name": "Gulf Coast Foods"
       },
-      "equipment": "Dry Van",
+      "equipment": "Reefer",
       "lastModifiedDate": "2026-07-15T00:00:00-05:00",
-      "mileage": "240.0",
-      "shipmentId": "FF-011",
+      "mileage": "24.0",
+      "shipmentId": "FF-018",
       "status": "Dispatched",
       "stops": [
         {
           "actualDepartureDateTime": null,
-          "city": "Dallas",
+          "city": "Baytown",
           "estimatedCloseDateTime": "2026-07-15T08:00:00-05:00",
           "estimatedReadyDateTime": "2026-07-15T00:00:00-05:00",
           "state": "TX",
           "stopType": "Pickup",
-          "zipCode": "75201"
+          "zipCode": "77520"
         },
         {
           "actualDepartureDateTime": null,
-          "city": "Houston",
+          "city": "Pasadena",
           "estimatedCloseDateTime": "2026-07-15T20:00:00-05:00",
           "estimatedReadyDateTime": "2026-07-15T12:00:00-05:00",
           "state": "TX",
           "stopType": "Dropoff",
-          "zipCode": "77002"
+          "zipCode": "77506"
         }
       ],
-      "totalBuy": "1920.00",
-      "totalSell": "2460.00",
-      "weightTotal": "32000.0"
+      "totalBuy": "1320.00",
+      "totalSell": "1860.00",
+      "weightTotal": "30000.0"
     }
   ],
   "syncedAt": "2026-07-15T00:00:00-05:00"

@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.models import Base, Broker, BrokerSource, TmsType
+from app.models import Base, Broker, BrokerSource, Carrier, CarrierIdentity, TmsType
 from scripts import bootstrap_demo
 
 
@@ -65,6 +65,69 @@ def test_bootstrap_is_idempotent(bootstrap_db, tmp_path) -> None:
         (source.id, source.broker_id, source.source_name, source.created_at)
         for source in records(bootstrap_db)[1]
     ] == source_before
+
+
+def test_bootstrap_approves_names_only_for_configured_demo_brokers(bootstrap_db, tmp_path) -> None:
+    assert bootstrap_demo.bootstrap(tmp_path) == 0
+    now = datetime.now(timezone.utc)
+    with Session(bootstrap_db) as session:
+        session.add(Broker(id="outside-demo", name="Outside Demo", is_demo=True, created_at=now))
+        session.add(
+            BrokerSource(
+                id="outside-source",
+                broker_id="outside-demo",
+                tms_type=TmsType.FREIGHTFLOW,
+                source_name="Outside Source",
+                created_at=now,
+            )
+        )
+        configured_identity = CarrierIdentity(
+            id="configured-identity",
+            broker_id="broker-a",
+            normalized_mc_number="100",
+            created_at=now,
+            updated_at=now,
+        )
+        outside_identity = CarrierIdentity(
+            id="outside-identity",
+            broker_id="outside-demo",
+            normalized_mc_number="200",
+            created_at=now,
+            updated_at=now,
+        )
+        session.add_all([configured_identity, outside_identity])
+        session.add_all(
+            [
+                Carrier(
+                    broker_id="broker-a",
+                    broker_source_id="source-a",
+                    carrier_identity_id=configured_identity.id,
+                    source_carrier_id="configured-carrier",
+                    name="Configured Public Name",
+                    created_at=now,
+                    updated_at=now,
+                ),
+                Carrier(
+                    broker_id="outside-demo",
+                    broker_source_id="outside-source",
+                    carrier_identity_id=outside_identity.id,
+                    source_carrier_id="outside-carrier",
+                    name="Outside Private Name",
+                    created_at=now,
+                    updated_at=now,
+                ),
+            ]
+        )
+        session.commit()
+
+    assert bootstrap_demo.bootstrap(tmp_path) == 0
+
+    with Session(bootstrap_db) as session:
+        assert (
+            session.get(CarrierIdentity, "configured-identity").shared_display_name
+            == "Configured Public Name"
+        )
+        assert session.get(CarrierIdentity, "outside-identity").shared_display_name is None
 
 
 def test_bootstrap_reconciles_legacy_placeholder_names(bootstrap_db, tmp_path) -> None:

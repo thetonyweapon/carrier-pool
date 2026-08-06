@@ -247,25 +247,6 @@ def _ingest_load(
     carrier_rate = _validate_source_currency(source_load.totalBuy, "totalBuy")
     status = _map_status(source_load.status)
     equipment_type = _map_equipment(source_load.equipment)
-    if (
-        load is not None
-        and load.source_updated_at is not None
-        and source_updated_at < _to_utc(load.source_updated_at)
-    ):
-        if source_load.carrier is not None:
-            existing_carrier = session.scalar(
-                select(Carrier).where(
-                    Carrier.broker_source_id == source.id,
-                    Carrier.source_carrier_id == str(source_load.carrier.carrierMasterId),
-                )
-            )
-            validate_carrier_identity_transition(
-                existing_carrier,
-                source_load.carrier.mcNumber,
-                source_load.carrier.dotNumber,
-            )
-        return
-
     customer = _upsert_customer(session, source, source_load.customer, ingestion_file.synced_at)
     try:
         carrier = _upsert_carrier(session, source, source_load.carrier, ingestion_file.synced_at)

@@ -115,7 +115,8 @@ contract.
 - Current availability, capacity, fuel decomposition, safety, claims, and
   service quality are not estimated.
 - The estimator does not use reverse lanes, market indexes, or machine learning.
-- Cross-broker shared-pool pricing and multi-currency support remain deferred.
+- Cross-broker shared-pool pricing is delivered through the authenticated shared
+  pool path; multi-currency support remains deferred.
 - Estimates are computed on demand and are not persisted historical replays.
 - Confidence is qualitative data sufficiency, not a calibrated probability.
 - History is bounded to the 500 most recently synced completed loads.

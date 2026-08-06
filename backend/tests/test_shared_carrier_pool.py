@@ -32,6 +32,7 @@ from app.models import (
 from app.shared_carrier_pool import (
     SharedPoolDisabled,
     SharedPoolNotEligible,
+    _shared_identity_aliases,
     get_shared_carrier_recommendations,
     set_shared_pool_policy,
 )
@@ -100,7 +101,9 @@ def add_shared_carrier(session: Session, broker_id: str) -> Carrier:
     identity = CarrierIdentity(
         id=f"identity-{broker_id}",
         broker_id=broker_id,
-        normalized_mc_number="884201",
+        normalized_mc_number=None if broker_id == "broker-c" else "884201",
+        normalized_dot_number="2551377" if broker_id in ("broker-a", "broker-c") else None,
+        shared_display_name="Lone Star Transport",
         created_at=NOW,
         updated_at=NOW,
     )
@@ -129,6 +132,8 @@ def add_load(
     origin: tuple[str, str, str] = ("Dallas", "TX", "75201"),
     destination: tuple[str, str, str] = ("Houston", "TX", "77002"),
     scheduled_date: Optional[date] = None,
+    last_synced_at: datetime = NOW,
+    booked_at: Optional[datetime] = None,
 ) -> Load:
     source_id = f"source-{broker_id}"
     load = Load(
@@ -141,8 +146,9 @@ def add_load(
         customer_id=f"customer-{broker_id}",
         carrier_id=carrier_id,
         equipment_type=EquipmentType.DRY_VAN,
+        booked_at=booked_at,
         first_seen_at=NOW,
-        last_synced_at=NOW,
+        last_synced_at=last_synced_at,
     )
     session.add(load)
     session.add_all(
@@ -178,7 +184,13 @@ def seed_shared_pool(session: Session) -> None:
         carrier = add_shared_carrier(session, broker_id)
         add_load(session, broker_id, f"history-{broker_id}", LoadStatus.COMPLETED, carrier.id)
         set_shared_pool_policy(session, broker_id, broker_id != "broker-d", "test-admin")
-    add_load(session, "broker-a", "target", LoadStatus.ACTIVE)
+    add_load(
+        session,
+        "broker-a",
+        "target",
+        LoadStatus.ACTIVE,
+        last_synced_at=NOW - timedelta(days=30),
+    )
     session.commit()
 
 
@@ -214,6 +226,92 @@ def test_shared_results_require_three_distinct_opted_in_contributors(db_session:
     )
 
 
+def test_shared_name_requires_explicit_approval(db_session: Session) -> None:
+    seed_shared_pool(db_session)
+    db_session.get(CarrierIdentity, "identity-broker-c").shared_display_name = None
+    db_session.commit()
+
+    result = get_shared_carrier_recommendations(
+        db_session, "broker-a", "target", "test-shared-pool-secret"
+    )
+
+    assert result is not None
+    assert result.recommendations == ()
+
+
+def test_alias_resolver_unions_transitive_mc_and_dot_evidence() -> None:
+    identities = [
+        CarrierIdentity(
+            id="one",
+            broker_id="broker-a",
+            normalized_mc_number="100",
+            normalized_dot_number=None,
+            created_at=NOW,
+            updated_at=NOW,
+        ),
+        CarrierIdentity(
+            id="two",
+            broker_id="broker-b",
+            normalized_mc_number="100",
+            normalized_dot_number="200",
+            created_at=NOW,
+            updated_at=NOW,
+        ),
+        CarrierIdentity(
+            id="three",
+            broker_id="broker-c",
+            normalized_mc_number=None,
+            normalized_dot_number="200",
+            created_at=NOW,
+            updated_at=NOW,
+        ),
+    ]
+
+    aliases = _shared_identity_aliases(identities)
+
+    assert len(set(aliases.values())) == 1
+    assert set(aliases) == {
+        ("broker-a", "one"),
+        ("broker-b", "two"),
+        ("broker-c", "three"),
+    }
+
+
+def test_alias_resolver_rejects_explicit_identifier_conflicts() -> None:
+    identities = [
+        CarrierIdentity(
+            id="one",
+            broker_id="broker-a",
+            normalized_mc_number="100",
+            normalized_dot_number="200",
+            created_at=NOW,
+            updated_at=NOW,
+        ),
+        CarrierIdentity(
+            id="two",
+            broker_id="broker-b",
+            normalized_mc_number="100",
+            normalized_dot_number="999",
+            created_at=NOW,
+            updated_at=NOW,
+        ),
+        CarrierIdentity(
+            id="three",
+            broker_id="broker-c",
+            normalized_mc_number=None,
+            normalized_dot_number="200",
+            created_at=NOW,
+            updated_at=NOW,
+        ),
+    ]
+
+    aliases = _shared_identity_aliases(identities)
+
+    assert ("broker-a", "one") not in aliases
+    assert ("broker-b", "two") not in aliases
+    assert aliases[("broker-c", "three")] == "dot:200"
+
+
 def test_shared_recommendations_exclude_future_scheduled_dates(db_session: Session) -> None:
     seed_shared_pool(db_session)
     for broker_id in ("broker-b", "broker-c", "broker-d"):
@@ -224,7 +322,7 @@ def test_shared_recommendations_exclude_future_scheduled_dates(db_session: Sessi
             )
         )
         assert pickup is not None
-        pickup.scheduled_date = NOW.date() + timedelta(days=1)
+        pickup.scheduled_date = date(2099, 1, 1)
     db_session.commit()
 
     result = get_shared_carrier_recommendations(
@@ -293,6 +391,16 @@ def test_shared_rate_estimate_requires_three_brokers_and_returns_redacted_market
         history = db_session.get(Load, f"history-{broker_id}")
         history.distance_miles = 100
         history.carrier_rate = Decimal(amount)
+        future = add_load(
+            db_session,
+            broker_id,
+            f"future-rate-{broker_id}",
+            LoadStatus.COMPLETED,
+            f"carrier-{broker_id}",
+            booked_at=datetime(2099, 1, 1, tzinfo=timezone.utc),
+        )
+        future.distance_miles = 100
+        future.carrier_rate = Decimal("9000.00")
     db_session.commit()
 
     result = get_shared_rate_estimate(db_session, "broker-a", "target")
@@ -430,6 +538,48 @@ def test_authenticated_policy_api_supports_opt_out(db_session: Session, client: 
 
     response = client.get("/brokers/broker-a/shared-pool-policy", headers=headers)
     assert response.json()["enabled"] is False
+
+
+def test_authenticated_broker_can_approve_and_revoke_shared_display_name(
+    db_session: Session, client: TestClient
+) -> None:
+    add_broker(db_session, "broker-a")
+    carrier = add_shared_carrier(db_session, "broker-a")
+    identity = db_session.get(CarrierIdentity, carrier.carrier_identity_id)
+    identity.shared_display_name = None
+    db_session.commit()
+    path = f"/brokers/broker-a/carrier-identities/{identity.id}/shared-display-name"
+
+    response = client.put(path, json={"shared_display_name": "  Approved Carrier  "})
+
+    assert response.status_code == 200
+    assert response.json()["shared_display_name"] == "Approved Carrier"
+    db_session.expire_all()
+    assert db_session.get(CarrierIdentity, identity.id).shared_display_name == "Approved Carrier"
+
+    response = client.delete(path)
+
+    assert response.status_code == 200
+    assert response.json()["shared_display_name"] is None
+    db_session.expire_all()
+    assert db_session.get(CarrierIdentity, identity.id).shared_display_name is None
+
+
+def test_shared_name_approval_cannot_cross_broker_boundary(
+    db_session: Session, client: TestClient
+) -> None:
+    add_broker(db_session, "broker-a")
+    add_broker(db_session, "broker-b")
+    identity = add_shared_carrier(db_session, "broker-b").carrier_identity_id
+    db_session.commit()
+
+    response = client.put(
+        f"/brokers/broker-a/carrier-identities/{identity}/shared-display-name",
+        json={"shared_display_name": "Private Name"},
+    )
+
+    assert response.status_code == 404
+    assert db_session.get(CarrierIdentity, identity).shared_display_name == "Lone Star Transport"
 
 
 def test_shared_api_rejects_a_token_for_another_broker(

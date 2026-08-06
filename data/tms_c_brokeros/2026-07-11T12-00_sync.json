@@ -2,21 +2,21 @@
   "records": [
     {
       "CreatedDate": "2026-07-10T17:00:00.000+0000",
-      "Id": "BROKEROS-007",
+      "Id": "BROKEROS-010",
       "LastModifiedDate": "2026-07-11T17:00:00.000+0000",
-      "Name": "BOS000007",
-      "bos__Carrier_Rate__c": "1840.00",
-      "bos__Carrier__c": "CARRIER-7",
-      "bos__Customer_Rate__c": "2490.00",
-      "bos__Customer__c": "CUST-7",
-      "bos__Distance_Miles__c": "242.0",
-      "bos__Equipment_Type__c": "Flatbed",
+      "Name": "BOS000010",
+      "bos__Carrier_Rate__c": "1910.00",
+      "bos__Carrier__c": "CARRIER-CARR-BRAVO",
+      "bos__Customer_Rate__c": "2540.00",
+      "bos__Customer__c": "CUST-10",
+      "bos__Distance_Miles__c": "249.0",
+      "bos__Equipment_Type__c": "Dry Van",
       "bos__Line_Items__r": [
         {
           "bos__Commodity__c": "General freight",
           "bos__Pallet_Count__c": "20",
           "bos__Weight_Units__c": "pounds",
-          "bos__Weight__c": "35000.0"
+          "bos__Weight__c": "33000.0"
         }
       ],
       "bos__Load_Status__c": "Delivered",
@@ -25,7 +25,7 @@
           "bos__Arrival_Time__c": "2026-07-11T17:00:00.000+0000",
           "bos__Is_Dropoff__c": false,
           "bos__Is_Pickup__c": true,
-          "bos__Location__c": "LOC-7-P",
+          "bos__Location__c": "LOC-10-P",
           "bos__Number__c": "1",
           "bos__Scheduled_Date__c": "2026-07-11"
         },
@@ -33,98 +33,156 @@
           "bos__Arrival_Time__c": "2026-07-11T17:00:00.000+0000",
           "bos__Is_Dropoff__c": true,
           "bos__Is_Pickup__c": false,
-          "bos__Location__c": "LOC-7-D",
+          "bos__Location__c": "LOC-10-D",
           "bos__Number__c": "2",
           "bos__Scheduled_Date__c": "2026-07-11"
         }
       ]
     },
     {
-      "CreatedDate": "2026-07-10T17:00:00.000+0000",
-      "Id": "BROKEROS-008",
+      "CreatedDate": "2026-07-11T05:00:00.000+0000",
+      "Id": "BROKEROS-011",
       "LastModifiedDate": "2026-07-11T17:00:00.000+0000",
-      "Name": "BOS000008",
-      "bos__Carrier_Rate__c": "1780.00",
-      "bos__Carrier__c": "CARRIER-8",
-      "bos__Customer_Rate__c": "2380.00",
-      "bos__Customer__c": "CUST-8",
-      "bos__Distance_Miles__c": "190.0",
+      "Name": "BOS000011",
+      "bos__Carrier_Rate__c": "1640.00",
+      "bos__Carrier__c": "CARRIER-CARR-ALPHA",
+      "bos__Customer_Rate__c": "2195.00",
+      "bos__Customer__c": "CUST-11",
+      "bos__Distance_Miles__c": "218.0",
       "bos__Equipment_Type__c": "Reefer",
       "bos__Line_Items__r": [
         {
           "bos__Commodity__c": "General freight",
           "bos__Pallet_Count__c": "20",
           "bos__Weight_Units__c": "pounds",
-          "bos__Weight__c": "39000.0"
+          "bos__Weight__c": "29000.0"
         }
       ],
-      "bos__Load_Status__c": "Delivered",
+      "bos__Load_Status__c": "Booked",
       "bos__Stops__r": [
         {
-          "bos__Arrival_Time__c": "2026-07-11T17:00:00.000+0000",
+          "bos__Arrival_Time__c": null,
           "bos__Is_Dropoff__c": false,
           "bos__Is_Pickup__c": true,
-          "bos__Location__c": "LOC-8-P",
+          "bos__Location__c": "LOC-11-P",
           "bos__Number__c": "1",
           "bos__Scheduled_Date__c": "2026-07-11"
         },
         {
-          "bos__Arrival_Time__c": "2026-07-11T17:00:00.000+0000",
+          "bos__Arrival_Time__c": null,
           "bos__Is_Dropoff__c": true,
           "bos__Is_Pickup__c": false,
-          "bos__Location__c": "LOC-8-D",
+          "bos__Location__c": "LOC-11-D",
           "bos__Number__c": "2",
-          "bos__Scheduled_Date__c": "2026-07-11"
+          "bos__Scheduled_Date__c": "2026-07-12"
+        }
+      ]
+    },
+    {
+      "CreatedDate": "2026-07-11T17:00:00.000+0000",
+      "Id": "BROKEROS-012",
+      "LastModifiedDate": "2026-07-11T17:00:00.000+0000",
+      "Name": "BOS000012",
+      "bos__Carrier_Rate__c": null,
+      "bos__Carrier__c": null,
+      "bos__Customer_Rate__c": "2595.00",
+      "bos__Customer__c": "CUST-12",
+      "bos__Distance_Miles__c": "251.0",
+      "bos__Equipment_Type__c": "Dry Van",
+      "bos__Line_Items__r": [
+        {
+          "bos__Commodity__c": "General freight",
+          "bos__Pallet_Count__c": "20",
+          "bos__Weight_Units__c": "pounds",
+          "bos__Weight__c": "37000.0"
+        }
+      ],
+      "bos__Load_Status__c": "Quotes Requested",
+      "bos__Stops__r": [
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": false,
+          "bos__Is_Pickup__c": true,
+          "bos__Location__c": "LOC-12-P",
+          "bos__Number__c": "1",
+          "bos__Scheduled_Date__c": "2026-07-12"
+        },
+        {
+          "bos__Arrival_Time__c": null,
+          "bos__Is_Dropoff__c": true,
+          "bos__Is_Pickup__c": false,
+          "bos__Location__c": "LOC-12-D",
+          "bos__Number__c": "2",
+          "bos__Scheduled_Date__c": "2026-07-12"
         }
       ]
     }
   ],
   "referenced_records": {
-    "CARRIER-7": {
-      "Name": "Hill Country Carriers",
+    "CARRIER-CARR-ALPHA": {
+      "Name": "Lone Star Logistics",
       "record_type": "Carrier",
       "type": "Account"
     },
-    "CARRIER-8": {
-      "Name": "Triangle Heavy Haul",
+    "CARRIER-CARR-BRAVO": {
+      "Name": "Prairie State Freight",
       "record_type": "Carrier",
       "type": "Account"
     },
-    "CUST-7": {
-      "Name": "Alamo Industrial",
+    "CUST-10": {
+      "Name": "Northstar Retail",
       "record_type": "Customer",
       "type": "Account"
     },
-    "CUST-8": {
+    "CUST-11": {
       "Name": "Gulf Coast Foods",
       "record_type": "Customer",
       "type": "Account"
     },
-    "LOC-7-D": {
-      "Name": "Irving Distribution",
-      "bos__City__c": "Irving",
-      "bos__Postal_Code__c": "75039",
+    "CUST-12": {
+      "Name": "Gulf Coast Foods",
+      "record_type": "Customer",
+      "type": "Account"
+    },
+    "LOC-10-D": {
+      "Name": "Houston Distribution",
+      "bos__City__c": "Houston",
+      "bos__Postal_Code__c": "77002",
       "bos__State__c": "TX",
       "type": "Location"
     },
-    "LOC-7-P": {
-      "Name": "Georgetown Crossdock",
-      "bos__City__c": "Georgetown",
-      "bos__Postal_Code__c": "78626",
+    "LOC-10-P": {
+      "Name": "Dallas Crossdock",
+      "bos__City__c": "Dallas",
+      "bos__Postal_Code__c": "75201",
       "bos__State__c": "TX",
       "type": "Location"
     },
-    "LOC-8-D": {
-      "Name": "Round Rock Distribution",
-      "bos__City__c": "Round Rock",
-      "bos__Postal_Code__c": "78664",
+    "LOC-11-D": {
+      "Name": "Boerne Distribution",
+      "bos__City__c": "Boerne",
+      "bos__Postal_Code__c": "78006",
       "bos__State__c": "TX",
       "type": "Location"
     },
-    "LOC-8-P": {
-      "Name": "The Woodlands Crossdock",
-      "bos__City__c": "The Woodlands",
-      "bos__Postal_Code__c": "77380",
+    "LOC-11-P": {
+      "Name": "Cypress Crossdock",
+      "bos__City__c": "Cypress",
+      "bos__Postal_Code__c": "77429",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-12-D": {
+      "Name": "Houston Distribution",
+      "bos__City__c": "Houston",
+      "bos__Postal_Code__c": "77002",
+      "bos__State__c": "TX",
+      "type": "Location"
+    },
+    "LOC-12-P": {
+      "Name": "Dallas Crossdock",
+      "bos__City__c": "Dallas",
+      "bos__Postal_Code__c": "75201",
       "bos__State__c": "TX",
       "type": "Location"
     }
