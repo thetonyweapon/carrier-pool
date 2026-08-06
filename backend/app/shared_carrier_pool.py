@@ -148,6 +148,7 @@ def set_shared_display_name(
     broker_id: str,
     identity_id: str,
     shared_display_name: Optional[str],
+    bootstrap_owned: bool = False,
 ) -> CarrierIdentity:
     """Explicitly approve or revoke a broker-owned identity's public name."""
     identity = session.scalar(
@@ -161,6 +162,7 @@ def set_shared_display_name(
     if identity is None:
         raise CarrierIdentityNotFound("carrier identity not found")
     identity.shared_display_name = shared_display_name
+    identity.shared_display_name_bootstrap_owned = bootstrap_owned
     identity.updated_at = datetime.now(timezone.utc)
     session.flush()
     return identity

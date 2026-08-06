@@ -21,21 +21,21 @@
       "stops": [
         {
           "actualDepartureDateTime": "2026-07-14T06:00:00-05:00",
-          "city": "San Marcos",
+          "city": "Schertz",
           "estimatedCloseDateTime": "2026-07-13T20:00:00-05:00",
           "estimatedReadyDateTime": "2026-07-13T12:00:00-05:00",
           "state": "TX",
           "stopType": "Pickup",
-          "zipCode": "78666"
+          "zipCode": "78154"
         },
         {
           "actualDepartureDateTime": "2026-07-14T06:00:00-05:00",
-          "city": "Temple",
+          "city": "New Braunfels",
           "estimatedCloseDateTime": "2026-07-14T08:00:00-05:00",
           "estimatedReadyDateTime": "2026-07-14T00:00:00-05:00",
           "state": "TX",
           "stopType": "Dropoff",
-          "zipCode": "76501"
+          "zipCode": "78130"
         }
       ],
       "totalBuy": "980.00",

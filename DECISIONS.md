@@ -176,8 +176,10 @@ Weight is `Numeric(12, 1)`, distance is `Numeric(10, 1)` — these are not finan
 - The dataset intentionally expands beyond the minimum requested examples so the demo exercises the shared carrier pool, cold-start/unscored carriers, assigned completed history, active uncovered recommendations, thin and sufficient lane history, recent operational loads, and planned future work. This is demo coverage, not a claim that these synthetic scenarios represent production market distributions.
 - **Frontend.** The broker operations console is delivered in explicit demo mode
   with a broker switcher, lifecycle queue, analytics workspace, carrier drawer,
-  and platform assignment overlays. Production uses OIDC authentication; durable
-  account storage and non-demo platform writes remain deferred.
+  platform assignment overlays, and shared-pool views. Production uses OIDC
+  authentication and supports authenticated shared-pool policy and approved-name
+  writes. Durable local-account storage and platform assignment writes remain
+  deferred; assignment creation and demo broker discovery remain demo-only.
 - **Shared carrier pool.** The delivered backend keeps broker-owned identities
   broker-scoped and matches only normalized MC/DOT evidence across opted-in
   brokers. It returns a separate redacted recommendation list with explicitly

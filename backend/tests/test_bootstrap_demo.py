@@ -1,10 +1,21 @@
+import hashlib
 from datetime import datetime, timezone
+from pathlib import Path
+from shutil import copy2
 
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.models import Base, Broker, BrokerSource, Carrier, CarrierIdentity, TmsType
+from app.models import (
+    Base,
+    Broker,
+    BrokerSource,
+    Carrier,
+    CarrierIdentity,
+    IngestionFile,
+    TmsType,
+)
 from scripts import bootstrap_demo
 
 
@@ -27,6 +38,15 @@ def records(engine):
         brokers = session.scalars(select(Broker).order_by(Broker.id)).all()
         sources = session.scalars(select(BrokerSource).order_by(BrokerSource.id)).all()
         return brokers, sources
+
+
+def demo_data_root(tmp_path: Path) -> Path:
+    source_root = Path(__file__).parents[2] / "data"
+    for directory_name, *_ in bootstrap_demo.SOURCE_CONFIG:
+        destination = tmp_path / directory_name
+        destination.mkdir()
+        copy2(sorted((source_root / directory_name).glob("*.json"))[-1], destination)
+    return tmp_path
 
 
 def test_bootstrap_creates_display_names_and_preserves_stable_ids(bootstrap_db, tmp_path) -> None:
@@ -65,6 +85,57 @@ def test_bootstrap_is_idempotent(bootstrap_db, tmp_path) -> None:
         (source.id, source.broker_id, source.source_name, source.created_at)
         for source in records(bootstrap_db)[1]
     ] == source_before
+
+
+def test_bootstrap_reseeds_changed_successful_demo_files(bootstrap_db, tmp_path) -> None:
+    root = demo_data_root(tmp_path)
+    assert bootstrap_demo.bootstrap(root) == 3
+
+    changed = next((root / "tms_a_freightflow").glob("*.json"))
+    changed.write_bytes(changed.read_bytes() + b"\n")
+
+    assert bootstrap_demo.bootstrap(root) == 1
+    with Session(bootstrap_db) as session:
+        ingestion_file = session.scalar(
+            select(IngestionFile).where(IngestionFile.broker_source_id == "source-a")
+        )
+        assert ingestion_file.checksum == hashlib.sha256(changed.read_bytes()).hexdigest()
+
+
+def test_bootstrap_preserves_explicit_shared_name_revocation(bootstrap_db, tmp_path) -> None:
+    root = demo_data_root(tmp_path)
+    assert bootstrap_demo.bootstrap(root) == 3
+    with Session(bootstrap_db) as session:
+        now = datetime.now(timezone.utc)
+        identity = CarrierIdentity(
+            id="revoked-identity",
+            broker_id="broker-a",
+            normalized_mc_number="999",
+            created_at=now,
+            updated_at=now,
+            shared_display_name=None,
+            shared_display_name_bootstrap_owned=False,
+        )
+        session.add(identity)
+        session.add(
+            Carrier(
+                broker_id="broker-a",
+                broker_source_id="source-a",
+                carrier_identity_id=identity.id,
+                source_carrier_id="revoked-carrier",
+                name="Revoked Carrier",
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.commit()
+        identity_id = identity.id
+
+    assert bootstrap_demo.bootstrap(root) == 0
+    with Session(bootstrap_db) as session:
+        identity = session.get(CarrierIdentity, identity_id)
+        assert identity.shared_display_name is None
+        assert identity.shared_display_name_bootstrap_owned is False
 
 
 def test_bootstrap_approves_names_only_for_configured_demo_brokers(bootstrap_db, tmp_path) -> None:

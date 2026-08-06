@@ -151,7 +151,7 @@ SCENARIOS = (
     ),
     historical_scenario(
         7,
-        ("Georgetown", "TX", "78626", "Austin"),
+        ("Arlington", "TX", "76011", "DFW"),
         ("Irving", "TX", "75039", "DFW"),
         "Flatbed",
         "CUST-SOUTH",
@@ -176,7 +176,7 @@ SCENARIOS = (
     historical_scenario(
         9,
         ("The Woodlands", "TX", "77380", "Houston"),
-        ("Round Rock", "TX", "78664", "Austin"),
+        ("New Braunfels", "TX", "78130", "San Antonio"),
         "Reefer",
         "CUST-GULF",
         "CARR-ALPHA",
@@ -247,8 +247,8 @@ SCENARIOS = (
     ),
     historical_scenario(
         15,
-        ("San Marcos", "TX", "78666", "Austin"),
-        ("Temple", "TX", "76501", "Austin"),
+        ("Schertz", "TX", "78154", "San Antonio"),
+        ("New Braunfels", "TX", "78130", "San Antonio"),
         "Reefer",
         "CUST-SOUTH",
         "CARR-ALPHA",
@@ -353,7 +353,7 @@ OPERATIONAL_SCENARIOS = (
     ),
     Scenario(
         203,
-        ("Georgetown", "TX", "78626", "Austin"),
+        ("Arlington", "TX", "76011", "DFW"),
         ("Irving", "TX", "75039", "DFW"),
         "Flatbed",
         "CUST-RECENT",
@@ -437,7 +437,7 @@ OPERATIONAL_SCENARIOS = (
     Scenario(
         403,
         ("Houston", "TX", "77002", "Houston"),
-        ("Round Rock", "TX", "78664", "Austin"),
+        ("New Braunfels", "TX", "78130", "San Antonio"),
         "Flatbed",
         "CUST-FUTURE",
         "CARR-DELTA",

@@ -145,16 +145,16 @@
       "type": "Account"
     },
     "LOC-15-D": {
-      "Name": "Temple Distribution",
-      "bos__City__c": "Temple",
-      "bos__Postal_Code__c": "76501",
+      "Name": "New Braunfels Distribution",
+      "bos__City__c": "New Braunfels",
+      "bos__Postal_Code__c": "78130",
       "bos__State__c": "TX",
       "type": "Location"
     },
     "LOC-15-P": {
-      "Name": "San Marcos Crossdock",
-      "bos__City__c": "San Marcos",
-      "bos__Postal_Code__c": "78666",
+      "Name": "Schertz Crossdock",
+      "bos__City__c": "Schertz",
+      "bos__Postal_Code__c": "78154",
       "bos__State__c": "TX",
       "type": "Location"
     },

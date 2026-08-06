@@ -166,9 +166,9 @@
       "type": "Location"
     },
     "LOC-7-P": {
-      "Name": "Georgetown Crossdock",
-      "bos__City__c": "Georgetown",
-      "bos__Postal_Code__c": "78626",
+      "Name": "Arlington Crossdock",
+      "bos__City__c": "Arlington",
+      "bos__Postal_Code__c": "76011",
       "bos__State__c": "TX",
       "type": "Location"
     },

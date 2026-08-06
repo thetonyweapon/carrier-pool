@@ -31,7 +31,15 @@ from app.models import (
     TmsType,
 )
 from app.rate_estimation import estimate_carrier_rate
-from scripts.generate_synthetic_data import DATA_ROOT, SYNC_SLOTS, filename, generate
+from scripts.generate_synthetic_data import (
+    DATA_ROOT,
+    DAY11_SCENARIOS,
+    OPERATIONAL_SCENARIOS,
+    SCENARIOS,
+    SYNC_SLOTS,
+    filename,
+    generate,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE_CONFIG = (
@@ -190,6 +198,14 @@ def test_generated_dataset_is_complete_and_schema_valid() -> None:
         }[tms_type]
         assert len(historical_statuses) == 18
         assert all(statuses == expected_lifecycle for statuses in historical_statuses.values())
+
+
+def test_generated_stop_metro_labels_are_allowed() -> None:
+    allowed_metro_labels = {"DFW", "Houston", "San Antonio"}
+    scenarios = (*SCENARIOS, *DAY11_SCENARIOS, *OPERATIONAL_SCENARIOS)
+    assert {
+        place[3] for scenario in scenarios for place in (scenario.pickup, scenario.delivery)
+    } <= allowed_metro_labels
 
 
 def test_generated_dataset_ingests_in_chronological_order() -> None:

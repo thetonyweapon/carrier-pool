@@ -173,9 +173,9 @@
       "type": "Location"
     },
     "LOC-9-D": {
-      "Name": "Round Rock Distribution",
-      "bos__City__c": "Round Rock",
-      "bos__Postal_Code__c": "78664",
+      "Name": "New Braunfels Distribution",
+      "bos__City__c": "New Braunfels",
+      "bos__Postal_Code__c": "78130",
       "bos__State__c": "TX",
       "type": "Location"
     },

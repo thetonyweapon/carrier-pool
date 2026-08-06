@@ -60,12 +60,12 @@
         },
         {
           "actualDepartureDateTime": null,
-          "city": "Round Rock",
+          "city": "New Braunfels",
           "estimatedCloseDateTime": "2026-09-20T20:00:00-05:00",
           "estimatedReadyDateTime": "2026-09-20T12:00:00-05:00",
           "state": "TX",
           "stopType": "Dropoff",
-          "zipCode": "78664"
+          "zipCode": "78130"
         }
       ],
       "totalBuy": null,

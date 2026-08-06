@@ -3,7 +3,7 @@ import { MemoryRouter, useNavigate } from "react-router-dom";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
-import { api, clearAuthToken, setAuthToken } from "./api";
+import { api, clearAuthToken, setAuthToken, SharedPolicy } from "./api";
 import { candidate, detail, lane, loadList, rate, recs } from "./test/fixtures";
 import { server } from "./test/server";
 
@@ -264,5 +264,55 @@ describe("operations UI", () => {
     const toggle = await screen.findByRole("button", { name: "SHARED POOL ON" });
     fireEvent.click(toggle);
     expect(await screen.findByRole("button", { name: "SHARED POOL OFF" })).toBeInTheDocument();
+  });
+
+  it("ignores a pending policy update after switching brokers", async () => {
+    const pending: Array<{
+      broker: string;
+      enabled: boolean;
+      resolve: (policy: SharedPolicy) => void;
+    }> = [];
+    server.use(
+      http.get("http://localhost:3000/api/me", ({ request }) => {
+        const broker = new URL(request.url).searchParams.get("broker_id") || "broker-a";
+        return HttpResponse.json({
+          account_id: "account-test",
+          email: "operator@example.test",
+          name: "Test Operator",
+          broker_id: broker,
+          broker_name: broker === "broker-b" ? "Aegean Route Logistics" : "Ithaca Freight Partners",
+          is_admin: true,
+          is_demo: true,
+          profile_locked: true,
+        });
+      }),
+    );
+    vi.spyOn(api, "updateSharedPolicy").mockImplementation((broker, enabled) =>
+      new Promise((resolve) => pending.push({ broker, enabled, resolve })),
+    );
+    renderApp();
+
+    fireEvent.click(await screen.findByRole("button", { name: "SHARED POOL ON" }));
+    await waitFor(() => expect(pending).toHaveLength(1));
+    fireEvent.change(screen.getByRole("combobox", { name: "Select broker" }), {
+      target: { value: "broker-b" },
+    });
+    const brokerBPolicy = await screen.findByRole("button", { name: "SHARED POOL ON" });
+    expect(brokerBPolicy).not.toBeDisabled();
+
+    await act(async () => {
+      pending[0].resolve({
+        broker_id: "broker-a",
+        enabled: false,
+        policy_revision: 2,
+        attribute_profile: "public-carrier-name-v1",
+      });
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("button", { name: "SHARED POOL ON" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "SHARED POOL ON" }));
+    await waitFor(() => expect(pending).toHaveLength(2));
+    expect(pending[1]).toMatchObject({ broker: "broker-b", enabled: false });
   });
 });

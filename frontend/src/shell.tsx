@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   api,
@@ -39,9 +39,12 @@ export function Shell() {
   const [authError, setAuthError] = useState<unknown>();
   const [sharedPolicy, setSharedPolicy] = useState<SharedPolicy>();
   const [sharedPolicyUpdating, setSharedPolicyUpdating] = useState(false);
+  const sharedPolicyMutation = useRef(0);
   const nav = useNavigate();
   const routeLocation = useLocation();
   const routeBrokerId = routeLocation.pathname.match(/^\/brokers\/([^/]+)/)?.[1];
+  const activeBrokerRef = useRef(routeBrokerId);
+  activeBrokerRef.current = routeBrokerId;
   const retryBrokers = () => setBrokerAttempt((attempt) => attempt + 1);
   useEffect(() => {
     if (DEMO_MODE || (!window.location.search && !window.location.hash)) return;
@@ -134,14 +137,28 @@ export function Shell() {
       controller.abort();
     };
   }, [routeBrokerId]);
+  useEffect(() => () => {
+    sharedPolicyMutation.current += 1;
+    setSharedPolicyUpdating(false);
+  }, [routeBrokerId]);
   const toggleSharedPolicy = () => {
     if (!routeBrokerId || !sharedPolicy || sharedPolicyUpdating) return;
+    const broker = routeBrokerId;
+    const requestId = ++sharedPolicyMutation.current;
+    const isCurrent = () =>
+      requestId === sharedPolicyMutation.current && activeBrokerRef.current === broker;
     setSharedPolicyUpdating(true);
     api
-      .updateSharedPolicy(routeBrokerId, !sharedPolicy.enabled)
-      .then(setSharedPolicy)
-      .catch(setAuthError)
-      .finally(() => setSharedPolicyUpdating(false));
+      .updateSharedPolicy(broker, !sharedPolicy.enabled)
+      .then((nextPolicy) => {
+        if (isCurrent()) setSharedPolicy(nextPolicy);
+      })
+      .catch((error) => {
+        if (isCurrent()) setAuthError(error);
+      })
+      .finally(() => {
+        if (isCurrent()) setSharedPolicyUpdating(false);
+      });
   };
   const logout = () => {
     clearAuthToken();
