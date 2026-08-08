@@ -102,6 +102,38 @@ def test_bootstrap_reseeds_changed_successful_demo_files(bootstrap_db, tmp_path)
         assert ingestion_file.checksum == hashlib.sha256(changed.read_bytes()).hexdigest()
 
 
+def test_bootstrap_keeps_existing_seed_when_replacement_fails(bootstrap_db, tmp_path) -> None:
+    root = demo_data_root(tmp_path)
+    assert bootstrap_demo.bootstrap(root) == 3
+    changed = next((root / "tms_a_freightflow").glob("*.json"))
+    original = changed.read_bytes()
+    changed.write_bytes(b"not json")
+
+    with pytest.raises(Exception):
+        bootstrap_demo.bootstrap(root)
+
+    with Session(bootstrap_db) as session:
+        ingestion_file = session.scalar(
+            select(IngestionFile).where(IngestionFile.broker_source_id == "source-a")
+        )
+        assert ingestion_file.checksum == hashlib.sha256(original).hexdigest()
+
+
+def test_bootstrap_reseeds_when_a_seed_file_is_removed(bootstrap_db, tmp_path) -> None:
+    root = demo_data_root(tmp_path)
+    assert bootstrap_demo.bootstrap(root) == 3
+    next((root / "tms_a_freightflow").glob("*.json")).unlink()
+
+    assert bootstrap_demo.bootstrap(root) == 0
+    with Session(bootstrap_db) as session:
+        assert (
+            session.scalar(
+                select(IngestionFile).where(IngestionFile.broker_source_id == "source-a")
+            )
+            is None
+        )
+
+
 def test_bootstrap_preserves_explicit_shared_name_revocation(bootstrap_db, tmp_path) -> None:
     root = demo_data_root(tmp_path)
     assert bootstrap_demo.bootstrap(root) == 3

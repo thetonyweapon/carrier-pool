@@ -601,6 +601,32 @@ def test_complementary_identity_merge_preserves_approved_name(
     assert len(db_session.scalars(select(CarrierIdentity)).all()) == 1
 
 
+def test_complementary_identity_merge_preserves_explicit_shared_name_revocation(
+    db_session: Session,
+) -> None:
+    mc_only = upsert_carrier_identity(
+        db_session, "broker-a", "884201", None, datetime(2026, 7, 6, tzinfo=timezone.utc)
+    )
+    dot_only = upsert_carrier_identity(
+        db_session, "broker-a", None, "2551377", datetime(2026, 7, 6, tzinfo=timezone.utc)
+    )
+    mc_only.shared_display_name = "Bootstrap Carrier"
+    mc_only.shared_display_name_bootstrap_owned = True
+    dot_only.shared_display_name_bootstrap_owned = False
+    db_session.flush()
+
+    merged = upsert_carrier_identity(
+        db_session,
+        "broker-a",
+        "884201",
+        "2551377",
+        datetime(2026, 7, 7, tzinfo=timezone.utc),
+    )
+
+    assert merged.shared_display_name is None
+    assert merged.shared_display_name_bootstrap_owned is False
+
+
 def test_complementary_identity_merge_rejects_conflicting_approved_names(
     db_session: Session,
 ) -> None:

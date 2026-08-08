@@ -30,7 +30,11 @@ class IngestionFileSecurityError(ValueError):
 @contextmanager
 def ingestion_transaction(session: Session, tms_type: str):
     try:
-        with session.begin():
+        # A demo reseed wraps several files in one transaction. Savepoints let
+        # each adapter preserve its normal rollback behavior without committing
+        # a partially rebuilt seed set.
+        transaction = session.begin_nested() if session.in_transaction() else session.begin()
+        with transaction:
             yield
     except Exception as exc:
         increment(
@@ -270,7 +274,23 @@ def _merge_identity(
         raise CarrierIdentityConflictError(
             "carrier identities have conflicting approved shared display names"
         )
-    shared_display_name = identity.shared_display_name or duplicate.shared_display_name
+    explicitly_revoked = any(
+        item.shared_display_name is None and item.shared_display_name_bootstrap_owned is False
+        for item in (identity, duplicate)
+    )
+    shared_display_name = (
+        None
+        if explicitly_revoked
+        else identity.shared_display_name or duplicate.shared_display_name
+    )
+    if explicitly_revoked or any(
+        item.shared_display_name_bootstrap_owned is False for item in (identity, duplicate)
+    ):
+        bootstrap_owned = False
+    elif any(item.shared_display_name_bootstrap_owned for item in (identity, duplicate)):
+        bootstrap_owned = True
+    else:
+        bootstrap_owned = None
     for carrier in session.scalars(
         select(Carrier).where(Carrier.carrier_identity_id == duplicate.id)
     ):
@@ -281,4 +301,5 @@ def _merge_identity(
     identity.normalized_mc_number = normalized_mc
     identity.normalized_dot_number = normalized_dot
     identity.shared_display_name = shared_display_name
+    identity.shared_display_name_bootstrap_owned = bootstrap_owned
     identity.updated_at = observed_at

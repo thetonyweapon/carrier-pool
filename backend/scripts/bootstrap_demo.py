@@ -101,6 +101,16 @@ def _reset_demo_source(session, source_id: str) -> None:
 
 
 def _demo_source_needs_reseed(session, source_id: str, paths: list[Path]) -> bool:
+    existing_filenames = set(
+        session.scalars(
+            select(IngestionFile.filename).where(
+                IngestionFile.broker_source_id == source_id,
+                IngestionFile.status == IngestionStatus.SUCCEEDED,
+            )
+        )
+    )
+    if existing_filenames.difference(path.name for path in paths):
+        return True
     for path in paths:
         existing = session.scalar(
             select(IngestionFile).where(
@@ -217,18 +227,21 @@ def bootstrap(root: Path) -> int:
         for directory_name, _, _, source_id, _, tms_type in SOURCE_CONFIG:
             directory = root / directory_name
             paths = sorted(directory.glob("*.json"))
-            if _demo_source_needs_reseed(session, source_id, paths):
-                _reset_demo_source(session, source_id)
+            needs_reseed = _demo_source_needs_reseed(session, source_id, paths)
             session.commit()
             ingest = {
                 TmsType.FREIGHTFLOW: ingest_freightflow,
                 TmsType.HAULDESK: ingest_hauldesk,
                 TmsType.BROKEROS: ingest_brokeros,
             }[tms_type]
-            for path in paths:
-                result = ingest(session, source_id, path)
-                if not result.duplicate:
-                    ingested += 1
+            if needs_reseed:
+                with session.begin():
+                    _reset_demo_source(session, source_id)
+                    for path in paths:
+                        ingested += int(not ingest(session, source_id, path).duplicate)
+            else:
+                for path in paths:
+                    ingested += int(not ingest(session, source_id, path).duplicate)
         demo_broker_ids = {item[1] for item in SOURCE_CONFIG}
         identities = session.scalars(
             select(CarrierIdentity)
