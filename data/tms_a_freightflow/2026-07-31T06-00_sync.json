@@ -8,7 +8,7 @@
         "name": "Hill Country Carriers",
         "phoneNumber": "214-555-1010"
       },
-      "createdDate": "2026-07-30T00:00:00-05:00",
+      "createdDate": "2026-07-30T06:00:00-05:00",
       "customer": {
         "customerId": "CUST-RECENT",
         "name": "Recent Demo Shipper"
@@ -17,22 +17,22 @@
       "lastModifiedDate": "2026-07-31T06:00:00-05:00",
       "mileage": "230.0",
       "shipmentId": "FF-203",
-      "status": "Completed",
+      "status": "Delivered",
       "stops": [
         {
           "actualDepartureDateTime": "2026-07-31T06:00:00-05:00",
-          "city": "Georgetown",
-          "estimatedCloseDateTime": "2026-07-30T20:00:00-05:00",
-          "estimatedReadyDateTime": "2026-07-30T12:00:00-05:00",
+          "city": "Arlington",
+          "estimatedCloseDateTime": "2026-07-31T02:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-30T18:00:00-05:00",
           "state": "TX",
           "stopType": "Pickup",
-          "zipCode": "78626"
+          "zipCode": "76011"
         },
         {
           "actualDepartureDateTime": "2026-07-31T06:00:00-05:00",
           "city": "Irving",
-          "estimatedCloseDateTime": "2026-07-31T08:00:00-05:00",
-          "estimatedReadyDateTime": "2026-07-31T00:00:00-05:00",
+          "estimatedCloseDateTime": "2026-07-31T14:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-31T06:00:00-05:00",
           "state": "TX",
           "stopType": "Dropoff",
           "zipCode": "75039"

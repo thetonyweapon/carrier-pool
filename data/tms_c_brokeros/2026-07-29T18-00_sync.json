@@ -6,7 +6,7 @@
       "LastModifiedDate": "2026-07-29T23:00:00.000+0000",
       "Name": "BOS000201",
       "bos__Carrier_Rate__c": "2080.00",
-      "bos__Carrier__c": "CARRIER-201",
+      "bos__Carrier__c": "CARRIER-CARR-BRAVO",
       "bos__Customer_Rate__c": "2600.00",
       "bos__Customer__c": "CUST-201",
       "bos__Distance_Miles__c": "250.0",
@@ -80,7 +80,7 @@
     }
   ],
   "referenced_records": {
-    "CARRIER-201": {
+    "CARRIER-CARR-BRAVO": {
       "Name": "Prairie State Freight",
       "record_type": "Carrier",
       "type": "Account"

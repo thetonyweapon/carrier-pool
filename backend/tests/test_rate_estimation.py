@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
@@ -94,6 +94,9 @@ def add_load(
     carrier_rate: Optional[Decimal] = None,
     distance_miles: Optional[Decimal] = Decimal("200.0"),
     last_synced_at: datetime = NOW,
+    source_updated_at: Optional[datetime] = None,
+    booked_at: Optional[datetime] = None,
+    scheduled_date: Optional[date] = None,
 ) -> Load:
     source_id = f"source-{broker_id}"
     load = Load(
@@ -108,6 +111,8 @@ def add_load(
         equipment_type=equipment,
         distance_miles=distance_miles,
         carrier_rate=carrier_rate,
+        source_updated_at=source_updated_at,
+        booked_at=booked_at,
         first_seen_at=NOW,
         last_synced_at=last_synced_at,
     )
@@ -131,11 +136,67 @@ def add_load(
                 city=destination[0],
                 state=destination[1],
                 postal_code=destination[2],
+                scheduled_date=scheduled_date,
             ),
         ]
     )
     session.flush()
     return load
+
+
+def test_rate_estimation_uses_later_ingestion_and_excludes_future_evidence(
+    db_session: Session,
+) -> None:
+    carrier = setup_broker(db_session)
+    add_load(
+        db_session,
+        "broker-a",
+        "target",
+        LoadStatus.ACTIVE,
+        ("Dallas", "TX", "75201"),
+        ("Houston", "TX", "77002"),
+        last_synced_at=NOW - timedelta(days=30),
+    )
+    for index in range(3):
+        add_load(
+            db_session,
+            "broker-a",
+            f"valid-{index}",
+            LoadStatus.COMPLETED,
+            ("Dallas", "TX", "75201"),
+            ("Houston", "TX", "77002"),
+            carrier_id=carrier.id,
+            carrier_rate=Decimal("2000"),
+            last_synced_at=NOW,
+        )
+    future = datetime(2099, 1, 1, tzinfo=timezone.utc)
+    for index, future_fields in enumerate(
+        (
+            {"source_updated_at": future},
+            {"booked_at": future},
+            {"scheduled_date": future.date()},
+        )
+    ):
+        add_load(
+            db_session,
+            "broker-a",
+            f"future-{index}",
+            LoadStatus.COMPLETED,
+            ("Dallas", "TX", "75201"),
+            ("Houston", "TX", "77002"),
+            carrier_id=carrier.id,
+            carrier_rate=Decimal("9000"),
+            last_synced_at=NOW,
+            **future_fields,
+        )
+    db_session.commit()
+
+    result = estimate_carrier_rate(db_session, "broker-a", "target")
+
+    assert result is not None
+    assert result.status == "estimated"
+    assert result.sample_size == 3
+    assert result.estimate_amount == Decimal("2000.00")
 
 
 def setup_broker(session: Session, broker_id: str = "broker-a") -> Carrier:

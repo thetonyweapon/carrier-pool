@@ -48,12 +48,15 @@ on the fork, with medium-or-higher review findings fixed before merge.**
 
 ## Multi-Tenancy Model
 
-**Row-level tenant isolation via composite foreign keys, with every domain entity scoped by `broker_id`.**
+**Row-level tenant isolation through broker scope and composite foreign keys.**
 
 - Each broker has one `broker_source` per TMS type (enforced by `unique(broker_id, tms_type)`).
-- Every downstream entity carries both `broker_id` and `broker_source_id`. Composite foreign keys make cross-tenant references structurally impossible at the database level.
+- Source-derived entities carry `broker_id` and, where source provenance is
+  applicable, `broker_source_id`. Composite foreign keys prevent cross-tenant
+  source, customer, carrier, load, and history references at the database layer.
 - Tests prove that cross-tenant customer/carrier references are rejected with `IntegrityError`.
-- Shared carrier identity across brokers (the "opt-in pool") is explicitly deferred.
+- Canonical carrier identities remain broker-scoped. The delivered opt-in pool
+  compares normalized identity evidence at query time without merging tenant rows.
 - Broker-scoped `CarrierIdentity` records link source-specific carrier rows across TMSs using normalized MC/DOT evidence. MC/DOT values are independently unique per broker; complementary identities can merge, while contradictory evidence rejects the sync. A broker row lock serializes identity resolution across TMS sources. This does not cross broker boundaries or enable the shared carrier pool.
 
 *Alternatives rejected:* Schema-per-tenant (operational complexity, no shared pool possible); single flat namespace with application-level filtering (data-leak risk).
@@ -110,12 +113,15 @@ on the fork, with medium-or-higher review findings fixed before merge.**
 
 ## Migration Strategy
 
-**Alembic with nullable-first → backfill → NOT NULL pattern for zero-downtime additions.**
+**Alembic versioning with staged backfills where existing rows require new data.**
 
-- Migration 1 (`3cd64c705778`): creates all 8 tables with constraints, indexes, and triggers.
-- Migration 2 (`8b3e1e01e7a2`): adds provenance columns as nullable, backfills legacy rows via deterministic `uuid5` IDs, then constrains to NOT NULL.
-- Migration 3 (`1b4c4f0a2d91`): adds broker-scoped carrier identities, deterministic backfills existing carrier evidence, and links source-specific carrier rows. Existing contradictory MC/DOT evidence fails the migration rather than being silently merged. Identity rows are derived from source carrier evidence and can be rebuilt on re-upgrade.
-- Migration 4 (`2f7d1c9a4e30`): adds BrokerOS mutable-rate observations and BrokerOS stop metadata (`scheduled_date`, source location, and source sequence). Observation rows are append-only and preserve null-versus-zero semantics.
+- The initial revisions create the canonical schema, add deterministic ingestion
+  provenance and carrier-identity backfills, and add BrokerOS observations.
+- Subsequent revisions add recommendation indexes, assignment concurrency and
+  idempotency, shared-pool policy/audit state, durable ingestion leases, demo
+  metadata, audit actor/request identity, and approved shared display names.
+- Backfills add nullable columns first, populate and validate existing rows, then
+  apply required constraints. Not every additive migration needs that pattern.
 - Backfill retries on collision with a bounded loop (max 1000 attempts), checking both ID and `(broker_source_id, filename)` collisions.
 - Fails fast with `RuntimeError` if any `load_versions` row references a nonexistent load (prevents silent data loss).
 - Downgrade deletes synthetic ingestion files by `error_message` marker and restores original foreign keys.
@@ -142,7 +148,7 @@ Weight is `Numeric(12, 1)`, distance is `Numeric(10, 1)` — these are not finan
 
 ## Test Strategy
 
-**SQLite in-memory database for all tests with `PRAGMA foreign_keys=ON`.**
+**SQLite in-memory databases for the default isolated suite, with PostgreSQL integration coverage.**
 
 - Fast, isolated, no external dependencies. Every test gets a fresh database.
 - `make_sync()` builder produces realistic FreightFlow payloads with sensible defaults and override parameters.
@@ -170,13 +176,16 @@ Weight is `Numeric(12, 1)`, distance is `Numeric(10, 1)` — these are not finan
 - The dataset intentionally expands beyond the minimum requested examples so the demo exercises the shared carrier pool, cold-start/unscored carriers, assigned completed history, active uncovered recommendations, thin and sufficient lane history, recent operational loads, and planned future work. This is demo coverage, not a claim that these synthetic scenarios represent production market distributions.
 - **Frontend.** The broker operations console is delivered in explicit demo mode
   with a broker switcher, lifecycle queue, analytics workspace, carrier drawer,
-  and platform assignment overlays. Production uses OIDC authentication; durable
-  account storage and non-demo platform writes remain deferred.
+  platform assignment overlays, and shared-pool views. Production uses OIDC
+  authentication and supports authenticated shared-pool policy and approved-name
+  writes. Durable local-account storage and platform assignment writes remain
+  deferred; assignment creation and demo broker discovery remain demo-only.
 - **Shared carrier pool.** The delivered backend keeps broker-owned identities
   broker-scoped and matches only normalized MC/DOT evidence across opted-in
-  brokers. It returns a separate redacted recommendation list with public
-  carrier names, opaque HMAC candidate IDs, bucketed evidence, and a minimum of
-  three contributing brokers. The requester's own opted-in history contributes.
+  brokers. It returns a separate redacted recommendation list with explicitly
+  approved display names, opaque HMAC candidate IDs, bucketed evidence, and a
+  minimum of three contributing brokers. The requester's own opted-in history
+  contributes.
   Policy changes and every query are audited; on-demand computation makes
   revocation effective immediately. Shared rates and UI presentation are
   delivered in the authenticated demo path; shared candidates remain

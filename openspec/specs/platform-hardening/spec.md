@@ -1,6 +1,6 @@
 # Platform Hardening
 
-**Status: Delivered with performance benchmarking deferred**
+**Status: Delivered controls; performance benchmarking deferred**
 
 Milestones 1-11 are delivered: production authentication/deployment, PostgreSQL
 integration, durable ingestion, observability, concurrency, scale controls,
@@ -54,11 +54,12 @@ and RTO 1 hour; these are engineering targets, not infrastructure guarantees.
 Increase confidence in production behavior, performance, and operational safety
 without changing source semantics or tenant boundaries.
 
-## Remaining Verification
+## Deferred Verification
 
-- Recommendation and estimation logic SHOULD have service-layer tests separate
+- Add service-layer tests for recommendation and estimation logic separately
   from HTTP tests.
-- Migration backfills MUST be benchmarked with representative large datasets.
+- Benchmark migration backfills with representative large datasets before
+  making capacity or migration-window claims.
 
 ## Deferred Decisions
 

@@ -2,37 +2,37 @@
   "loads": [
     {
       "carrier": {
-        "carrierMasterId": "CARR-CHARLIE",
-        "dotNumber": "DOT-310003",
-        "mcNumber": "MC-120003",
-        "name": "Triangle Heavy Haul",
-        "phoneNumber": "214-555-1014"
+        "carrierMasterId": "CARR-ALPHA",
+        "dotNumber": "DOT-310001",
+        "mcNumber": "MC-120001",
+        "name": "Lone Star Logistics",
+        "phoneNumber": "214-555-1010"
       },
-      "createdDate": "2026-07-07T12:00:00-05:00",
+      "createdDate": "2026-07-07T00:00:00-05:00",
       "customer": {
         "customerId": "CUST-GULF",
         "name": "Gulf Coast Foods"
       },
-      "equipment": "Flatbed",
+      "equipment": "Reefer",
       "lastModifiedDate": "2026-07-08T00:00:00-05:00",
       "mileage": "205.0",
       "shipmentId": "FF-003",
-      "status": "Dispatched",
+      "status": "Delivered",
       "stops": [
         {
-          "actualDepartureDateTime": null,
+          "actualDepartureDateTime": "2026-07-08T00:00:00-05:00",
           "city": "Pearland",
-          "estimatedCloseDateTime": "2026-07-08T08:00:00-05:00",
-          "estimatedReadyDateTime": "2026-07-08T00:00:00-05:00",
+          "estimatedCloseDateTime": "2026-07-07T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-07T12:00:00-05:00",
           "state": "TX",
           "stopType": "Pickup",
           "zipCode": "77584"
         },
         {
-          "actualDepartureDateTime": null,
+          "actualDepartureDateTime": "2026-07-08T00:00:00-05:00",
           "city": "Schertz",
-          "estimatedCloseDateTime": "2026-07-08T20:00:00-05:00",
-          "estimatedReadyDateTime": "2026-07-08T12:00:00-05:00",
+          "estimatedCloseDateTime": "2026-07-08T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-08T00:00:00-05:00",
           "state": "TX",
           "stopType": "Dropoff",
           "zipCode": "78154"
@@ -44,45 +44,81 @@
     },
     {
       "carrier": {
-        "carrierMasterId": "CARR-DELTA",
-        "dotNumber": "DOT-310004",
-        "mcNumber": "MC-120004",
-        "name": "Hill Country Carriers",
-        "phoneNumber": "214-555-1010"
+        "carrierMasterId": "CARR-BRAVO",
+        "dotNumber": "DOT-310002",
+        "mcNumber": "MC-120002",
+        "name": "Prairie State Freight",
+        "phoneNumber": "214-555-1024"
       },
       "createdDate": "2026-07-07T12:00:00-05:00",
       "customer": {
-        "customerId": "CUST-SOUTH",
-        "name": "Alamo Industrial"
+        "customerId": "CUST-NORTH",
+        "name": "Northstar Retail"
       },
       "equipment": "Dry Van",
       "lastModifiedDate": "2026-07-08T00:00:00-05:00",
-      "mileage": "286.0",
+      "mileage": "252.0",
       "shipmentId": "FF-004",
       "status": "Dispatched",
       "stops": [
         {
           "actualDepartureDateTime": null,
-          "city": "New Braunfels",
+          "city": "Dallas",
           "estimatedCloseDateTime": "2026-07-08T08:00:00-05:00",
           "estimatedReadyDateTime": "2026-07-08T00:00:00-05:00",
           "state": "TX",
           "stopType": "Pickup",
-          "zipCode": "78130"
+          "zipCode": "75201"
         },
         {
           "actualDepartureDateTime": null,
-          "city": "McKinney",
+          "city": "Houston",
           "estimatedCloseDateTime": "2026-07-08T20:00:00-05:00",
           "estimatedReadyDateTime": "2026-07-08T12:00:00-05:00",
           "state": "TX",
           "stopType": "Dropoff",
-          "zipCode": "75070"
+          "zipCode": "77002"
         }
       ],
-      "totalBuy": "2050.00",
-      "totalSell": "2680.00",
-      "weightTotal": "33000.0"
+      "totalBuy": "1950.00",
+      "totalSell": "2575.00",
+      "weightTotal": "35000.0"
+    },
+    {
+      "carrier": null,
+      "createdDate": "2026-07-08T00:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-NORTH",
+        "name": "Northstar Retail"
+      },
+      "equipment": "Reefer",
+      "lastModifiedDate": "2026-07-08T00:00:00-05:00",
+      "mileage": "248.0",
+      "shipmentId": "FF-005",
+      "status": "Quoting",
+      "stops": [
+        {
+          "actualDepartureDateTime": null,
+          "city": "Arlington",
+          "estimatedCloseDateTime": "2026-07-08T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-08T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "76011"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "Missouri City",
+          "estimatedCloseDateTime": "2026-07-09T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-09T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "77459"
+        }
+      ],
+      "totalBuy": null,
+      "totalSell": "2910.00",
+      "weightTotal": "41000.0"
     }
   ],
   "syncedAt": "2026-07-08T00:00:00-05:00"

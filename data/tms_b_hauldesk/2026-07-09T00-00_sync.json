@@ -1,19 +1,82 @@
 {
-  "carriers": [],
+  "carriers": [
+    {
+      "carrier_id": "CARR-ALPHA",
+      "carrier_name": "Lone Star Logistics",
+      "dot_no": "DOT-310001",
+      "home_city": "Houston",
+      "home_state": "TX",
+      "mc_no": "MC-120001",
+      "phone": "214-555-1010"
+    },
+    {
+      "carrier_id": "CARR-BRAVO",
+      "carrier_name": "Prairie State Freight",
+      "dot_no": "DOT-310002",
+      "home_city": "Plano",
+      "home_state": "TX",
+      "mc_no": "MC-120002",
+      "phone": "214-555-1024"
+    }
+  ],
   "loads": [
     {
-      "carrier_ref": null,
+      "carrier_ref": "CARR-ALPHA",
       "customer_code": "CUST-NORTH",
       "customer_name": "Northstar Retail",
-      "del_arrived_at": null,
+      "del_arrived_at": "2026-07-09 00:00:00",
       "del_city": "Missouri City",
-      "del_date": "2026-07-10",
+      "del_date": "2026-07-09",
       "del_state": "TX",
       "del_zip": "77459",
       "dist_km": "399.12",
-      "entered_at": "2026-07-09 00:00:00",
+      "entered_at": "2026-07-08 00:00:00",
       "equip": "R",
       "load_num": "HD-005",
+      "pu_city": "Arlington",
+      "pu_date": "2026-07-08",
+      "pu_departed_at": "2026-07-09 00:00:00",
+      "pu_state": "TX",
+      "pu_zip": "76011",
+      "status_code": 50,
+      "updated_at": "2026-07-09 00:00:00",
+      "weight_kg": "18597.29"
+    },
+    {
+      "carrier_ref": "CARR-BRAVO",
+      "customer_code": "CUST-GULF",
+      "customer_name": "Gulf Coast Foods",
+      "del_arrived_at": null,
+      "del_city": "Houston",
+      "del_date": "2026-07-09",
+      "del_state": "TX",
+      "del_zip": "77002",
+      "dist_km": "397.51",
+      "entered_at": "2026-07-08 12:00:00",
+      "equip": "V",
+      "load_num": "HD-006",
+      "pu_city": "Dallas",
+      "pu_date": "2026-07-09",
+      "pu_departed_at": null,
+      "pu_state": "TX",
+      "pu_zip": "75201",
+      "status_code": 30,
+      "updated_at": "2026-07-09 00:00:00",
+      "weight_kg": "14514.96"
+    },
+    {
+      "carrier_ref": null,
+      "customer_code": "CUST-SOUTH",
+      "customer_name": "Alamo Industrial",
+      "del_arrived_at": null,
+      "del_city": "Irving",
+      "del_date": "2026-07-10",
+      "del_state": "TX",
+      "del_zip": "75039",
+      "dist_km": "370.15",
+      "entered_at": "2026-07-09 00:00:00",
+      "equip": "F",
+      "load_num": "HD-007",
       "pu_city": "Arlington",
       "pu_date": "2026-07-09",
       "pu_departed_at": null,
@@ -21,31 +84,26 @@
       "pu_zip": "76011",
       "status_code": 10,
       "updated_at": "2026-07-09 00:00:00",
-      "weight_kg": "18597.29"
-    },
-    {
-      "carrier_ref": null,
-      "customer_code": "CUST-GULF",
-      "customer_name": "Gulf Coast Foods",
-      "del_arrived_at": null,
-      "del_city": "Boerne",
-      "del_date": "2026-07-10",
-      "del_state": "TX",
-      "del_zip": "78006",
-      "dist_km": "350.84",
-      "entered_at": "2026-07-09 00:00:00",
-      "equip": "V",
-      "load_num": "HD-006",
-      "pu_city": "Cypress",
-      "pu_date": "2026-07-09",
-      "pu_departed_at": null,
-      "pu_state": "TX",
-      "pu_zip": "77429",
-      "status_code": 10,
-      "updated_at": "2026-07-09 00:00:00",
-      "weight_kg": "13154.18"
+      "weight_kg": "15875.73"
     }
   ],
-  "rates": [],
+  "rates": [
+    {
+      "amount_usd": "2490.00",
+      "code": "LINEHAUL",
+      "created_at": "2026-07-09 00:00:00",
+      "load_num": "HD-006",
+      "rate_id": "RATE-0013",
+      "side": "bill"
+    },
+    {
+      "amount_usd": "1880.00",
+      "code": "LINEHAUL",
+      "created_at": "2026-07-09 00:00:00",
+      "load_num": "HD-006",
+      "rate_id": "RATE-0014",
+      "side": "pay"
+    }
+  ],
   "synced_at": "2026-07-09 00:00:00"
 }

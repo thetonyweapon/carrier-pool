@@ -48,6 +48,10 @@ class SharedPoolUnavailable(ValueError):
     pass
 
 
+class CarrierIdentityNotFound(ValueError):
+    pass
+
+
 @dataclass(frozen=True)
 class SharedCarrierRecommendation:
     candidate_id: str
@@ -139,6 +143,31 @@ def set_shared_pool_policy(
     return policy
 
 
+def set_shared_display_name(
+    session: Session,
+    broker_id: str,
+    identity_id: str,
+    shared_display_name: Optional[str],
+    bootstrap_owned: bool = False,
+) -> CarrierIdentity:
+    """Explicitly approve or revoke a broker-owned identity's public name."""
+    identity = session.scalar(
+        select(CarrierIdentity)
+        .where(
+            CarrierIdentity.broker_id == broker_id,
+            CarrierIdentity.id == identity_id,
+        )
+        .with_for_update()
+    )
+    if identity is None:
+        raise CarrierIdentityNotFound("carrier identity not found")
+    identity.shared_display_name = shared_display_name
+    identity.shared_display_name_bootstrap_owned = bootstrap_owned
+    identity.updated_at = datetime.now(timezone.utc)
+    session.flush()
+    return identity
+
+
 def get_shared_carrier_recommendations(
     session: Session,
     broker_id: str,
@@ -183,7 +212,8 @@ def get_shared_carrier_recommendations(
     ).all()
     participant_scope_digest = _participant_scope_digest(policies)
     participant_ids = [policy.broker_id for policy in policies]
-    historical_loads = _historical_loads(session, participant_ids, _as_utc(target.last_synced_at))
+    as_of = datetime.now(timezone.utc)
+    historical_loads = _historical_loads(session, participant_ids, as_of)
     historical_stops = _load_stops_by_scope(
         session, participant_ids, [load.id for load in historical_loads]
     )
@@ -210,8 +240,11 @@ def get_shared_carrier_recommendations(
         )
     ).all()
     identity_by_id = {(identity.broker_id, identity.id): identity for identity in identities}
+    identity_aliases = _shared_identity_aliases(identities)
     carrier_candidates = {
-        (carrier.broker_id, carrier.id): _carrier_candidate(carrier, identity_by_id)
+        (carrier.broker_id, carrier.id): _carrier_candidate(
+            carrier, identity_by_id, identity_aliases
+        )
         for carrier in carriers
     }
     carrier_candidates = {
@@ -236,9 +269,7 @@ def get_shared_carrier_recommendations(
             for timestamp in (stop.actual_arrived_at, stop.actual_departed_at)
             if timestamp is not None
         ]
-        if operational_times and max(map(_as_utc, operational_times)) > _as_utc(
-            target.last_synced_at
-        ):
+        if operational_times and max(map(_as_utc, operational_times)) > as_of:
             continue
         exact = lane.exact_key == target_lane.exact_key
         nearby = (
@@ -296,15 +327,71 @@ def get_shared_carrier_recommendations(
 def _carrier_candidate(
     carrier: Carrier,
     identity_by_id: dict[tuple[str, str], CarrierIdentity],
+    identity_aliases: dict[tuple[str, str], str],
 ) -> Optional[tuple[str, str]]:
     identity = identity_by_id.get((carrier.broker_id, carrier.carrier_identity_id or ""))
-    if identity is None:
+    if identity is None or not identity.shared_display_name:
         return None
-    identifier = identity.normalized_mc_number or identity.normalized_dot_number
-    if identifier is None:
+    candidate_key = identity_aliases.get((identity.broker_id, identity.id))
+    if candidate_key is None:
         return None
-    prefix = "mc" if identity.normalized_mc_number else "dot"
-    return f"{prefix}:{identifier}", carrier.name
+    return candidate_key, identity.shared_display_name
+
+
+def _shared_identity_aliases(
+    identities: Sequence[CarrierIdentity],
+) -> dict[tuple[str, str], str]:
+    """Join opted-in identities through either normalized MC or DOT evidence."""
+    identity_identifiers: dict[tuple[str, str], tuple[str, ...]] = {}
+    mc_dots: dict[str, set[Optional[str]]] = defaultdict(set)
+    dot_mcs: dict[str, set[Optional[str]]] = defaultdict(set)
+    for identity in identities:
+        key = (identity.broker_id, identity.id)
+        if identity.normalized_mc_number:
+            mc_dots[identity.normalized_mc_number].add(identity.normalized_dot_number)
+        if identity.normalized_dot_number:
+            dot_mcs[identity.normalized_dot_number].add(identity.normalized_mc_number)
+        identity_identifiers[key] = tuple(
+            identifier
+            for identifier in (
+                f"mc:{identity.normalized_mc_number}" if identity.normalized_mc_number else None,
+                f"dot:{identity.normalized_dot_number}" if identity.normalized_dot_number else None,
+            )
+            if identifier is not None
+        )
+
+    conflicting_identifiers = {
+        f"mc:{mc}" for mc, dots in mc_dots.items() if len({dot for dot in dots if dot}) > 1
+    } | {f"dot:{dot}" for dot, mcs in dot_mcs.items() if len({mc for mc in mcs if mc}) > 1}
+    parent: dict[str, str] = {}
+
+    def find(identifier: str) -> str:
+        parent.setdefault(identifier, identifier)
+        while parent[identifier] != identifier:
+            parent[identifier] = parent[parent[identifier]]
+            identifier = parent[identifier]
+        return identifier
+
+    def union(left: str, right: str) -> None:
+        left_root = find(left)
+        right_root = find(right)
+        if left_root != right_root:
+            parent[max(left_root, right_root)] = min(left_root, right_root)
+
+    for identifiers in identity_identifiers.values():
+        if not identifiers or conflicting_identifiers.intersection(identifiers):
+            continue
+        find(identifiers[0])
+        if len(identifiers) == 2:
+            union(*identifiers)
+
+    return {
+        identity_key: find(identifiers[0])
+        for identity_key, identifiers in identity_identifiers.items()
+        if identifiers
+        and not conflicting_identifiers.intersection(identifiers)
+        and identifiers[0] in parent
+    }
 
 
 def _load_stops_by_scope(

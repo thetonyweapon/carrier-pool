@@ -1,7 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,10 +10,12 @@ from app.config import settings
 from app.database import get_db
 from app.models import SharedPoolPolicy
 from app.shared_carrier_pool import (
+    CarrierIdentityNotFound,
     SharedPoolDisabled,
     SharedPoolNotEligible,
     SharedPoolUnavailable,
     get_shared_carrier_recommendations,
+    set_shared_display_name,
     set_shared_pool_policy,
 )
 from app.shared_rate_estimation import get_shared_rate_estimate
@@ -50,6 +52,24 @@ class SharedPoolPolicyResponse(BaseModel):
 class SharedPoolPolicyRequest(BaseModel):
     enabled: bool
     reason: Optional[str] = None
+
+
+class SharedDisplayNameRequest(BaseModel):
+    shared_display_name: str = Field(min_length=1, max_length=255)
+
+    @field_validator("shared_display_name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("shared display name cannot be blank")
+        return value
+
+
+class SharedDisplayNameResponse(BaseModel):
+    broker_id: str
+    carrier_identity_id: str
+    shared_display_name: Optional[str]
 
 
 class SharedRateEstimateResponse(BaseModel):
@@ -109,6 +129,53 @@ def update_shared_pool_policy(
         enabled=policy.enabled,
         policy_revision=policy.policy_revision,
         attribute_profile=policy.attribute_profile,
+    )
+
+
+@router.put(
+    "/brokers/{broker_id}/carrier-identities/{identity_id}/shared-display-name",
+    response_model=SharedDisplayNameResponse,
+)
+def approve_shared_display_name(
+    broker_id: str,
+    identity_id: str,
+    request: SharedDisplayNameRequest,
+    db: Session = Depends(get_db),
+    principal: BrokerPrincipal = Depends(require_broker_principal),
+) -> SharedDisplayNameResponse:
+    broker_id = principal.broker_id
+    try:
+        identity = set_shared_display_name(db, broker_id, identity_id, request.shared_display_name)
+    except CarrierIdentityNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    db.commit()
+    return SharedDisplayNameResponse(
+        broker_id=broker_id,
+        carrier_identity_id=identity.id,
+        shared_display_name=identity.shared_display_name,
+    )
+
+
+@router.delete(
+    "/brokers/{broker_id}/carrier-identities/{identity_id}/shared-display-name",
+    response_model=SharedDisplayNameResponse,
+)
+def revoke_shared_display_name(
+    broker_id: str,
+    identity_id: str,
+    db: Session = Depends(get_db),
+    principal: BrokerPrincipal = Depends(require_broker_principal),
+) -> SharedDisplayNameResponse:
+    broker_id = principal.broker_id
+    try:
+        identity = set_shared_display_name(db, broker_id, identity_id, None)
+    except CarrierIdentityNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    db.commit()
+    return SharedDisplayNameResponse(
+        broker_id=broker_id,
+        carrier_identity_id=identity.id,
+        shared_display_name=None,
     )
 
 

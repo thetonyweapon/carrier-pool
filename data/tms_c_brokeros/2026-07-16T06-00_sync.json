@@ -9,7 +9,7 @@
       "bos__Carrier__c": null,
       "bos__Customer_Rate__c": "2450.00",
       "bos__Customer__c": "CUST-101",
-      "bos__Distance_Miles__c": "239.0",
+      "bos__Distance_Miles__c": "239.5",
       "bos__Equipment_Type__c": "Dry Van",
       "bos__Line_Items__r": [
         {
@@ -48,7 +48,7 @@
       "bos__Carrier__c": null,
       "bos__Customer_Rate__c": "2300.00",
       "bos__Customer__c": "CUST-102",
-      "bos__Distance_Miles__c": "214.0",
+      "bos__Distance_Miles__c": "214.5",
       "bos__Equipment_Type__c": "Reefer",
       "bos__Line_Items__r": [
         {

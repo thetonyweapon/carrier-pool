@@ -6,7 +6,7 @@
       "LastModifiedDate": "2026-07-30T11:00:00.000+0000",
       "Name": "BOS000201",
       "bos__Carrier_Rate__c": "2080.00",
-      "bos__Carrier__c": "CARRIER-201",
+      "bos__Carrier__c": "CARRIER-CARR-BRAVO",
       "bos__Customer_Rate__c": "2600.00",
       "bos__Customer__c": "CUST-201",
       "bos__Distance_Miles__c": "250.0",
@@ -45,7 +45,7 @@
       "LastModifiedDate": "2026-07-30T11:00:00.000+0000",
       "Name": "BOS000202",
       "bos__Carrier_Rate__c": "1810.00",
-      "bos__Carrier__c": "CARRIER-202",
+      "bos__Carrier__c": "CARRIER-CARR-CHARLIE",
       "bos__Customer_Rate__c": "2420.00",
       "bos__Customer__c": "CUST-202",
       "bos__Distance_Miles__c": "210.0",
@@ -79,7 +79,7 @@
       ]
     },
     {
-      "CreatedDate": "2026-07-30T05:00:00.000+0000",
+      "CreatedDate": "2026-07-30T11:00:00.000+0000",
       "Id": "BROKEROS-203",
       "LastModifiedDate": "2026-07-30T11:00:00.000+0000",
       "Name": "BOS000203",
@@ -97,7 +97,7 @@
           "bos__Weight__c": "35000.0"
         }
       ],
-      "bos__Load_Status__c": "Ready to Book",
+      "bos__Load_Status__c": "Quotes Requested",
       "bos__Stops__r": [
         {
           "bos__Arrival_Time__c": null,
@@ -119,12 +119,12 @@
     }
   ],
   "referenced_records": {
-    "CARRIER-201": {
+    "CARRIER-CARR-BRAVO": {
       "Name": "Prairie State Freight",
       "record_type": "Carrier",
       "type": "Account"
     },
-    "CARRIER-202": {
+    "CARRIER-CARR-CHARLIE": {
       "Name": "Triangle Heavy Haul",
       "record_type": "Carrier",
       "type": "Account"
@@ -180,9 +180,9 @@
       "type": "Location"
     },
     "LOC-203-P": {
-      "Name": "Georgetown Crossdock",
-      "bos__City__c": "Georgetown",
-      "bos__Postal_Code__c": "78626",
+      "Name": "Arlington Crossdock",
+      "bos__City__c": "Arlington",
+      "bos__Postal_Code__c": "76011",
       "bos__State__c": "TX",
       "type": "Location"
     }

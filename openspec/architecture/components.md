@@ -127,8 +127,8 @@ flowchart TB
 
 ## Integration Points
 
-- Recommendation logic consumes canonical loads, stops, carriers, and the
-  delivered lane-intelligence history contract.
+- Recommendation logic queries canonical loads, stops, and carriers directly
+  while reusing lane derivation, normalization, and history-bound constants.
 - Rate estimation consumes canonical rate history and lane dimensions.
 - Both services must be broker-scoped and expose explanation metadata.
 - The operations and shared-pool routers use the same authenticated principal

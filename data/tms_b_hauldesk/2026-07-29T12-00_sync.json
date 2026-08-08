@@ -62,7 +62,7 @@
       "code": "LINEHAUL",
       "created_at": "2026-07-29 12:00:00",
       "load_num": "HD-201",
-      "rate_id": "RATE-0025",
+      "rate_id": "RATE-0039",
       "side": "bill"
     },
     {
@@ -70,7 +70,7 @@
       "code": "LINEHAUL",
       "created_at": "2026-07-29 12:00:00",
       "load_num": "HD-201",
-      "rate_id": "RATE-0026",
+      "rate_id": "RATE-0040",
       "side": "pay"
     }
   ],

@@ -2,6 +2,48 @@
   "loads": [
     {
       "carrier": {
+        "carrierMasterId": "CARR-BRAVO",
+        "dotNumber": "DOT-310002",
+        "mcNumber": "MC-120002",
+        "name": "Prairie State Freight",
+        "phoneNumber": "214-555-1024"
+      },
+      "createdDate": "2026-07-08T12:00:00-05:00",
+      "customer": {
+        "customerId": "CUST-GULF",
+        "name": "Gulf Coast Foods"
+      },
+      "equipment": "Dry Van",
+      "lastModifiedDate": "2026-07-09T18:00:00-05:00",
+      "mileage": "247.0",
+      "shipmentId": "FF-006",
+      "status": "Completed",
+      "stops": [
+        {
+          "actualDepartureDateTime": "2026-07-09T18:00:00-05:00",
+          "city": "Dallas",
+          "estimatedCloseDateTime": "2026-07-09T08:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-09T00:00:00-05:00",
+          "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "75201"
+        },
+        {
+          "actualDepartureDateTime": "2026-07-09T18:00:00-05:00",
+          "city": "Houston",
+          "estimatedCloseDateTime": "2026-07-09T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-09T12:00:00-05:00",
+          "state": "TX",
+          "stopType": "Dropoff",
+          "zipCode": "77002"
+        }
+      ],
+      "totalBuy": "1880.00",
+      "totalSell": "2490.00",
+      "weightTotal": "32000.0"
+    },
+    {
+      "carrier": {
         "carrierMasterId": "CARR-ALPHA",
         "dotNumber": "DOT-310001",
         "mcNumber": "MC-120001",
@@ -10,13 +52,13 @@
       },
       "createdDate": "2026-07-09T00:00:00-05:00",
       "customer": {
-        "customerId": "CUST-NORTH",
-        "name": "Northstar Retail"
+        "customerId": "CUST-SOUTH",
+        "name": "Alamo Industrial"
       },
-      "equipment": "Reefer",
+      "equipment": "Flatbed",
       "lastModifiedDate": "2026-07-09T18:00:00-05:00",
-      "mileage": "248.0",
-      "shipmentId": "FF-005",
+      "mileage": "230.0",
+      "shipmentId": "FF-007",
       "status": "En Route",
       "stops": [
         {
@@ -30,59 +72,53 @@
         },
         {
           "actualDepartureDateTime": null,
-          "city": "Missouri City",
+          "city": "Irving",
           "estimatedCloseDateTime": "2026-07-10T08:00:00-05:00",
           "estimatedReadyDateTime": "2026-07-10T00:00:00-05:00",
           "state": "TX",
           "stopType": "Dropoff",
-          "zipCode": "77459"
+          "zipCode": "75039"
         }
       ],
-      "totalBuy": "2260.00",
-      "totalSell": "2910.00",
-      "weightTotal": "41000.0"
+      "totalBuy": "1840.00",
+      "totalSell": "2490.00",
+      "weightTotal": "35000.0"
     },
     {
-      "carrier": {
-        "carrierMasterId": "CARR-ECHO",
-        "dotNumber": "DOT-310005",
-        "mcNumber": "MC-120005",
-        "name": "Bluebonnet Transport",
-        "phoneNumber": "214-555-1024"
-      },
-      "createdDate": "2026-07-09T00:00:00-05:00",
+      "carrier": null,
+      "createdDate": "2026-07-09T12:00:00-05:00",
       "customer": {
-        "customerId": "CUST-GULF",
-        "name": "Gulf Coast Foods"
+        "customerId": "CUST-NORTH",
+        "name": "Northstar Retail"
       },
       "equipment": "Dry Van",
       "lastModifiedDate": "2026-07-09T18:00:00-05:00",
-      "mileage": "218.0",
-      "shipmentId": "FF-006",
-      "status": "En Route",
+      "mileage": "255.0",
+      "shipmentId": "FF-008",
+      "status": "Booking",
       "stops": [
         {
-          "actualDepartureDateTime": "2026-07-09T18:00:00-05:00",
-          "city": "Cypress",
-          "estimatedCloseDateTime": "2026-07-09T20:00:00-05:00",
-          "estimatedReadyDateTime": "2026-07-09T12:00:00-05:00",
-          "state": "TX",
-          "stopType": "Pickup",
-          "zipCode": "77429"
-        },
-        {
           "actualDepartureDateTime": null,
-          "city": "Boerne",
+          "city": "Dallas",
           "estimatedCloseDateTime": "2026-07-10T08:00:00-05:00",
           "estimatedReadyDateTime": "2026-07-10T00:00:00-05:00",
           "state": "TX",
+          "stopType": "Pickup",
+          "zipCode": "75201"
+        },
+        {
+          "actualDepartureDateTime": null,
+          "city": "Houston",
+          "estimatedCloseDateTime": "2026-07-10T20:00:00-05:00",
+          "estimatedReadyDateTime": "2026-07-10T12:00:00-05:00",
+          "state": "TX",
           "stopType": "Dropoff",
-          "zipCode": "78006"
+          "zipCode": "77002"
         }
       ],
-      "totalBuy": "1640.00",
-      "totalSell": "2195.00",
-      "weightTotal": "29000.0"
+      "totalBuy": null,
+      "totalSell": "2625.00",
+      "weightTotal": "36000.0"
     }
   ],
   "syncedAt": "2026-07-09T18:00:00-05:00"

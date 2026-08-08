@@ -16,6 +16,20 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
+_LEGACY_ENUM_CONSTRAINTS = {
+    "tms_type",
+    "load_status",
+    "equipment_type",
+    "stop_type",
+    "rate_side",
+    "ingestion_status",
+    "ingestion_job_status",
+}
+
+
+def include_object(object_, name, type_, reflected, compare_to):
+    """Keep legacy portable-enum checks out of schema drift detection."""
+    return not (type_ == "check_constraint" and name in _LEGACY_ENUM_CONSTRAINTS)
 
 
 def run_migrations_offline() -> None:
@@ -24,6 +38,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -38,7 +53,11 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            include_object=include_object,
+        )
 
         with context.begin_transaction():
             context.run_migrations()

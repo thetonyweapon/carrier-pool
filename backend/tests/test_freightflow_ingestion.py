@@ -209,7 +209,7 @@ def test_lifecycle_updates_preserve_history_and_first_booking_time(db_session: S
     assert versions[2].normalized_snapshot["carrier_rate"] == "1205.5"
 
 
-def test_newer_sync_does_not_apply_an_older_freightflow_record(
+def test_later_file_applies_correction_with_regressed_freightflow_timestamp(
     db_session: Session,
 ) -> None:
     ingest_contents(
@@ -218,12 +218,22 @@ def test_newer_sync_does_not_apply_an_older_freightflow_record(
         "first.json",
         contents(make_sync("2026-07-06T06:00:00-05:00", status="Booking")),
     )
-    stale = make_sync("2026-07-06T12:00:00-05:00", status="Completed")
-    stale["loads"][0]["lastModifiedDate"] = "2026-07-06T05:00:00-05:00"
-    ingest_contents(db_session, "freightflow-a", "second.json", contents(stale))
+    corrected = make_sync("2026-07-06T12:00:00-05:00", status="Completed")
+    corrected["loads"][0]["lastModifiedDate"] = "2026-07-06T05:00:00-05:00"
+    ingest_contents(db_session, "freightflow-a", "second.json", contents(corrected))
 
     load = db_session.scalar(select(Load))
-    assert load.status == LoadStatus.ACTIVE
+    versions = db_session.scalars(select(LoadVersion).order_by(LoadVersion.version_number)).all()
+    assert load.status == LoadStatus.COMPLETED
+    assert load.source_updated_at.replace(tzinfo=timezone.utc) == datetime(
+        2026, 7, 6, 10, tzinfo=timezone.utc
+    )
+    assert load.last_synced_at.replace(tzinfo=timezone.utc) == datetime(
+        2026, 7, 6, 17, tzinfo=timezone.utc
+    )
+    assert [version.version_number for version in versions] == [1, 2]
+    assert versions[1].raw_payload["lastModifiedDate"] == "2026-07-06T05:00:00-05:00"
+    assert versions[1].normalized_snapshot["source_updated_at"] == "2026-07-06T10:00:00+00:00"
 
 
 def test_carrier_identity_replacement_conflicts_and_missing_ids_preserve_link(

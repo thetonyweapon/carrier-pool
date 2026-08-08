@@ -34,7 +34,7 @@ participating brokers without exposing confidential source data.
 - A result MUST have evidence from at least three distinct opted-in brokers.
 - Cross-broker matching uses normalized MC/DOT evidence without merging
   broker-scoped `CarrierIdentity` rows.
-- Shared output MAY include a public carrier name, but MUST omit MC/DOT values,
+- Shared output MAY include an explicitly approved shared display name, but MUST omit MC/DOT values,
   source broker and carrier IDs, customer data, rates, raw payloads, exact
   source lanes, and precise operational timestamps.
 - Evidence counts are bucketed and candidate IDs are opaque HMAC-derived values.
@@ -50,9 +50,10 @@ participating brokers without exposing confidential source data.
 - Whether future versions may add other public carrier attributes.
 - How revocation should invalidate any future cache or materialized result.
 
-The initial policy decisions are public carrier names, requester contribution,
-a three-broker minimum, on-demand computation so revocation takes effect on the
-next query, and rate aggregation without source disclosure. Policy changes are
+The initial policy decisions are explicitly approved shared display names,
+requester contribution, a three-broker minimum, on-demand computation so
+revocation takes effect on the next query, and rate aggregation without source
+disclosure. Policy changes are
 recorded as append-only events and every shared recommendation/rate query
 records its participant-scope digest.
 

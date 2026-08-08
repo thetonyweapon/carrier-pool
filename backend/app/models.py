@@ -324,6 +324,8 @@ class CarrierIdentity(Base):
     broker_id: Mapped[str] = mapped_column(String(36), nullable=False)
     normalized_mc_number: Mapped[Optional[str]] = mapped_column(String(32))
     normalized_dot_number: Mapped[Optional[str]] = mapped_column(String(32))
+    shared_display_name: Mapped[Optional[str]] = mapped_column(String(255))
+    shared_display_name_bootstrap_owned: Mapped[Optional[bool]] = mapped_column(Boolean)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
